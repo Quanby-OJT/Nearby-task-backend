@@ -1,29 +1,19 @@
 import { supabase } from "../config/configuration";
 
-class TaskModel {
-  async createNewTask(
-    description: string,
-    duration: string,
-    job_title: string,
-    urgency: string,
-    location: string,
-    num_of_days: number,
-    specialization: string,
-    contact_price: string,
-    remarks: string,
-    task_begin_date: string
-  ) {
-    let statuses: string = "active";
-    const { data, error } = await supabase.from("tasks").insert([
+class TaskModel  {
+  
+  async createNewTask(client_id: number, description: string, duration: string, job_title: string, urgency: boolean, location: string, num_of_days: number, specialization: string, contact_price: string, remarks: string, task_begin_date: string) {
+    let statuses: string = "Pending";
+    const { data, error } = await supabase.from('tasks').insert([
       {
         task_title: job_title,
         task_description: description,
-        duration: duration,
-        contact_price: contact_price,
-        urgent: urgency,
-        remarks: remarks,
+        period: duration,
+        contact_price: contact_price, 
+        urgent: urgency, 
+        remarks: remarks, 
         task_begin_date: task_begin_date,
-        period: num_of_days,
+        duration: num_of_days, 
         location: location,
         specialization: specialization,
         status: statuses,
