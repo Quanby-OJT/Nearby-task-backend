@@ -1,0 +1,45 @@
+{
+  "name": "express_be",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc && node node_modules\\tailwindcss\\lib\\cli.js -i ./src/styles/tailwind.css -o ./public/styles/tailwind.css --minify"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "express-validator": "^7.2.1",
+    "multer": "^1.4.5-lts.1",
+    "ngx-cookie-service": "^19.1.2",
+    "nodemailer": "^6.10.0",
+    "otp-generator": "^4.0.1",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/dotenv": "^6.1.1",
+    "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.1",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.5",
+    "@types/nodemailer": "^6.4.17",
+    "@types/otp-generator": "^4.0.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  },
+  "keywords": [],
+  "type": "commonjs"
+}
