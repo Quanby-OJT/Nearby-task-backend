@@ -11,6 +11,9 @@ router.post(
   handleValidationErrors,
   AuthenticationController.loginAuthentication
 );
+
+router.post("/flutter/logout", AuthenticationController.logout);
+
 router.post(
   "/otp-auth",
   validateOTP,
