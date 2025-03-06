@@ -6,7 +6,7 @@ class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received insert data:", req.body);
-      const {user_id, job_title, specialization, description, location, duration, num_of_days, urgency, contact_price, remarks, task_begin_date } = req.body;
+      const {user_id, task_title, specialization, task_description, location, duration, num_of_days, urgency, contact_price, remarks, task_begin_date } = req.body;
       let urgent = false;
 
       // Check for missing fields. This will be relocated to tasker/client validation.
@@ -22,7 +22,7 @@ class TaskController {
 
       // Call the model to insert data into Supabase
       const newTask = await taskModel.createNewTask(user_id,
-        description, duration, job_title, urgency, location, 
+        task_description, duration, task_title, urgent, location, 
         num_of_days, specialization, contact_price, remarks, task_begin_date
       );
 
@@ -37,12 +37,13 @@ class TaskController {
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data, error } = await supabase.from("job_post").select();
+      const { data: tasks, error: taskError } = await supabase.from("tasks").select();
+      console.log(tasks, taskError)
 
-      if (error) {
-        res.status(500).json({ error: error.message });
+      if (taskError) {
+        res.status(500).json({ error: taskError.message });
       } else {
-        res.status(200).json({ tasks: data });
+        res.status(200).json({ tasks: tasks });
       }
     } catch (error) {
       res.status(500).json({
@@ -69,6 +70,33 @@ class TaskController {
       res.status(200).json(data);
     } catch (error) {
       console.error("Server error:", error); // Add detailed logging
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  /**
+   * The purpose of the codes is to display all tasks that belong to the user.
+   * @param req 
+   * @param res 
+   */
+  static async getTaskforClient(req: Request, res: Response): Promise<void> {
+    try {
+      const clientId = req.params.clientId;
+      console.log(clientId)
+      const { data, error } = await supabase
+        .from("tasks")
+        .select()
+        .eq("client_id", clientId);
+
+      if (error) {
+        console.error(error.message)
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(200).json({ tasks: data });
+      }
+    } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });

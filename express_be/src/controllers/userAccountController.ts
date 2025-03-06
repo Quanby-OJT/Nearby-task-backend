@@ -145,6 +145,7 @@ class UserAccountController {
         res.status(200).json({ user: userData, tasker: taskerData });
       }
     } catch (error) {
+      console.error(error);
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });

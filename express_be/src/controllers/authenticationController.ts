@@ -69,7 +69,8 @@ class AuthenticationController {
 
   static async generateOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { userId } = req.body;
+      const { user_id } = req.body;
+      console.log(user_id)
 
       const otp = generateOTP.generate(6, {
         digits: true,
@@ -78,7 +79,7 @@ class AuthenticationController {
         specialChars: false,
       });
 
-      await Auth.createOTP({ user_id: userId, two_fa_code: otp });
+      await Auth.createOTP({ user_id: user_id, two_fa_code: otp });
 
       res.status(200).json({ message: "Successfully Regenerated OTP. Please Check Your Email." });
     } catch (error) {

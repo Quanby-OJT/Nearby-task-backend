@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { supabase } from "../config/configuration";
 
 export async function isAuthenticated(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
+    try {   
         const sessionToken = req.headers.authorization || req.cookies?.session;
 
         // Ensure sessionToken exists before calling .startsWith()

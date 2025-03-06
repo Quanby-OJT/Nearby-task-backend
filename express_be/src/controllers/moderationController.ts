@@ -1,3 +1,3 @@
 import { Request, Response } from "express";
-import {ModerationModel } from "../models/moderationModel"
+import  ClientTaskerModeration from "../models/moderationModel"
 

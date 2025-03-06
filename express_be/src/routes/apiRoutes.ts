@@ -39,6 +39,7 @@ router.post("/addTask", validateTask, handleValidationErrors, TaskController.cre
 router.get("/displayTask", TaskController.getAllTasks);
 // router.get("/displayTask/:id", TaskController.getTask);
 router.patch("/displayTask/:id/disable", TaskController.disableTask);
+router.get('/displayTask/:clientId', TaskController.getTaskforClient)
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);

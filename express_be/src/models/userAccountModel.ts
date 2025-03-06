@@ -34,6 +34,7 @@ class UserAccount {
 
   static async showClient(user_id: string) {
     const {data, error} = await supabase.from("clients").select("preferences, client_address").eq("user_id", user_id).single();
+    console.log(data, error)
 
     if(error) throw new Error(error.message);
 
@@ -42,6 +43,7 @@ class UserAccount {
 
   static async showTasker(user_id: string){
     const {data, error} = await supabase.from("tasker").select("bio, tasker_specialization(specialization), skills, availability, wage_per_hour, tasker_documents(tesda_document_link), social_media_links, address").eq('user_id', user_id).single()
+    console.log(data, error)
 
     if(error) throw new Error(error.message);
 
