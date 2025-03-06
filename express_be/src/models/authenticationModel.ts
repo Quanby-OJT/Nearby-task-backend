@@ -1,22 +1,22 @@
 import { supabase } from "../config/configuration";
 import { randomUUID } from "crypto";
 
-// class User {
+class User {
 
-//   /**
-//    * This section can only be accessed by the Admin Only, all users can only create and edit their user information.
-//    * @param userData
-//    * @returns
-//    */
-//   static async create(userData: { first_name: string; last_name: string; email: string; password: string; image?: string }) {
-//     const { data, error } = await supabase
-//       .from("demo") // Dapat tama ang table name mo sa database
-//       .insert([userData]);
+  /**
+   * This section can only be accessed by the Admin Only, all users can only create and edit their user information.
+   * @param userData
+   * @returns
+   */
+  static async create(userData: { first_name: string; middle_name: string; last_name: string; email: string; hashed_password: string; image_link?: string }) {
+    const { data, error } = await supabase
+      .from("user") // Dapat tama ang table name mo sa database
+      .insert([userData]);
 
-//     if (error) throw new Error(error.message);
-//     return data;
-//   }
-// }
+    if (error) throw new Error(error.message);
+    return data;
+  }
+}
 
 class Auth {
   /**
@@ -88,7 +88,7 @@ class Auth {
 
     const { data, error } = await supabase
       .from("user")
-      .select("user_id, email, hashed_password")
+      .select("user_id, email, hashed_password, user_role")
       .eq("email", email)
       .in("user_role", ["Tasker", "Client"])
       .in("acc_status", ["Active", "Pending", "Review"])
@@ -228,4 +228,4 @@ class Auth {
   }
 }
 
-export { Auth };
+export { User, Auth };

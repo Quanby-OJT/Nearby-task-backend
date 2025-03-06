@@ -10,11 +10,11 @@ class UserAccount {
     first_name: string;
     middle_name: string;
     last_name: string;
-    birthdate: Date;
+    //birthdate: Date;
     email: string;
     image_link?: string;
     hashed_password: string;
-    acc_status: string;
+    //acc_status: string;
     user_role: string;
   }) {
     const { data, error } = await supabase.from("user").insert([userData]);
