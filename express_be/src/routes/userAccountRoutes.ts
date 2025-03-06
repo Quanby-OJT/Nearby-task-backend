@@ -20,6 +20,8 @@ router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 
 router.get("/getUserData/:id", UserAccountController.getUserData);
 
+router.post("/create-new-user", UserAccountController.registerUser);
+
 router.get("/users", UserAccountController.getPaginationUsers);
 
 router.put(
@@ -27,5 +29,7 @@ router.put(
   upload.single("image"),
   UserAccountController.updateUser
 );
+
+router.post("/verify-otp", UserAccountController.verifyOtp);
 
 export default router;

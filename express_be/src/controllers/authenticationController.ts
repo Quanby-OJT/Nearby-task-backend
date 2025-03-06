@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { mailer } from "../config/configuration";
+import { mailer, supabase } from "../config/configuration";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -107,6 +107,25 @@ class AuthenticationController {
         return;
       }
 
+      const { data: user, error } = await supabase
+        .from("user")
+        .select("user_role")
+        .eq("user_id", user_id)
+        .single();
+
+      if (error) {
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+// UNCOMMENT FOR TESTING
+//       req.session.userId = user_id; // Assign to a writable property
+//       res.status(200).json({ user_id: user_id, user_role: user.user_role });
+
       const session_id = req.sessionID
       //console.log(session_id)
 
@@ -128,11 +147,42 @@ class AuthenticationController {
               res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session_id: session_id});
           });
       });
+
     } catch (error) {
       console.error(error);
       res.status(500).json({error:"An error occurred while verifying OTP. If the issue persists, contact Us."});
     }
   }
+
+  static async resetOTP(req: Request, res: Response): Promise<void> {
+    try {
+      const { user_id } = req.body;
+      
+      if (!user_id) {
+        res.status(400).json({ error: "User ID is required" });
+        return;
+      }
+      
+      // Get the user's email using the user_id
+      // We need to fetch the user's email from the database using the user_id
+      // This will depend on your database structure and model methods
+      
+      // Assuming you have a method to get user by ID that returns user with email
+      const user = await Auth.getUserById(user_id);
+      
+      if (!user || !user.email) {
+        res.status(404).json({ error: "User not found or email not available" });
+        return;
+      }
+      
+      // Generate a new OTP
+      const otp = generateOTP.generate(6, {
+        digits: true,
+        upperCaseAlphabets: false,
+        lowerCaseAlphabets: false,
+        specialChars: false,
+      });
+
   
   static async logout(req: Request, res: Response): Promise<void> {
     if (req.session) {
