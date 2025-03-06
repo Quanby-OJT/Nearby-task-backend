@@ -145,27 +145,45 @@ class Auth {
     console.log("OTP reset successfully:", data); // Add logging
     return data;
   }
-  static async getUserById(user_id: string | number): Promise<any> {
-    try {
-      console.log("Getting user by ID:", user_id); // Add logging
-      
-      const { data, error } = await supabase
-        .from('user')  // Changed from 'users' to 'user' to match your other queries
-        .select('email, user_id')
-        .eq('user_id', user_id)
-        .single();
-        
-      if (error) {
-        console.error("Error getting user by ID:", error.message);
-        throw error;
-      }
-      
-      console.log("User retrieved successfully:", data);
-      return data;
-    } catch (error) {
-      console.error("Error getting user by ID:", error);
-      return null;
-    }
+
+  static async getUserRole(user_id: number) {
+    const { data, error } = await supabase
+      .from("user")
+      .select("user_role")
+      .eq("user_id", user_id)
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async login(user_session: { user_id: number; session_key: string }) {
+    const d = new Date();
+
+    console.log(user_session)
+
+    const { data, error } = await supabase.from("user_logs").insert({
+      user_id: user_session.user_id,
+      logged_in: d.getTime(),
+      session: user_session.session_key,
+    });
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async logout(user_id: number) {
+    const d = new Date();
+
+    const { data, error } = await supabase
+      .from("user_logs")
+      .update({
+        logged_out: d.setTime(Date.now()),
+      })
+      .eq("user_id", user_id);
+
+    if (error) throw new Error(error.message);
+    return data;
   }
 }
 
