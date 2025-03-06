@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { mailer } from "../config/configuration";
+import { mailer, supabase } from "../config/configuration";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -100,9 +100,26 @@ class AuthenticationController {
         return;
       }
 
+      // Retrieve user role
+      const { data: user, error } = await supabase
+        .from("user")
+        .select("user_role")
+        .eq("user_id", user_id)
+        .single();
+
+      if (error) {
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
       req.session.userId = user_id; // Assign to a writable property
 
-      res.status(200).json({ user_id: user_id });
+      res.status(200).json({ user_id: user_id, user_role: user.user_role });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "An error occurred while verifying OTP. Please try again." });
@@ -110,31 +127,6 @@ class AuthenticationController {
   }
 
   static async resetOTP(req: Request, res: Response): Promise<void> {
-    // try {
-      
-    //   const { user_id } = req.body;
-    //   console.log("Resetting OTP for user_id:", user_id); // Add logging
-
-    //   const result = await Auth.resetOTP(user_id);
-
-    //   if (!result) {
-    //     console.error("Error resetting OTP: result is null"); // Add logging
-    //     throw new Error("Error resetting OTP: result is null");
-    //   }
-
-    //   const { data, error }: { data: any; error: { message: string } | null } = result;
-
-    //   if (error) {
-    //     console.error("Error resetting OTP:", error.message); // Add logging
-    //     throw new Error(error.message);
-    //   }
-
-    //   console.log("OTP reset successfully:", data); // Add logging
-    //   res.status(200).json({ message: "OTP reset successfully" });
-    // } catch (error) {
-    //   console.error(error);
-    //   res.status(500).json({ error: "An error occurred while resetting OTP. Please try again." });
-    // }
     try {
       const { user_id } = req.body;
       
