@@ -18,6 +18,9 @@ router.post("/otp-auth",validateOTP, handleValidationErrors, AuthenticationContr
 router.post( "/reset", AuthenticationController.generateOTP)
 
 router.post("/create-new-account", userValidation, handleValidationErrors, UserAccountController.registerUser)
+router.post("/create-new-client", clientValidation, ProfileController.ClientController.createClient)
+router.post("/create-new-tasker", taskerValidation, ProfileController.TaskerController.createTasker)
+
 router.post("/verify", UserAccountController.verifyEmail)
 
 router.get("/check-session", (req, res) => {
@@ -32,9 +35,6 @@ router.use(isAuthenticated);
  * Application Routes (if the user is authenticated). All routes beyond this point had a middleware 
  * 
  * */
-router.post("/create-new-tasker", taskerValidation, ProfileController.TaskerController.createTasker)
-
-router.post("/create-new-client", clientValidation, ProfileController.ClientController.createClient)
 router.post("/addTask", validateTask, handleValidationErrors, TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 // router.get("/displayTask/:id", TaskController.getTask);

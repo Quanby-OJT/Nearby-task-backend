@@ -10,6 +10,7 @@ class UserAccount {
     first_name: string;
     middle_name: string;
     last_name: string;
+    address: string,
     birthdate: Date;
     email: string;
     image_link?: string;
