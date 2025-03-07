@@ -14,7 +14,7 @@ class UserAccount {
     email: string;
     image_link?: string;
     hashed_password: string;
-    //acc_status: string;
+    acc_status: string;
     user_role: string;
   }) {
     const { data, error } = await supabase.from("user").insert([userData]);

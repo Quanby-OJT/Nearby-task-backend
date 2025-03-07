@@ -195,7 +195,7 @@ class AuthenticationController {
       // Fetch user role
       const { data: user, error: userError } = await supabase
         .from("user")
-        .select("user_role")
+        .select("user_role, acc_status")
         .eq("user_id", user_id)
         .single();
 
