@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { mailer, supabase } from "../config/configuration";
+import { mailer } from "../config/configuration";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -22,7 +22,7 @@ class AuthenticationController {
           .json({ message: "User ID or session is missing" });
       }
 
-      console.log(`Logging out User ID: ${user_id}, Session: ${session}`);
+      console.log("Logging out User ID: ${user_id}, Session: ${session}");
 
       const { error: errorUpdate } = await supabase
         .from("user")
@@ -192,49 +192,20 @@ class AuthenticationController {
 
       console.log("Session: ", data.session);
 
-      res.status(200).json({ user_id: user_id });
-
-      const { data: user, error } = await supabase
+      // Fetch user role
+      const { data: user, error: userError } = await supabase
         .from("user")
         .select("user_role")
         .eq("user_id", user_id)
         .single();
 
-      if (error) {
-        res.status(500).json({ error: error.message });
+      if (userError) {
+        console.error("Error fetching user role:", userError.message);
+        res.status(500).json({ error: "Failed to fetch user role" });
         return;
       }
 
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-// UNCOMMENT FOR TESTING
-//       req.session.userId = user_id; // Assign to a writable property
-//       res.status(200).json({ user_id: user_id, user_role: user.user_role });
-
-      const session_id = req.sessionID
-      //console.log(session_id)
-
-      await Auth.resetOTP(user_id)
-      const userRole = await Auth.getUserRole(user_id)
-      await Auth.login({user_id, session_key: session_id})
-
-      req.session.regenerate((err) => {
-          if (err) {
-              console.error("Session regeneration error:", err);
-              return res.status(500).json({ error: "Session error" });
-          }
-          
-          req.session.save((err) => {
-              if (err) {
-                  console.error("Session save error:", err);
-              }
-              //console.log("Session after save:", req.session);
-              res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session_id: session_id});
-          });
-      });
-
+      res.status(200).json({ user_id: user_id, user_role: user.user_role });
     } catch (error) {
       console.error(error);
       res.status(500).json({
@@ -252,7 +223,6 @@ class AuthenticationController {
         return;
       }
 
-
       // Get the user's email using the user_id
       // We need to fetch the user's email from the database using the user_id
       // This will depend on your database structure and model methods
@@ -267,7 +237,6 @@ class AuthenticationController {
         return;
       }
 
-
       // Generate a new OTP
       const otp = generateOTP.generate(6, {
         digits: true,
@@ -275,7 +244,6 @@ class AuthenticationController {
         lowerCaseAlphabets: false,
         specialChars: false,
       });
-
 
       // Calculate expiration time (5 minutes from now)
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -313,29 +281,6 @@ class AuthenticationController {
       res.status(500).json({
         error: "An error occurred while resetting OTP. Please try again.",
       });
-
-  
-  static async logout(req: Request, res: Response): Promise<void> {
-    if (req.session) {
-      req.session.destroy((error) => {
-        if(error) {
-          res.status(500).json({ error: "An error occurred while logging out. Please try again." });
-        }
-        
-        res.clearCookie("cookie.sid");
-        
-          res.status(200).json({ message: "Successfully logged out." });
-          // req.session.regenerate((error) => {
-          //     if (error) {
-          //         res.status(500).json({ error: "An error occurred while logging out. Please try again." })
-          //         return
-          //     }
-          // })
-      })
-    } else {
-      res.status(400).json({ error: "User is not logged in." });
-      return;
-
     }
   }
 }
