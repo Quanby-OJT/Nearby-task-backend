@@ -27,7 +27,8 @@ class UserAccountController {
         address,
         birthday,
         email,
-        user_role
+        user_role,
+        acc_status
       } = data;
 
       const imageFile = req.file;
@@ -84,6 +85,7 @@ class UserAccountController {
         image_link: imageUrl,
         hashed_password: hashedPassword,
         user_role,
+        acc_status
       });
 
       res.status(201).json({
