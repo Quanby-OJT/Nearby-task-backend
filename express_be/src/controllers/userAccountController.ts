@@ -7,19 +7,6 @@ import bcrypt from "bcrypt";
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
     try {
-      const { data, salt } = req.body;
-
-      if (!data || !salt) {
-        return res.status(400).json({ 
-          error: "data and salt arguments required",
-          receivedData: {
-            data: data,
-            salt: salt,
-            email: data?.email
-          }
-        });
-      }
-
       const {
         first_name,
         middle_name,
@@ -27,15 +14,15 @@ class UserAccountController {
         address,
         birthday,
         email,
-        user_role
-      } = data;
-
+        acc_status,
+        user_role,
+      } = req.body;
       const imageFile = req.file;
 
       // check if the email exists
       const { data: existingUser, error: findError } = await supabase
         .from("user")
-        .select("email, user_role")
+        .select("email")
         .eq("email", email)
         .maybeSingle();
 
@@ -83,6 +70,7 @@ class UserAccountController {
         email,
         image_link: imageUrl,
         hashed_password: hashedPassword,
+        acc_status,
         user_role,
       });
 
@@ -90,6 +78,28 @@ class UserAccountController {
         message: "User registered successfully!",
         user: newUser,
       });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  static async verifyEmail(req: Request, res: Response): Promise<any> {
+    try {
+      const { verificationToken } = req.body;
+
+      const { data, error } = await supabase
+        .from("user")
+        .select("email")
+        .eq("verification_token", verificationToken)
+        .maybeSingle();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+      
+      return res.status(200).json({ message: "Email Successfully Verified. You may now proceed to creating Your New Profile." });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
@@ -120,24 +130,21 @@ class UserAccountController {
 
   static async getUserData(req: Request, res: Response): Promise<void> {
     try {
-      const userID = req.params.id;
-      console.log(userID);
+      const userID = req.params.id; 
+      console.log("Retrieving User Data for..." + userID)
 
-      const { data, error } = await supabase
-        .from("user")
-        .select("*")
-        .eq("user_id", userID)
-        .single();
+      const userData = await UserAccount.showUser(userID);
 
-      if (error) {
-        res.status(500).json({ error: error.message });
-      } else if (!data) {
-        res.status(404).json({ error: "User not found" });
-      } else {
-        res.status(200).json({ user: data });
+      if(userData.user_role === "Client"){
+        const clientData = await UserAccount.showClient(userID);
+        console.log(clientData)
+        res.status(200).json({ user: userData, client: clientData });
+      }else if(userData.user_role === "Tasker"){
+        const taskerData = await UserAccount.showTasker(userID);
+        console.log(taskerData)
+        res.status(200).json({ user: userData, tasker: taskerData });
       }
     } catch (error) {
-      console.error(error);
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });
@@ -269,41 +276,6 @@ class UserAccountController {
       console.error("Error fetching users:", error);
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown server error",
-      });
-    }
-  }
-
-  static async verifyOtp(req: Request, res: Response): Promise<any> {
-    try {
-      const { userId, otp } = req.body;
-
-      // Verify OTP logic here (this is a placeholder, implement your OTP verification logic)
-      const isOtpValid = true; // Replace with actual OTP verification logic
-
-      if (!isOtpValid) {
-        return res.status(400).json({ error: "Invalid OTP" });
-      }
-
-      // Retrieve user data
-      const { data: user, error } = await supabase
-        .from("user")
-        .select("user_role")
-        .eq("user_id", userId)
-        .single();
-
-      if (error) {
-        return res.status(500).json({ error: error.message });
-      }
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      // Store user role in the response
-      res.status(200).json({ userId, userRole: user.user_role || "Unknown" });
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
