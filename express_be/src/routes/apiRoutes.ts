@@ -2,6 +2,13 @@ import { Router } from "express";
 import AuthenticationController from "../controllers/authenticationController";
 import { validateLogin, validateOTP } from "../validator/authValidator";
 import { handleValidationErrors } from "../middleware/validationMiddleware";
+import UserAccountController from "../controllers/userAccountController";
+import { userValidation } from "../validator/userValidator";
+import ProfileController from "../controllers/profileController";
+import { clientValidation, taskerValidation } from "../validator/userValidator";
+import TaskController from "../controllers/taskController";
+import { isAuthenticated } from "../middleware/authenticationMiddleware";
+
 const router = Router();
 
 /** Authentication Routes */
@@ -13,7 +20,7 @@ router.post("/create-new-account", userValidation, handleValidationErrors, UserA
 router.post("/create-new-client", clientValidation, ProfileController.ClientController.createClient)
 router.post("/create-new-tasker", taskerValidation, ProfileController.TaskerController.createTasker)
 
-router.post("/verify", UserAccountController.verifyEmail)
+//router.post("/verify", UserAccountController.verifyEmail)
 
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
@@ -27,7 +34,7 @@ router.use(isAuthenticated);
  * Application Routes (if the user is authenticated). All routes beyond this point had a middleware 
  * 
  * */
-router.post("/addTask", validateTask, handleValidationErrors, TaskController.createTask);
+router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 // router.get("/displayTask/:id", TaskController.getTask);
 router.patch("/displayTask/:id/disable", TaskController.disableTask);
