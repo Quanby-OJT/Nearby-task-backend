@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
-import { supabase } from "../config/configuration";
+
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -19,14 +19,6 @@ class TaskController {
         remarks,
         task_begin_date,
       } = req.body;
-
-      // Check for missing fields. This will be relocated to tasker/client validation.
-      // if (!job_title || !specialization || !description || !location ||
-      //     !duration || !num_of_days || !urgency || !contact_price ||
-      //     !remarks || !task_begin_date) {
-      //   res.status(400).json({ message: "Missing required fields" });
-      //   return;
-      // }
 
       // Call the model to insert data into Supabase
       const newTask = await taskModel.createNewTask(
@@ -54,57 +46,52 @@ class TaskController {
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data, error } = await supabase.from("job_post").select();
-
-      if (error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(200).json({ tasks: data });
-      }
+      const tasks = await taskModel.getAllTasks();
+  
+      res.status(200).json({ tasks });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
-
+  
   static async getTaskById(req: Request, res: Response): Promise<void> {
     try {
-      const taskId = req.params.id;
-      const { data, error } = await supabase
-        .from("job_post")
-        .select()
-        .eq("job_post_id", taskId) // Changed from 'id' to 'job_post_id'
-        .single();
+        const jobPostId = parseInt(req.params.id); 
 
-      if (error) throw error;
-      if (!data) {
-        res.status(404).json({ message: "Task not found" });
-        return;
-      }
+        if (isNaN(jobPostId)) {
+            res.status(400).json({ message: "Invalid Job Post ID" });
+            return;
+        }
 
-      res.status(200).json(data);
+        const task = await taskModel.getTaskById(jobPostId);
+
+        if (!task) {
+            res.status(404).json({ message: "Task not found" });
+            return;
+        }
+
+        res.status(200).json(task);
     } catch (error) {
-      console.error("Server error:", error); // Add detailed logging
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+        console.error("Server error:", error);
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
     }
-  }
+}
 
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
-      const taskId = req.params.id;
-      const { error } = await supabase
-        .from("job_post")
-        .update({ status: "disabled" })
-        .eq("job_post_id", taskId);
+      const jobPostId = parseInt(req.params.id);
 
-      if (error) {
-        throw error;
+      if (isNaN(jobPostId)) {
+        res.status(400).json({ message: "Invalid task ID" });
+        return;
       }
 
-      res.status(200).json({ message: "Task disabled successfully" });
+      const result = await taskModel.disableTask(jobPostId);
+      res.status(200).json(result);
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
