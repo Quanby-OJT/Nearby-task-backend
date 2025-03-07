@@ -239,18 +239,30 @@ class Auth {
   }
 
   static async login(user_session: { user_id: number; session_key: string }) {
-    const d = new Date();
+    const loggedInAt = new Date().toISOString(); // Converts timestamp to a proper string
 
-    console.log(user_session)
+    console.log(user_session);
 
     const { data, error } = await supabase.from("user_logs").insert({
       user_id: user_session.user_id,
-      logged_in: d.getTime(),
+      logged_in: loggedInAt,  // Insert as a string
       session: user_session.session_key,
     });
 
+    console.log("Logged Data:", data, "Error:", error);
+
     if (error) throw new Error(error.message);
     return data;
+  }
+
+
+  static async logout(user_id: number, session_key: string){
+    const loggedOutAt = new Date().toISOString(); // Converts timestamp to a proper string
+
+    const {data, error} = await supabase.from("user_logs").update({logged_out: loggedOutAt}).eq("user_id", user_id).eq("session", session_key)
+    console.log("Logged Data:", data, "Error:", error);
+    if(error) throw new Error(error.message)
+    return data
   }
 }
 

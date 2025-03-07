@@ -261,13 +261,18 @@ class AuthenticationController {
 
   
   static async logout(req: Request, res: Response): Promise<void> {
-    if (req.session) {
+    const {user_id, session} = req.body
+    
+    Auth.logout(user_id, session)
+
+    if (req.session.id) {
       req.session.destroy((error) => {
         if(error) {
           res.status(500).json({ error: "An error occurred while logging out. Please try again." });
         }
         
         res.clearCookie("cookie.sid");
+
         
           res.status(200).json({ message: "Successfully logged out." });
           // req.session.regenerate((error) => {
