@@ -2,14 +2,6 @@ import { Router } from "express";
 import AuthenticationController from "../controllers/authenticationController";
 import { validateLogin, validateOTP } from "../validator/authValidator";
 import { handleValidationErrors } from "../middleware/validationMiddleware";
-import { isAuthenticated } from "../middleware/authenticationMiddleware";
-import TaskController from "../controllers/taskController";
-import UserAccountController from "../controllers/userAccountController";
-import ProfileController from "../controllers/profileController";
-import multer from "multer";
-import { taskerValidation, userValidation, clientValidation } from "../validator/userValidator";
-import { validateTask } from "../validator/taskValidator";
-
 const router = Router();
 
 /** Authentication Routes */

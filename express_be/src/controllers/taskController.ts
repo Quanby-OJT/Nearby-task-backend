@@ -17,9 +17,6 @@ class TaskController {
       //   return;
       // }
 
-      if(urgency == "Urgent") urgent = true
-      else if(urgency == "Non-Urgent") urgent = false
-
       // Call the model to insert data into Supabase
       const newTask = await taskModel.createNewTask(user_id,
         task_description, duration, task_title, urgent, location, 
@@ -30,8 +27,9 @@ class TaskController {
         .status(201)
         .json({ message: "Task created successfully", task: newTask });
     } catch (error) {
-      console.error(error instanceof Error ? error.message : "Error Unknown")
-      res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   }
 

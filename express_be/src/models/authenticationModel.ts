@@ -1,22 +1,22 @@
-import session from "express-session";
 import { supabase } from "../config/configuration";
+import { randomUUID } from "crypto";
 
-// class User {
+class User {
 
-//   /**
-//    * This section can only be accessed by the Admin Only, all users can only create and edit their user information.
-//    * @param userData
-//    * @returns
-//    */
-//   static async create(userData: { first_name: string; last_name: string; email: string; password: string; image?: string }) {
-//     const { data, error } = await supabase
-//       .from("demo") // Dapat tama ang table name mo sa database
-//       .insert([userData]);
+  /**
+   * This section can only be accessed by the Admin Only, all users can only create and edit their user information.
+   * @param userData
+   * @returns
+   */
+  static async create(userData: { first_name: string; middle_name: string; last_name: string; email: string; hashed_password: string; image_link?: string }) {
+    const { data, error } = await supabase
+      .from("user") // Dapat tama ang table name mo sa database
+      .insert([userData]);
 
-//     if (error) throw new Error(error.message);
-//     return data;
-//   }
-// }
+    if (error) throw new Error(error.message);
+    return data;
+  }
+}
 
 class Auth {
   /**
@@ -25,17 +25,78 @@ class Auth {
    * @returns
    */
 
+  static async insertLogData(user_id: number): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from("user")
+        .select("*")
+        .eq("user_id", user_id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Database error while fetching user:", error.message);
+        return { error: "Error fetching user data" };
+      }
+
+      if (!data) {
+        console.warn(`User with ID ${user_id} not found.`);
+        return { error: "User not found" };
+      }
+
+      // Update user status
+      const { error: updateError } = await supabase
+        .from("user")
+        .update({ status: true })
+        .eq("user_id", user_id);
+
+      if (updateError) {
+        console.error("Error updating user status:", updateError.message);
+        return { error: "Error updating user status" };
+      }
+
+      const sessionToken = randomUUID();
+      const loggedIn = new Date().toISOString();
+
+      const { error: errorInsert } = await supabase.from("user_logs").insert({
+        user_id: user_id,
+        session: sessionToken,
+        logged_in: loggedIn,
+      });
+
+      if (errorInsert) {
+        console.error("Error inserting user log:", errorInsert.message);
+        return { error: "Error inserting user log" };
+      }
+
+      console.log(
+        `User ID ${user_id} status updated successfully. ${sessionToken}`
+      );
+      console.log("Sesssion:" + sessionToken);
+
+      return {
+        success: true,
+        data: { user_id: user_id, session: sessionToken },
+      };
+    } catch (error: any) {
+      console.error("Unexpected error inserting log data:", error.message);
+      return { error: "Unexpected error occurred" };
+    }
+  }
+
   static async authenticateLogin(email: string) {
     console.log("Authenticating login for email:", email); // Add logging
 
     const { data, error } = await supabase
       .from("user")
-      .select("user_id, email, hashed_password")
+      .select("user_id, email, hashed_password, user_role")
       .eq("email", email)
+      .in("user_role", ["Tasker", "Client"])
+      .in("acc_status", ["Active", "Pending", "Review"])
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') { // No rows found
+      if (error.code === "PGRST116") {
+        // No rows found
         console.warn("No user found for email:", email); // Add logging
         return null;
       }
@@ -67,7 +128,7 @@ class Auth {
       .eq("user_id", otp_input.user_id)
       .single();
 
-    if (existingError && existingError.code !== 'PGRST116') {
+    if (existingError && existingError.code !== "PGRST116") {
       console.error("Error checking existing OTP:", existingError.message); // Add logging
       throw new Error(existingError.message);
     }
@@ -86,12 +147,10 @@ class Auth {
         throw new Error(error.message);
       }
 
-      console.log("OTP updated successfully:", data); // Add logging
+      console.log("Login success:", data); // Add logging
       return data;
     } else {
-      const { data, error } = await supabase
-        .from("two_fa_code")
-        .insert([otp]);
+      const { data, error } = await supabase.from("two_fa_code").insert([otp]);
 
       if (error) {
         console.error("Error creating OTP:", error.message); // Add logging
@@ -145,46 +204,28 @@ class Auth {
     console.log("OTP reset successfully:", data); // Add logging
     return data;
   }
+  static async getUserById(user_id: string | number): Promise<any> {
+    try {
+      console.log("Getting user by ID:", user_id); // Add logging
 
-  static async getUserRole(user_id: number) {
-    const { data, error } = await supabase
-      .from("user")
-      .select("user_role")
-      .eq("user_id", user_id)
-      .single();
+      const { data, error } = await supabase
+        .from("user") // Changed from 'users' to 'user' to match your other queries
+        .select("email, user_id")
+        .eq("user_id", user_id)
+        .single();
 
-    if (error) throw new Error(error.message);
-    return data;
-  }
+      if (error) {
+        console.error("Error getting user by ID:", error.message);
+        throw error;
+      }
 
-  static async login(user_session: { user_id: number; session_key: string }) {
-    const d = new Date();
-
-    console.log(user_session)
-
-    const { data, error } = await supabase.from("user_logs").insert({
-      user_id: user_session.user_id,
-      logged_in: d.getTime(),
-      session: user_session.session_key,
-    });
-
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
-  static async logout(user_id: number) {
-    const d = new Date();
-
-    const { data, error } = await supabase
-      .from("user_logs")
-      .update({
-        logged_out: d.setTime(Date.now()),
-      })
-      .eq("user_id", user_id);
-
-    if (error) throw new Error(error.message);
-    return data;
+      console.log("User retrieved successfully:", data);
+      return data;
+    } catch (error) {
+      console.error("Error getting user by ID:", error);
+      return null;
+    }
   }
 }
 
-export { Auth };
+export { User, Auth };
