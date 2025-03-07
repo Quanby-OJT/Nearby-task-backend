@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { mailer, supabase } from "../config/configuration";
+import { mailer } from "../config/configuration";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -195,7 +195,6 @@ class AuthenticationController {
         return;
       }
 
-
       // Get the user's email using the user_id
       // We need to fetch the user's email from the database using the user_id
       // This will depend on your database structure and model methods
@@ -210,7 +209,6 @@ class AuthenticationController {
         return;
       }
 
-
       // Generate a new OTP
       const otp = generateOTP.generate(6, {
         digits: true,
@@ -218,7 +216,6 @@ class AuthenticationController {
         lowerCaseAlphabets: false,
         specialChars: false,
       });
-
 
       // Calculate expiration time (5 minutes from now)
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
