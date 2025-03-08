@@ -27,7 +27,7 @@ class ConversationController {
          * 
          * -Ces
          */
-        const {data, error} = await supabase.from("conversation_history").select().eq("task_taken_id", task_taken_id)
+        const {data, error} = await supabase.from("conversation_history").select().eq("task_taken_id", task_taken_id).eq("user_id", user_id)
 
         if(error){
             console.error(error.message)

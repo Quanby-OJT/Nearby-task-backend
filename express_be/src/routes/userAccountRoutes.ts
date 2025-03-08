@@ -2,6 +2,7 @@
 import { Router } from "express";
 import UserAccountController from "../controllers/userAccountController";
 import multer from "multer";
+import AuthenticationController from "../controllers/authenticationController";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -30,6 +31,6 @@ router.put(
   UserAccountController.updateUser
 );
 
-router.post("/verify-otp", UserAccountController.verifyOtp);
+router.post("/verify-otp", AuthenticationController.otpAuthentication);
 
 export default router;
