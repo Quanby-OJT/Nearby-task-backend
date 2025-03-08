@@ -37,11 +37,13 @@ class LikeController {
         .from("likes")
         .select("*")  // Join with tasks/jobs table if needed
         .eq("user_id", userId);
+      
+      console.log("Liked: " + data, "Errors :" + error)
     
       if (error) {
         res.status(500).json({ error: error.message });
       } else {
-        res.status(200).json({ tasks: data });
+        res.status(200).json({ liked_tasks: data });
       }
     } catch (error) {
       res.status(500).json({

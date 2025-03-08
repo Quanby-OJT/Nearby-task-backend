@@ -1,4 +1,3 @@
-import { supabase } from "./../config/configuration";
 import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
@@ -11,64 +10,7 @@ declare module "express-session" {
 }
 
 class AuthenticationController {
-  static async logout(req: Request, res: Response): Promise<any> {
-    try {
-      const { user_id, session } = req.body;
-      const loggedOutTime = new Date().toISOString();
 
-      if (!user_id || !session) {
-        return res
-          .status(400)
-          .json({ message: "User ID or session is missing" });
-      }
-
-      console.log("Logging out User ID: ${user_id}, Session: ${session}");
-
-      const { error: errorUpdate } = await supabase
-        .from("user")
-        .update({ status: false })
-        .eq("user_id", user_id)
-        .single();
-
-      if (errorUpdate) {
-        console.error("Error updating user status:", errorUpdate.message);
-        return res
-          .status(500)
-          .json({ message: "Failed to update user status" });
-      }
-
-      const { data: sessionExist, error: errorSession } = await supabase
-        .from("user_logs")
-        .select("session")
-        .eq("session", session)
-        .single();
-
-      if (errorSession) {
-        console.error(
-          "Error checking session existence:",
-          errorSession.message
-        );
-        return res.status(500).json({ message: "Failed to check session" });
-      }
-
-      if (sessionExist) {
-        const { error: logError } = await supabase
-          .from("user_logs")
-          .update({ logged_out: loggedOutTime })
-          .eq("session", session);
-
-        if (logError) {
-          console.error("Error updating user log:", logError.message);
-          return res.status(500).json({ message: "Error updating user log" });
-        }
-      }
-
-      return res.status(200).json({ message: "User logged out successfully" });
-    } catch (error) {
-      console.error("Logout Error:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
-  }
   static async loginAuthentication(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
@@ -102,23 +44,23 @@ class AuthenticationController {
 
       await Auth.createOTP({ user_id: verifyLogin.user_id, two_fa_code: otp });
 
-      const otpHtml = `
-        <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-          <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
-          <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
-          <div class="mt-4 text-center">
-            <span class="text-3xl font-bold text-blue-600">${otp}</span>
-          </div>
-          <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
-          <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
-        </div>`;
+      // const otpHtml = `
+      //   <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+      //     <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
+      //     <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
+      //     <div class="mt-4 text-center">
+      //       <span class="text-3xl font-bold text-blue-600">${otp}</span>
+      //     </div>
+      //     <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
+      //     <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
+      //   </div>`;
 
-      await mailer.sendMail({
-        from: "noreply@nearbytask.com",
-        to: email,
-        subject: "Your OTP Code for NearByTask",
-        html: otpHtml,
-      });
+      // await mailer.sendMail({
+      //   from: "noreply@nearbytask.com",
+      //   to: email,
+      //   subject: "Your OTP Code for NearByTask",
+      //   html: otpHtml,
+      // });
 
       res.status(200).json({ user_id: verifyLogin.user_id });
     } catch (error) {
@@ -132,7 +74,8 @@ class AuthenticationController {
 
   static async generateOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { userId } = req.body;
+      const { user_id } = req.body;
+      console.log(user_id)
 
       const otp = generateOTP.generate(6, {
         digits: true,
@@ -141,7 +84,7 @@ class AuthenticationController {
         specialChars: false,
       });
 
-      await Auth.createOTP({ user_id: userId, two_fa_code: otp });
+      await Auth.createOTP({ user_id: user_id, two_fa_code: otp });
 
       res.status(200).json({
         message: "Successfully Regenerated OTP. Please Check Your Email.",
@@ -177,35 +120,64 @@ class AuthenticationController {
         return;
       }
 
-      req.session.userId = user_id;
+      // req.session.userId = user_id;
 
-      const { data, error } = await Auth.insertLogData(user_id);
-      if (error) {
-        console.error(error);
-      }
+      // const { data, error: loggingError } = await Auth.insertLogData(user_id);
+      // if (loggingError) {
+      //   console.error(loggingError);
+      // }
 
-      res.cookie("session", data.session, {
-        httpOnly: true,
-        secure: true,
-        maxAge: 24 * 60 * 60 * 1000,
+      // res.cookie("session", data.session, {
+      //   httpOnly: true,
+      //   secure: true,
+      //   maxAge: 24 * 60 * 60 * 1000,
+      // });
+
+      // console.log("Session: ", data.session);
+
+      // res.status(200).json({ user_id: user_id });
+
+      // const { data: user, error } = await supabase
+      //   .from("user")
+      //   .select("user_role")
+      //   .eq("user_id", user_id)
+      //   .single();
+
+      // if (error) {
+      //   res.status(500).json({ error: error.message });
+      //   return;
+      // }
+
+      // if (!user) {
+      //   res.status(404).json({ error: "User not found" });
+      //   return;
+      // }
+// UNCOMMENT FOR TESTING
+//       req.session.userId = user_id; // Assign to a writable property
+//       res.status(200).json({ user_id: user_id, user_role: user.user_role });
+
+      const session_id = req.sessionID
+      //console.log(session_id)
+
+      await Auth.resetOTP(user_id)
+      const userRole = await Auth.getUserRole(user_id)
+      await Auth.login({user_id, session_key: session_id})
+
+      req.session.regenerate((err) => {
+          if (err) {
+              console.error("Session regeneration error:", err);
+              return res.status(500).json({ error: "Session error" });
+          }
+          
+          req.session.save((err) => {
+              if (err) {
+                  console.error("Session save error:", err);
+              }
+              //console.log("Session after save:", req.session);
+              res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session_id: session_id});
+          });
       });
 
-      console.log("Session: ", data.session);
-
-      // Fetch user role
-      const { data: user, error: userError } = await supabase
-        .from("user")
-        .select("user_role, acc_status")
-        .eq("user_id", user_id)
-        .single();
-
-      if (userError) {
-        console.error("Error fetching user role:", userError.message);
-        res.status(500).json({ error: "Failed to fetch user role" });
-        return;
-      }
-
-      res.status(200).json({ user_id: user_id, user_role: user.user_role });
     } catch (error) {
       console.error(error);
       res.status(500).json({
@@ -281,6 +253,36 @@ class AuthenticationController {
       res.status(500).json({
         error: "An error occurred while resetting OTP. Please try again.",
       });
+    }
+  }
+
+  
+  static async logout(req: Request, res: Response): Promise<void> {
+    const {user_id, session} = req.body
+    
+    Auth.logout(user_id, session)
+
+    if (req.session.id) {
+      req.session.destroy((error) => {
+        if(error) {
+          res.status(500).json({ error: "An error occurred while logging out. Please try again." });
+        }
+        
+        res.clearCookie("cookie.sid");
+
+        
+          res.status(200).json({ message: "Successfully logged out." });
+          // req.session.regenerate((error) => {
+          //     if (error) {
+          //         res.status(500).json({ error: "An error occurred while logging out. Please try again." })
+          //         return
+          //     }
+          // })
+      })
+    } else {
+      res.status(400).json({ error: "User is not logged in." });
+      return;
+
     }
   }
 }

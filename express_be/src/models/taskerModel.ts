@@ -8,12 +8,12 @@ class TaskerModel{
      */
     static async createTasker(tasker : {
         user_id: number,
+        group: boolean
         bio: Text,
-        specialization: Text,
+        specialization_id: number,
         skills: Text,
         availability: boolean,
-        wage_per_hour: number,
-        tesda_documents_link: Text,
+        document_id: number,
         social_media_links: Text,
     }){
         const {data, error} = await supabase.from('tasker').insert([tasker]);
