@@ -79,14 +79,28 @@ class TaskController {
     }
   }
 
-  // static async assignTask(req: Request, res: Response): Promise<void> {
-  //   const {user_id, task_id } = req.body
+  /**
+   * If the tasker opens the "saved" liked task, it will automatically assign a task to the tasker.
+   * @param req 
+   * @param res 
+   */
+  static async assignTask(req: Request, res: Response): Promise<void> {
+    const {tasker_id, task_id, client_id } = req.body
 
-  //   const {data, error} = await supabase.from("task_taken").insert({
-  //     user_id, 
-  //     task_id,
+    const {data, error} = await supabase.from("task_taken").insert({
+      tasker_id, //Tasker ID siya
+      task_id,
+      client_id,
+      task_status: "In Negotiation", //Statuses are: In negotiation, Task In Progress, Completed, Cancelled, Rejected
+    })
 
-  // }
+    if(error){
+      console.error(error.message)
+      res.status(500).json({ error: "An Error Occured while opening the conversation." });
+    }else{
+      res.status(201).json({ message: "Task assigned successfully", task: data });
+    }
+  }
 
   /**
    * The purpose of the codes is to display all tasks that belong to the user.
@@ -155,9 +169,7 @@ class TaskController {
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
-
-  
+  } 
 }
 
 export default TaskController;
