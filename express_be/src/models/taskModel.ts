@@ -16,15 +16,17 @@ class TaskModel {
   ) {
     let statuses: string = "active";
     const { data, error } = await supabase.from("tasks").insert([
+
       {
+        client_id,
         task_title: job_title,
         task_description: description,
-        duration: duration,
+        duration: num_of_days,
         contact_price: contact_price,
         urgent: urgency,
         remarks: remarks,
         task_begin_date: task_begin_date,
-        period: num_of_days,
+        period: duration,
         location: location,
         specialization: specialization,
         status: statuses,
