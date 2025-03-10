@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
 
-
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
@@ -21,10 +20,27 @@ class TaskController {
       if(urgency == "Urgent") urgent = true
       else if(urgency == "Non-Urgent") urgent = false
 
+      // Validate required fields
+      if (!client_id || !job_title || !task_begin_date) {
+        res.status(400).json({ error: "Missing required fields (client_id, job_title, task_begin_date)" });
+        return;
+      }
+
       // Call the model to insert data into Supabase
-      const newTask = await taskModel.createNewTask(user_id,
-        task_description, duration, task_title, urgent, location, 
-        num_of_days, specialization, contact_price, remarks, task_begin_date
+
+      const newTask = await taskModel.createNewTask(
+        description,
+        duration,
+        job_title,
+        urgency,
+        location,
+        num_of_days,
+        specialization,
+        contact_price,
+        remarks,
+        task_begin_date,
+        client_id // Pass client_id to the model
+
       );
 
       res
@@ -39,14 +55,13 @@ class TaskController {
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data: tasks, error: taskError } = await supabase.from("tasks").select();
-      console.log(tasks, taskError)
 
-      if (taskError) {
-        res.status(500).json({ error: taskError.message });
-      } else {
-        res.status(200).json({ tasks: tasks });
-      }
+      console.log("Data passed by frontend (query parameters):", req.query);
+
+      const tasks = await taskModel.getAllTasks();
+      console.log("Retrieved tasks:", tasks);
+      res.status(200).json({ tasks });
+
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
@@ -57,7 +72,7 @@ class TaskController {
   static async getTaskById(req: Request, res: Response): Promise<void> {
     try {
         const jobPostId = parseInt(req.params.id); 
-
+        console.log(jobPostId);
         if (isNaN(jobPostId)) {
             res.status(400).json({ message: "Invalid Job Post ID" });
             return;
@@ -93,27 +108,6 @@ class TaskController {
    * @param req 
    * @param res 
    */
-  static async getTaskforClient(req: Request, res: Response): Promise<void> {
-    try {
-      const clientId = req.params.clientId;
-      console.log(clientId)
-      const { data, error } = await supabase
-        .from("tasks")
-        .select()
-        .eq("client_id", clientId);
-
-      if (error) {
-        console.error(error.message)
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(200).json({ tasks: data });
-      }
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
 
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
