@@ -6,19 +6,8 @@ class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received insert data:", req.body);
-      const {
-        client_id,
-        job_title,
-        specialization,
-        description,
-        location,
-        duration,
-        num_of_days,
-        urgency,
-        contact_price,
-        remarks,
-        task_begin_date,
-      } = req.body;
+      const {user_id, task_title, specialization, task_description, location, duration, num_of_days, urgency, contact_price, remarks, task_begin_date } = req.body;
+      let urgent = false;
 
       // Check for missing fields. This will be relocated to tasker/client validation.
       // if (!job_title || !specialization || !description || !location ||
@@ -28,7 +17,17 @@ class TaskController {
       //   return;
       // }
 
+      if(urgency == "Urgent") urgent = true
+      else if(urgency == "Non-Urgent") urgent = false
+
+      // Validate required fields
+      if (!client_id || !job_title || !task_begin_date) {
+        res.status(400).json({ error: "Missing required fields (client_id, job_title, task_begin_date)" });
+        return;
+      }
+
       // Call the model to insert data into Supabase
+
       const newTask = await taskModel.createNewTask(
         description,
         duration,
@@ -39,7 +38,9 @@ class TaskController {
         specialization,
         contact_price,
         remarks,
-        task_begin_date
+        task_begin_date,
+        client_id // Pass client_id to the model
+
       );
 
       res
@@ -54,63 +55,115 @@ class TaskController {
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data, error } = await supabase.from("job_post").select();
+      const { data: tasks, error: taskError } = await supabase.from("tasks").select();
+      console.log("Data passed by frontend (query parameters):", req.query);
 
-      if (error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(200).json({ tasks: data });
-      }
+      const tasks = await taskModel.getAllTasks();
+      console.log("Retrieved tasks:", tasks);
+      res.status(200).json({ tasks });
+
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
-
+  
   static async getTaskById(req: Request, res: Response): Promise<void> {
     try {
-      const taskId = req.params.id;
-      const { data, error } = await supabase
-        .from("job_post")
-        .select()
-        .eq("job_post_id", taskId) // Changed from 'id' to 'job_post_id'
-        .single();
+        const jobPostId = parseInt(req.params.id); 
+        console.log(jobPostId);
+        if (isNaN(jobPostId)) {
+            res.status(400).json({ message: "Invalid Job Post ID" });
+            return;
+        }
 
-      if (error) throw error;
-      if (!data) {
-        res.status(404).json({ message: "Task not found" });
-        return;
-      }
+        const task = await taskModel.getTaskById(jobPostId);
 
-      res.status(200).json(data);
+        if (!task) {
+            res.status(404).json({ message: "Task not found" });
+            return;
+        }
+
+        res.status(200).json({tasks: task});
     } catch (error) {
-      console.error("Server error:", error); // Add detailed logging
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+        console.error("Server error:", error);
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
     }
   }
+
+  /**
+   * If the tasker opens the "saved" liked task, it will automatically assign a task to the tasker.
+   * @param req 
+   * @param res 
+   */
+  static async assignTask(req: Request, res: Response): Promise<void> {
+    const {tasker_id, task_id, client_id } = req.body
+
+    const {data, error} = await supabase.from("task_taken").insert({
+      tasker_id, //Tasker ID siya
+      task_id,
+      client_id,
+      task_status: "In Negotiation", //Statuses are: In negotiation, Task In Progress, Completed, Cancelled, Rejected
+    })
+
+    if(error){
+      console.error(error.message)
+      res.status(500).json({ error: "An Error Occured while opening the conversation." });
+    }else{
+      res.status(201).json({ message: "A New Conversation Has been Opened.", task: data });
+    }
+  }
+
+  /**
+   * The purpose of the codes is to display all tasks that belong to the user.
+   * @param req 
+   * @param res 
+   */
 
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
-      const taskId = req.params.id;
-      const { error } = await supabase
-        .from("job_post")
-        .update({ status: "disabled" })
-        .eq("job_post_id", taskId);
+      const jobPostId = parseInt(req.params.id);
 
-      if (error) {
-        throw error;
+      if (isNaN(jobPostId)) {
+        res.status(400).json({ message: "Invalid task ID" });
+        return;
       }
 
-      res.status(200).json({ message: "Task disabled successfully" });
+      const result = await taskModel.disableTask(jobPostId);
+      res.status(200).json(result);
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
+
+  /**
+   * The purpose of this code is to make specialization assignnment easy for taskers and clients.
+   * @param req 
+   * @param res 
+   */
+  static async getAllSpecializations(req: Request, res: Response): Promise<void> {
+    try {
+      console.log("Received request to get all specializations");
+      const { data, error } = await supabase.from("tasker_specialization").select('specialization');
+      //console.log(data, error)
+
+      if (error) {
+        console.error(error.message)
+        res.status(500).json({ error: error.message });
+      } else {  
+        res.status(200).json({ specializations: data });
+      }
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  } 
 }
 
 export default TaskController;

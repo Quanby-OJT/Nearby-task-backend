@@ -84,7 +84,7 @@ class Auth {
   }
 
   static async authenticateLogin(email: string) {
-    console.log("Authenticating login for email:", email); // Add logging
+    //console.log("Authenticating login for email:", email); // Add logging
 
     const { data, error } = await supabase
       .from("user")
@@ -97,14 +97,14 @@ class Auth {
     if (error) {
       if (error.code === "PGRST116") {
         // No rows found
-        console.warn("No user found for email:", email); // Add logging
+        //console.warn("No user found for email:", email); // Add logging
         return null;
       }
-      console.error("Error authenticating login:", error.message); // Add logging
+      //console.error("Error authenticating login:", error.message); // Add logging
       throw new Error(error.message);
     }
 
-    console.log("Login authenticated successfully:", data); // Add logging
+    //console.log("Login authenticated successfully:", data); // Add logging
     return data;
   }
 
@@ -163,7 +163,7 @@ class Auth {
   }
 
   static async authenticateOTP(user_id: number) {
-    console.log(`Querying for user_id: ${user_id} (${typeof user_id})`); // Add logging
+    //console.log(`Querying for user_id: ${user_id} (${typeof user_id})`); // Add logging
 
     const { data, error } = await supabase
       .from("two_fa_code")
@@ -172,16 +172,16 @@ class Auth {
       .maybeSingle(); // Allows 0 or 1 row without error
 
     if (error) {
-      console.error("Error authenticating OTP:", error.message); // Add logging
+      //console.error("Error authenticating OTP:", error.message); // Add logging
       throw new Error(error.message);
     }
 
     if (!data) {
-      console.warn("No OTP found for user_id:", user_id); // Add logging
+      //console.warn("No OTP found for user_id:", user_id); // Add logging
       return null; // No OTP found for this user
     }
 
-    console.log("OTP authenticated successfully:", data); // Add logging
+    //console.log("OTP authenticated successfully:", data); // Add logging
     return data;
   }
 
@@ -197,16 +197,16 @@ class Auth {
       .eq("user_id", user_id);
 
     if (error) {
-      console.error("Error resetting OTP:", error.message); // Add logging
+      //console.error("Error resetting OTP:", error.message); // Add logging
       throw new Error(error.message);
     }
 
-    console.log("OTP reset successfully:", data); // Add logging
+    //console.log("OTP reset successfully:", data); // Add logging
     return data;
   }
   static async getUserById(user_id: string | number): Promise<any> {
     try {
-      console.log("Getting user by ID:", user_id); // Add logging
+      //console.log("Getting user by ID:", user_id); // Add logging
 
       const { data, error } = await supabase
         .from("user") // Changed from 'users' to 'user' to match your other queries
@@ -215,16 +215,54 @@ class Auth {
         .single();
 
       if (error) {
-        console.error("Error getting user by ID:", error.message);
+        //console.error("Error getting user by ID:", error.message);
         throw error;
       }
 
-      console.log("User retrieved successfully:", data);
+      //console.log("User retrieved successfully:", data);
       return data;
     } catch (error) {
-      console.error("Error getting user by ID:", error);
+      //console.error("Error getting user by ID:", error);
       return null;
     }
+  }
+
+  static async getUserRole(user_id: number) {
+    const { data, error } = await supabase
+      .from("user")
+      .select("user_role")
+      .eq("user_id", user_id)
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async login(user_session: { user_id: number; session_key: string }) {
+    const loggedInAt = new Date().toISOString(); // Converts timestamp to a proper string
+
+    console.log(user_session);
+
+    const { data, error } = await supabase.from("user_logs").insert({
+      user_id: user_session.user_id,
+      logged_in: loggedInAt,  // Insert as a string
+      session: user_session.session_key,
+    });
+
+    console.log("Logged Data:", data, "Error:", error);
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+
+  static async logout(user_id: number, session_key: string){
+    const loggedOutAt = new Date().toISOString(); // Converts timestamp to a proper string
+
+    const {data, error} = await supabase.from("user_logs").update({logged_out: loggedOutAt}).eq("user_id", user_id).eq("session", session_key)
+    console.log("Logged Data:", data, "Error:", error);
+    if(error) throw new Error(error.message)
+    return data
   }
 }
 
