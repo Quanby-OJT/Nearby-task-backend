@@ -177,7 +177,23 @@ class AuthenticationController {
               res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session_id: session_id});
           });
       });
+      
+      console.log("Session: ", data.session);
 
+      // Fetch user role
+      const { data: user, error: userError } = await supabase
+        .from("user")
+        .select("user_role, acc_status")
+        .eq("user_id", user_id)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user role:", userError.message);
+        res.status(500).json({ error: "Failed to fetch user role" });
+        return;
+      }
+
+      res.status(200).json({ user_id: user_id, user_role: user.user_role });
     } catch (error) {
       console.error(error);
       res.status(500).json({
