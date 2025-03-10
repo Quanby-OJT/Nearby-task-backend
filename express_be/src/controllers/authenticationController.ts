@@ -3,6 +3,7 @@ import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
 import { mailer } from "../config/configuration";
+import { supabase } from "../config/configuration";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -178,7 +179,7 @@ class AuthenticationController {
           });
       });
       
-      console.log("Session: ", data.session);
+      // console.log("Session: ", data.session);
 
       // Fetch user role
       const { data: user, error: userError } = await supabase

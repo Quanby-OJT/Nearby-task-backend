@@ -11,7 +11,7 @@ class LikeController {
 
       // Check for missing fields
       if (!user_id || !job_post_id || !created_at) {
-        res.status(400).json({ message: "Missing required fields" });
+        res.status(400).json({ error: "Missing required fields" });
         return;
       }
 
@@ -41,7 +41,8 @@ class LikeController {
       console.log("Liked: " + data, "Errors :" + error)
     
       if (error) {
-        res.status(500).json({ error: error.message });
+        console.error("Error fetching liked tasks:", error.message);
+        res.status(500).json({ error: "An Error Occured while retrieiving Your liked jobs. Please Try Again." });
       } else {
         res.status(200).json({ liked_tasks: data });
       }

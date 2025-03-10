@@ -41,15 +41,7 @@ class TaskModel {
   async showTaskforClient(client_id: number) {
     const { data, error } = await supabase
       .from("tasks")
-      .select(`
-        *,
-        clients (
-          *,
-          user (
-           *
-          )
-        )
-      `)
+      .select("*")
       .eq("client_id", client_id);
 
     if (error) throw new Error(error.message);
@@ -76,17 +68,9 @@ class TaskModel {
   async getTaskById(jobPostId: number) {
     const { data, error } = await supabase
       .from("tasks")
-      .select(`
-        *,
-        clients (
-          *,
-          user (
-           *
-          )
-        )
-      `)
-      .eq("task_id", jobPostId)
-      .single();
+      .select("*")
+      .eq("task_id", jobPostId) 
+      .single(); 
 
     if (error) throw new Error(error.message);
     return data;
