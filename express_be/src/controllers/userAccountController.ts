@@ -16,7 +16,7 @@ class UserAccountController {
         birthday,
         email,
         acc_status,
-        user_role
+        user_role,
       } = req.body;
       const imageFile = req.file;
 
@@ -105,15 +105,6 @@ class UserAccountController {
         social_media_links,
       } = req.body;
 
-      // Check for missing fields. This will be relocated to tasker/client validation.
-      // if (!job_title || !specialization || !description || !location ||
-      //     !duration || !num_of_days || !urgency || !contact_price ||
-      //     !remarks || !task_begin_date) {
-      //   res.status(400).json({ message: "Missing required fields" });
-      //   return;
-      // }
-
-      // Call the model to insert data into Supabase
       const newTask = await taskerModel.createTasker(
         gender,
         contact_number,
@@ -127,7 +118,7 @@ class UserAccountController {
         availability,
         wage_per_hour,
         tesda_documents_link,
-        social_media_links,
+        social_media_links
       );
 
       res
@@ -140,27 +131,27 @@ class UserAccountController {
     }
   }
 
-  static async deleteUser(req: Request, res: Response): Promise<void> {
-    try {
-      const { verificationToken } = req.body;
+  // static async deleteUser(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { verificationToken } = req.body;
 
-      const { data, error } = await supabase
-        .from("user")
-        .select("email")
-        .eq("verification_token", verificationToken)
-        .maybeSingle();
+  //     const { data, error } = await supabase
+  //       .from("user")
+  //       .select("email")
+  //       .eq("verification_token", verificationToken)
+  //       .maybeSingle();
 
-      if (error) {
-        return res.status(500).json({ error: error.message });
-      }
-      
-      return res.status(200).json({ message: "Email Successfully Verified. You may now proceed to creating Your New Profile." });
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
+  //     if (error) {
+  //       return res.status(500).json({ error: error.message });
+  //     }
+
+  //     return res.status(200).json({ message: "Email Successfully Verified. You may now proceed to creating Your New Profile." });
+  //   } catch (error) {
+  //     res.status(500).json({
+  //       error: error instanceof Error ? error.message : "Unknown error",
+  //     });
+  //   }
+  // }
 
   static async deleteUser(req: Request, res: Response): Promise<void> {
     try {
@@ -185,18 +176,18 @@ class UserAccountController {
 
   static async getUserData(req: Request, res: Response): Promise<void> {
     try {
-      const userID = req.params.id; 
-      console.log("Retrieving User Data for..." + userID)
+      const userID = req.params.id;
+      console.log("Retrieving User Data for..." + userID);
 
       const userData = await UserAccount.showUser(userID);
 
-      if(userData.user_role === "Client"){
+      if (userData.user_role === "Client") {
         const clientData = await UserAccount.showClient(userID);
-        console.log(clientData)
+        console.log(clientData);
         res.status(200).json({ user: userData, client: clientData });
-      }else if(userData.user_role === "Tasker"){
+      } else if (userData.user_role === "Tasker") {
         const taskerData = await UserAccount.showTasker(userID);
-        console.log(taskerData)
+        console.log(taskerData);
         res.status(200).json({ user: userData, tasker: taskerData });
       }
     } catch (error) {

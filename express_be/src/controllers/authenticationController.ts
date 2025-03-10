@@ -11,7 +11,6 @@ declare module "express-session" {
 }
 
 class AuthenticationController {
-
   static async loginAuthentication(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
@@ -45,23 +44,23 @@ class AuthenticationController {
 
       await Auth.createOTP({ user_id: verifyLogin.user_id, two_fa_code: otp });
 
-      // const otpHtml = `
-      //   <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-      //     <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
-      //     <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
-      //     <div class="mt-4 text-center">
-      //       <span class="text-3xl font-bold text-blue-600">${otp}</span>
-      //     </div>
-      //     <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
-      //     <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
-      //   </div>`;
+      const otpHtml = `
+        <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+          <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
+          <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
+          <div class="mt-4 text-center">
+            <span class="text-3xl font-bold text-blue-600">${otp}</span>
+          </div>
+          <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
+          <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
+        </div>`;
 
-      // await mailer.sendMail({
-      //   from: "noreply@nearbytask.com",
-      //   to: email,
-      //   subject: "Your OTP Code for NearByTask",
-      //   html: otpHtml,
-      // });
+      await mailer.sendMail({
+        from: "noreply@nearbytask.com",
+        to: email,
+        subject: "Your OTP Code for NearByTask",
+        html: otpHtml,
+      });
 
       res.status(200).json({ user_id: verifyLogin.user_id });
     } catch (error) {
@@ -76,7 +75,7 @@ class AuthenticationController {
   static async generateOTP(req: Request, res: Response): Promise<void> {
     try {
       const { user_id } = req.body;
-      console.log(user_id)
+      console.log(user_id);
 
       const otp = generateOTP.generate(6, {
         digits: true,
@@ -121,65 +120,20 @@ class AuthenticationController {
         return;
       }
 
-      // req.session.userId = user_id;
+      req.session.userId = user_id;
 
-      // const { data, error: loggingError } = await Auth.insertLogData(user_id);
-      // if (loggingError) {
-      //   console.error(loggingError);
-      // }
+      const { data, error } = await Auth.insertLogData(user_id);
+      if (error) {
+        console.error(error);
+      }
 
-      // res.cookie("session", data.session, {
-      //   httpOnly: true,
-      //   secure: true,
-      //   maxAge: 24 * 60 * 60 * 1000,
-      // });
-
-      // console.log("Session: ", data.session);
-
-      // res.status(200).json({ user_id: user_id });
-
-      // const { data: user, error } = await supabase
-      //   .from("user")
-      //   .select("user_role")
-      //   .eq("user_id", user_id)
-      //   .single();
-
-      // if (error) {
-      //   res.status(500).json({ error: error.message });
-      //   return;
-      // }
-
-      // if (!user) {
-      //   res.status(404).json({ error: "User not found" });
-      //   return;
-      // }
-// UNCOMMENT FOR TESTING
-//       req.session.userId = user_id; // Assign to a writable property
-//       res.status(200).json({ user_id: user_id, user_role: user.user_role });
-
-      const session_id = req.sessionID
-      //console.log(session_id)
-
-      await Auth.resetOTP(user_id)
-      const userRole = await Auth.getUserRole(user_id)
-      await Auth.login({user_id, session_key: session_id})
-
-      req.session.regenerate((err) => {
-          if (err) {
-              console.error("Session regeneration error:", err);
-              return res.status(500).json({ error: "Session error" });
-          }
-          
-          req.session.save((err) => {
-              if (err) {
-                  console.error("Session save error:", err);
-              }
-              //console.log("Session after save:", req.session);
-              res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session_id: session_id});
-          });
+      res.cookie("session", data.session, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 24 * 60 * 60 * 1000,
       });
-      
-      // console.log("Session: ", data.session);
+
+      console.log("Session: ", data.session);
 
       // Fetch user role
       const { data: user, error: userError } = await supabase
@@ -273,33 +227,32 @@ class AuthenticationController {
     }
   }
 
-  
   static async logout(req: Request, res: Response): Promise<void> {
-    const {user_id, session} = req.body
-    
-    Auth.logout(user_id, session)
+    const { user_id, session } = req.body;
+
+    Auth.logout(user_id, session);
 
     if (req.session.id) {
       req.session.destroy((error) => {
-        if(error) {
-          res.status(500).json({ error: "An error occurred while logging out. Please try again." });
+        if (error) {
+          res.status(500).json({
+            error: "An error occurred while logging out. Please try again.",
+          });
         }
-        
+
         res.clearCookie("cookie.sid");
 
-        
-          res.status(200).json({ message: "Successfully logged out." });
-          // req.session.regenerate((error) => {
-          //     if (error) {
-          //         res.status(500).json({ error: "An error occurred while logging out. Please try again." })
-          //         return
-          //     }
-          // })
-      })
+        res.status(200).json({ message: "Successfully logged out." });
+        // req.session.regenerate((error) => {
+        //     if (error) {
+        //         res.status(500).json({ error: "An error occurred while logging out. Please try again." })
+        //         return
+        //     }
+        // })
+      });
     } else {
       res.status(400).json({ error: "User is not logged in." });
       return;
-
     }
   }
 }
