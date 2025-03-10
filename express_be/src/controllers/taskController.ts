@@ -40,7 +40,7 @@ class TaskController {
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
       const { data: tasks, error: taskError } = await supabase.from("tasks").select();
-      console.log(tasks, taskError)
+      console.log("All Tasks: ", tasks, "Task Error", taskError)
 
       if (taskError) {
         res.status(500).json({ error: taskError.message });
@@ -70,7 +70,7 @@ class TaskController {
             return;
         }
 
-        res.status(200).json(task);
+        res.status(200).json({tasks: task});
     } catch (error) {
         console.error("Server error:", error);
         res.status(500).json({
@@ -98,7 +98,7 @@ class TaskController {
       console.error(error.message)
       res.status(500).json({ error: "An Error Occured while opening the conversation." });
     }else{
-      res.status(201).json({ message: "Task assigned successfully", task: data });
+      res.status(201).json({ message: "A New Conversation Has been Opened.", task: data });
     }
   }
 

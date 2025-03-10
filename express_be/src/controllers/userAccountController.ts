@@ -15,7 +15,7 @@ class UserAccountController {
         birthday,
         email,
         acc_status,
-        user_role,
+        user_role
       } = req.body;
       const imageFile = req.file;
 

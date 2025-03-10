@@ -37,10 +37,10 @@ router.use(isAuthenticated);
  * */
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
-// router.get("/displayTask/:id", TaskController.getTask);
+router.get("/displayTask/:id", TaskController.getTaskById);
 router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get('/displayTask/:clientId', TaskController.getTaskforClient)
-//router.post("/assign-task", TaskController.assignTask)
+router.post("/assign-task", TaskController.assignTask)
 router.post('/send-message', ConversationController.sendMessage)
 router.get('/messages/:user_id/:task_taken_id', ConversationController.sendMessage)
 
