@@ -15,13 +15,13 @@ class TaskerController{
                 tasker_group = false
             }
 
-            const { data: document, error: document_error } = await supabase.from("document_verification").insert({documents_link_pdf: tesda_documents_link, user_id: user_id}).select("id").single();
+            const { data: document, error: document_error } = await supabase.from("tasker_documents").insert({documents_link_pdf: tesda_documents_link, user_id: user_id}).select("id").single();
             if (document_error) {
                 throw document_error;
             }
             const document_id = document.id;
 
-            const { data: specializations, error: spec_error} = await supabase.from("specializations").select("specialization_id").eq('specialization', specialization).single()
+            const { data: specializations, error: spec_error} = await supabase.from("tasker_specialization").select("specialization_id").eq('specialization', specialization).single()
             if(spec_error) throw new Error(spec_error.message)
 
             const specialization_id = specializations.specialization_id

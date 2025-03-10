@@ -6,16 +6,23 @@ class TaskerModel{
      * @param tasker - {bio: Text, specialization: Text, skills: Text, availability: boolean, wage_per_hour: number, tesda_documents_link: Text, social_media_links: Text}
      * @returns 
      */
-    static async createTasker(tasker : {
-        user_id: number,
-        group: boolean
-        bio: Text,
-        specialization_id: number,
-        skills: Text,
-        availability: boolean,
-        document_id: number,
-        social_media_links: Text,
-    }){
+
+    static async createTasker(tasker: {
+  gender: Text;
+  contact_number: Text;
+  address: Text;
+  birthdate: Text;
+  profile_picture: Text;
+  user_id: number;
+  bio: Text;
+  specialization: Text;
+  skills: Text;
+  availability: boolean;
+  wage_per_hour: number;
+  tesda_documents_link: Text;
+  social_media_links: Text;
+}, contact_number: any, address: any, birthdate: any, profile_picture: any, user_id: any, bio: any, specialization: any, skills: any, availability: any, wage_per_hour: any, tesda_documents_link: any, social_media_links: any){
+
         const {data, error} = await supabase.from('tasker').insert([tasker]);
         if(error) throw new Error(error.message)
         return data
