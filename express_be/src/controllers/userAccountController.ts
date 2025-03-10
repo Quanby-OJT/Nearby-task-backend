@@ -3,6 +3,7 @@ import { supabase } from "./../config/configuration";
 import { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
+import taskerModel from "../models/taskerModel";
 
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
@@ -88,6 +89,60 @@ class UserAccountController {
         message: "User registered successfully!",
         user: newUser,
       });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  static async createTasker(req: Request, res: Response): Promise<void> {
+    try {
+      console.log("Received insert data:", req.body);
+      const {
+        gender,
+        contact_number,
+        address,
+        birthdate,
+        profile_picture,
+        user_id,
+        bio,
+        specialization,
+        skills,
+        availability,
+        wage_per_hour,
+        tesda_documents_link,
+        social_media_links,
+      } = req.body;
+
+      // Check for missing fields. This will be relocated to tasker/client validation.
+      // if (!job_title || !specialization || !description || !location ||
+      //     !duration || !num_of_days || !urgency || !contact_price ||
+      //     !remarks || !task_begin_date) {
+      //   res.status(400).json({ message: "Missing required fields" });
+      //   return;
+      // }
+
+      // Call the model to insert data into Supabase
+      const newTask = await taskerModel.createTasker(
+        gender,
+        contact_number,
+        address,
+        birthdate,
+        profile_picture,
+        user_id,
+        bio,
+        specialization,
+        skills,
+        availability,
+        wage_per_hour,
+        tesda_documents_link,
+        social_media_links,
+      );
+
+      res
+        .status(201)
+        .json({ message: "Task created successfully", task: newTask });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",

@@ -13,5 +13,6 @@ router.get("/displayTask/:id", TaskController.getTaskById);
 
 router.put("/disableTask/:id", TaskController.disableTask);
 
+router.post("")
 
 export default router;

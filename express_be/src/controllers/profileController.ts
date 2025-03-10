@@ -5,9 +5,9 @@ import ClientModel from "../models/clientModel";
 class TaskerController{
     static async createTasker(req: Request, res: Response): Promise<any>{
         try{
-            const {user_id, bio, specialization, skills, availability, wage_per_hour, tesda_documents_link, social_media_links} = req.body;
+            const {user_id, gender, contact_number, address, birthdate, profile_picture, bio, specialization, skills, availability, wage_per_hour, tesda_documents_link, social_media_links} = req.body;
 
-            await TaskerModel.createTasker({user_id, bio, specialization, skills, availability, wage_per_hour, tesda_documents_link, social_media_links});
+            //await TaskerModel.createTasker({user_id, gender, contact_number, address, birthdate, profile_picture,bio, specialization, skills, availability, wage_per_hour, tesda_documents_link, social_media_links});
 
             res.status(200).json({message: "Successfully created new profile."});
         } catch(error){
