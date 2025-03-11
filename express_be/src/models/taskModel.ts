@@ -2,21 +2,34 @@ import { supabase } from "../config/configuration";
 
 class TaskModel {
   async createNewTask(
+    client_id: number,
     description: string,
     duration: string,
     job_title: string,
-    urgency: string,
+    urgency: boolean,
     location: string,
     num_of_days: number,
     specialization: string,
     contact_price: string,
     remarks: string,
-    task_begin_date: string,
-    client_id: number // Added client_id as a parameter
+    task_begin_date: string
   ) {
-    let statuses: string = "active";
+    let statuses: string = "Pending";
+    console.log(
+      "Creating task with data:",
+      client_id,
+      description,
+      duration,
+      job_title,
+      urgency,
+      location,
+      num_of_days,
+      specialization,
+      contact_price,
+      remarks,
+      task_begin_date
+    );
     const { data, error } = await supabase.from("tasks").insert([
-
       {
         client_id,
         task_title: job_title,
@@ -38,7 +51,7 @@ class TaskModel {
 
   async showTaskforClient(client_id: number) {
     const { data, error } = await supabase
-      .from("tasks")
+      .from("job_post")
       .select("*")
       .eq("client_id", client_id);
 
@@ -47,28 +60,17 @@ class TaskModel {
   }
 
   async getAllTasks() {
-    const { data, error } = await supabase
-      .from("tasks")
-      .select(`
-        *,
-        clients (
-          *,
-          user (
-          *
-          )
-        )
-      `);
-
+    const { data, error } = await supabase.from("job_post").select("*");
     if (error) throw new Error(error.message);
     return data;
   }
-  
+
   async getTaskById(jobPostId: number) {
     const { data, error } = await supabase
-      .from("tasks")
+      .from("job_post")
       .select("*")
-      .eq("task_id", jobPostId) 
-      .single(); 
+      .eq("job_post_id", jobPostId)
+      .single();
 
     if (error) throw new Error(error.message);
     return data;
@@ -76,9 +78,9 @@ class TaskModel {
 
   async disableTask(jobPostId: number) {
     const { error } = await supabase
-      .from("tasks")
+      .from("job_post")
       .update({ status: "disabled" })
-      .eq("task_id", jobPostId);
+      .eq("job_post_id", jobPostId);
 
     if (error) throw new Error(error.message);
     return { message: "Task disabled successfully" };

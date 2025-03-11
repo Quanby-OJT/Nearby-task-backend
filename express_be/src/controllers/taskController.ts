@@ -27,8 +27,8 @@ class TaskController {
       }
 
       // Call the model to insert data into Supabase
-
       const newTask = await taskModel.createNewTask(
+        client_id,
         task_description,
         duration,
         task_title,
@@ -38,9 +38,7 @@ class TaskController {
         specialization,
         contact_price,
         remarks,
-        task_begin_date,
-        client_id // Pass client_id to the model
-
+        task_begin_date
       );
 
       res
@@ -68,60 +66,89 @@ class TaskController {
       });
     }
   }
-  
+
   static async getTaskById(req: Request, res: Response): Promise<void> {
     try {
-        const jobPostId = parseInt(req.params.id); 
-        console.log(jobPostId);
-        if (isNaN(jobPostId)) {
-            res.status(400).json({ message: "Invalid Job Post ID" });
-            return;
-        }
+      const jobPostId = parseInt(req.params.id);
 
-        const task = await taskModel.getTaskById(jobPostId);
+      if (isNaN(jobPostId)) {
+        res.status(400).json({ message: "Invalid Job Post ID" });
+        return;
+      }
 
-        if (!task) {
-            res.status(404).json({ message: "Task not found" });
-            return;
-        }
+      const task = await taskModel.getTaskById(jobPostId);
 
-        res.status(200).json({tasks: task});
+      if (!task) {
+        res.status(404).json({ message: "Task not found" });
+        return;
+      }
+
+      res.status(200).json(task);
     } catch (error) {
-        console.error("Server error:", error);
-        res.status(500).json({
-            error: error instanceof Error ? error.message : "Unknown error",
-        });
+      console.error("Server error:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   }
 
-  /**
-   * If the tasker opens the "saved" liked task, it will automatically assign a task to the tasker.
-   * @param req 
-   * @param res 
-   */
-  static async assignTask(req: Request, res: Response): Promise<void> {
-    const {tasker_id, task_id, client_id } = req.body
+  // static async assignTask(req: Request, res: Response): Promise<void> {
+  //   const {user_id, task_id } = req.body
 
-    const {data, error} = await supabase.from("task_taken").insert({
+  //   const {data, error} = await supabase.from("task_taken").insert({
+  //     user_id,
+  //     task_id,
+
+  // }
+
+  /**
+   * The purpose of the codes is to display all tasks that belong to the user.
+   * @param req
+   * @param res
+   */
+  static async getTaskforClient(req: Request, res: Response): Promise<void> {
+    try {
+      const clientId = req.params.clientId;
+      console.log(clientId);
+      const { data, error } = await supabase
+        .from("tasks")
+        .select()
+        .eq("client_id", clientId);
+
+      if (error) {
+        console.error(error.message);
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(200).json({ tasks: data });
+      }
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  static async assignTask(req: Request, res: Response): Promise<void> {
+    const { tasker_id, task_id, client_id } = req.body;
+
+    const { data, error } = await supabase.from("task_taken").insert({
       tasker_id, //Tasker ID siya
       task_id,
       client_id,
       task_status: "In Negotiation", //Statuses are: In negotiation, Task In Progress, Completed, Cancelled, Rejected
-    })
+    });
 
-    if(error){
-      console.error(error.message)
-      res.status(500).json({ error: "An Error Occured while opening the conversation." });
-    }else{
-      res.status(201).json({ message: "A New Conversation Has been Opened.", task: data });
+    if (error) {
+      console.error(error.message);
+      res
+        .status(500)
+        .json({ error: "An Error Occured while opening the conversation." });
+    } else {
+      res
+        .status(201)
+        .json({ message: "A New Conversation Has been Opened.", task: data });
     }
   }
-
-  /**
-   * The purpose of the codes is to display all tasks that belong to the user.
-   * @param req 
-   * @param res 
-   */
 
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
@@ -143,19 +170,24 @@ class TaskController {
 
   /**
    * The purpose of this code is to make specialization assignnment easy for taskers and clients.
-   * @param req 
-   * @param res 
+   * @param req
+   * @param res
    */
-  static async getAllSpecializations(req: Request, res: Response): Promise<void> {
+  static async getAllSpecializations(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       console.log("Received request to get all specializations");
-      const { data, error } = await supabase.from("tasker_specialization").select('specialization');
+      const { data, error } = await supabase
+        .from("tasker_specialization")
+        .select("specialization");
       //console.log(data, error)
 
       if (error) {
-        console.error(error.message)
+        console.error(error.message);
         res.status(500).json({ error: error.message });
-      } else {  
+      } else {
         res.status(200).json({ specializations: data });
       }
     } catch (error) {
@@ -163,7 +195,7 @@ class TaskController {
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  } 
+  }
 }
 
 export default TaskController;
