@@ -6,31 +6,33 @@ class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received insert data:", req.body);
-      const {
-        user_id,
-        task_title,
-        specialization,
-        task_description,
-        location,
-        duration,
-        num_of_days,
-        urgency,
-        contact_price,
-        remarks,
-        task_begin_date,
-      } = req.body;
+      const {client_id, task_title, specialization, task_description, location, duration, num_of_days, urgency, contact_price, remarks, task_begin_date } = req.body;
       let urgent = false;
 
-      if (urgency == "Urgent") urgent = true;
-      else if (urgency == "Non-Urgent") urgent = false;
+      // Check for missing fields. This will be relocated to tasker/client validation.
+      // if (!job_title || !specialization || !description || !location ||
+      //     !duration || !num_of_days || !urgency || !contact_price ||
+      //     !remarks || !task_begin_date) {
+      //   res.status(400).json({ message: "Missing required fields" });
+      //   return;
+      // }
+
+      if(urgency == "Urgent") urgent = true
+      else if(urgency == "Non-Urgent") urgent = false
+
+      // Validate required fields
+      if (!client_id || !task_title || !task_begin_date) {
+        res.status(400).json({ error: "Missing required fields (client_id, job_title, task_begin_date)" });
+        return;
+      }
 
       // Call the model to insert data into Supabase
       const newTask = await taskModel.createNewTask(
-        user_id,
+        client_id,
         task_description,
         duration,
         task_title,
-        urgent,
+        urgency,
         location,
         num_of_days,
         specialization,
@@ -51,16 +53,13 @@ class TaskController {
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data: tasks, error: taskError } = await supabase
-        .from("tasks")
-        .select();
-      console.log(tasks, taskError);
+      // const { data: tasks, error: taskError } = await supabase.from("tasks").select();
+      // console.log("Data passed by frontend (query parameters):", req.query);
 
-      if (taskError) {
-        res.status(500).json({ error: taskError.message });
-      } else {
-        res.status(200).json({ tasks: tasks });
-      }
+      const tasks = await taskModel.getAllTasks();
+      console.log("Retrieved tasks:", tasks);
+      res.status(200).json({ tasks });
+
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
