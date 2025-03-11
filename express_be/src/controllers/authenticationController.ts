@@ -4,6 +4,8 @@ import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
 import { mailer } from "../config/configuration";
 import { supabase } from "../config/configuration";
+import session from "express-session";
+import { randomUUID } from "crypto";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -44,23 +46,23 @@ class AuthenticationController {
 
       await Auth.createOTP({ user_id: verifyLogin.user_id, two_fa_code: otp });
 
-      const otpHtml = `
-        <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-          <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
-          <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
-          <div class="mt-4 text-center">
-            <span class="text-3xl font-bold text-blue-600">${otp}</span>
-          </div>
-          <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
-          <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
-        </div>`;
+      // const otpHtml = `
+      //   <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+      //     <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
+      //     <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
+      //     <div class="mt-4 text-center">
+      //       <span class="text-3xl font-bold text-blue-600">${otp}</span>
+      //     </div>
+      //     <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
+      //     <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
+      //   </div>`;
 
-      await mailer.sendMail({
-        from: "noreply@nearbytask.com",
-        to: email,
-        subject: "Your OTP Code for NearByTask",
-        html: otpHtml,
-      });
+      // await mailer.sendMail({
+      //   from: "noreply@nearbytask.com",
+      //   to: email,
+      //   subject: "Your OTP Code for NearByTask",
+      //   html: otpHtml,
+      // });
 
       res.status(200).json({ user_id: verifyLogin.user_id });
     } catch (error) {
@@ -121,19 +123,15 @@ class AuthenticationController {
       }
 
       req.session.userId = user_id;
+      const sessionToken = randomUUID();
 
-      const { data, error } = await Auth.insertLogData(user_id);
-      if (error) {
-        console.error(error);
-      }
+      const userLogin = await Auth.insertLogData(user_id, sessionToken);
 
-      res.cookie("session", data.session, {
+      res.cookie("session", userLogin.session, {
         httpOnly: true,
         secure: true,
         maxAge: 24 * 60 * 60 * 1000,
       });
-
-      console.log("Session: ", data.session);
 
       // Fetch user role
       const { data: user, error: userError } = await supabase
@@ -148,7 +146,9 @@ class AuthenticationController {
         return;
       }
 
-      res.status(200).json({ user_id: user_id, user_role: user.user_role });
+      console.log("Data: ", { user_id: user_id, user_role: user.user_role, session: userLogin.session })
+
+      res.status(200).json({ user_id: user_id, user_role: user.user_role, session: sessionToken }); 
     } catch (error) {
       console.error(error);
       res.status(500).json({
