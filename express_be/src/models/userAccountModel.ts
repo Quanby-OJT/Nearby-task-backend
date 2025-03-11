@@ -41,7 +41,7 @@ class UserAccount {
     return data;
   }
 
-  static async showUser(user_id: string){
+  static async  showUser(user_id: string){
     const {data, error} = await supabase.from("user").select("first_name, middle_name, last_name, image_link, email, birthdate, user_role").eq("user_id", user_id).single()
 
     if(error) throw new Error(error.message);
