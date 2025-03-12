@@ -1,14 +1,19 @@
 import { supabase } from "../config/configuration";
 
-
 class User {
-
   /**
    * This section can only be accessed by the Admin Only, all users can only create and edit their user information.
    * @param userData
    * @returns
    */
-  static async create(userData: { first_name: string; middle_name: string; last_name: string; email: string; hashed_password: string; image_link?: string }) {
+  static async create(userData: {
+    first_name: string;
+    middle_name: string;
+    last_name: string;
+    email: string;
+    hashed_password: string;
+    image_link?: string;
+  }) {
     const { data, error } = await supabase
       .from("user") // Dapat tama ang table name mo sa database
       .insert([userData]);
@@ -53,7 +58,6 @@ class Auth {
         return { error: "Error updating user status" };
       }
 
-      
       const loggedIn = new Date().toISOString();
 
       const { error: errorInsert } = await supabase.from("user_logs").insert({
@@ -67,9 +71,7 @@ class Auth {
         return { error: "Error inserting user log" };
       }
 
-      console.log(
-        `User ID ${user_id} status updated successfully. ${session}`
-      );
+      console.log(`User ID ${user_id} status updated successfully. ${session}`);
       console.log("Sesssion:" + session);
 
       return {
@@ -99,11 +101,8 @@ class Auth {
         //console.warn("No user found for email:", email); // Add logging
         return null;
       }
-      //console.error("Error authenticating login:", error.message); // Add logging
       throw new Error(error.message);
     }
-
-    //console.log("Login authenticated successfully:", data); // Add logging
     return data;
   }
 
@@ -244,7 +243,7 @@ class Auth {
 
     const { data, error } = await supabase.from("user_logs").insert({
       user_id: user_session.user_id,
-      logged_in: loggedInAt,  // Insert as a string
+      logged_in: loggedInAt, // Insert as a string
       session: user_session.session_key,
     });
 
@@ -254,14 +253,17 @@ class Auth {
     return data;
   }
 
-
-  static async logout(user_id: number, session_key: string){
+  static async logout(user_id: number, session_key: string) {
     const loggedOutAt = new Date().toISOString(); // Converts timestamp to a proper string
 
-    const {data, error} = await supabase.from("user_logs").update({logged_out: loggedOutAt}).eq("user_id", user_id).eq("session", session_key)
+    const { data, error } = await supabase
+      .from("user_logs")
+      .update({ logged_out: loggedOutAt })
+      .eq("user_id", user_id)
+      .eq("session", session_key);
     console.log("Logged Data:", data, "Error:", error);
-    if(error) throw new Error(error.message)
-    return data
+    if (error) throw new Error(error.message);
+    return data;
   }
 }
 

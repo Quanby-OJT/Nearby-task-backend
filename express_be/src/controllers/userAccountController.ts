@@ -1,6 +1,6 @@
 import { supabase } from "./../config/configuration";
 // controllers/userController.ts
-import { Request, Response } from "express";
+import e, { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
 import taskerModel from "../models/taskerModel";
@@ -174,7 +174,7 @@ class UserAccountController {
     }
   }
 
-  static async getUserData(req: Request, res: Response): Promise<void> {
+  static async getUserData(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.id;
       console.log("Retrieving User Data for..." + userID);
@@ -183,11 +183,11 @@ class UserAccountController {
 
       if (userData.user_role === "Client") {
         const clientData = await UserAccount.showClient(userID);
-        console.log(clientData);
+        console.log("Your role is: " + clientData);
         res.status(200).json({ user: userData, client: clientData });
       } else if (userData.user_role === "Tasker") {
         const taskerData = await UserAccount.showTasker(userID);
-        console.log(taskerData);
+        console.log("Your role is: " + taskerData);
         res.status(200).json({ user: userData, tasker: taskerData });
       }
     } catch (error) {

@@ -41,7 +41,7 @@ class TaskModel {
         task_begin_date: task_begin_date,
         period: duration,
         location: location,
-        specialization: specialization
+        specialization: specialization,
       },
     ]);
 
