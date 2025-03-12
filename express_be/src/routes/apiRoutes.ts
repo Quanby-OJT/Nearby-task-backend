@@ -27,12 +27,14 @@ router.post(
 );
 router.post("/reset", AuthenticationController.generateOTP);
 
-router.post(
-  "/create-new-account",
-  userValidation,
-  handleValidationErrors,
+//Creating a New Account
+router.post( 
+  "/create-new-account", 
+  userValidation, 
+  handleValidationErrors, 
   UserAccountController.registerUser
 );
+
 router.post(
   "/create-new-client",
   clientValidation,
@@ -44,13 +46,13 @@ router.post(
   ProfileController.TaskerController.createTasker
 );
 
-//router.post("/verify", UserAccountController.verifyEmail)
+router.post("/verify", UserAccountController.verifyEmail)
 
-router.get("/check-session", (req, res) => {
-  res.json({ sessionUser: req.session || "No session found" });
-});
+// router.get("/check-session", (req, res) => {
+//   res.json({ sessionUser: req.session || "No session found" });
+// });
 
-router.post("/logout", AuthenticationController.logout);
+
 
 router.use(isAuthenticated);
 
@@ -74,5 +76,6 @@ router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
+router.post("/logout", AuthenticationController.logout);
 
 export default router;
