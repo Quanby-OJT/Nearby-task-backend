@@ -13,15 +13,31 @@ import ConversationController from "../controllers/conversartionController";
 const router = Router();
 
 /** Authentication Routes */
-router.post("/login-auth", validateLogin, handleValidationErrors, AuthenticationController.loginAuthentication);
-router.post("/otp-auth",validateOTP, handleValidationErrors, AuthenticationController.otpAuthentication);
-router.post( "/reset", AuthenticationController.generateOTP)
+router.post(
+  "/login-auth",
+  validateLogin,
+  handleValidationErrors,
+  AuthenticationController.loginAuthentication
+);
+router.post(
+  "/otp-auth",
+  validateOTP,
+  handleValidationErrors,
+  AuthenticationController.otpAuthentication
+);
+router.post("/reset", AuthenticationController.generateOTP);
 
-router.post("/create-new-account", userValidation, handleValidationErrors, UserAccountController.registerUser)
-router.post("/create-new-client", clientValidation, ProfileController.ClientController.createClient)
-router.post("/create-new-tasker", taskerValidation, ProfileController.TaskerController.createTasker)
+//Creating a New Account
+router.post( 
+  "/create-new-account", 
+  userValidation, 
+  handleValidationErrors, 
+  UserAccountController.registerUser
+);
 
-//router.post("/verify", UserAccountController.verifyEmail)
+
+
+router.post("/verify", UserAccountController.verifyEmail)
 
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
@@ -35,6 +51,8 @@ router.use(isAuthenticated);
  * Application Routes (if the user is authenticated). All routes beyond this point had a middleware 
  * 
  * */
+router.post("/create-new-client", clientValidation, ProfileController.ClientController.createClient);
+router.post("/create-new-tasker", taskerValidation, ProfileController.TaskerController.createTasker);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 // router.get("/displayTask/:id", TaskController.getTask);

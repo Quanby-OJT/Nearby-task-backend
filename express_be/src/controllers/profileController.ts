@@ -3,17 +3,32 @@ import TaskerModel from "../models/taskerModel";
 import ClientModel from "../models/clientModel";
 import { supabase } from "../config/configuration";
 
-class TaskerController{
-    static async createTasker(req: Request, res: Response): Promise<any>{
-        try{
-            const {user_id, group, bio, specialization, skills, availability, tesda_documents_link, social_media_links} = req.body;
-            let tasker_group = false
+class TaskerController {
+  static async createTasker(req: Request, res: Response): Promise<any> {
+    try {
+      const {
+        user_id,
+        gender, //
+        address, //
+        contact_number,
+        birthdate,
+        profile_picture,
+        wage_per_hour,
+        group,
+        bio, //
+        specialization, //
+        skills, //
+        availability, //
+        tesda_documents_link, //
+        social_media_links, //
+      } = req.body;
+      let tasker_group = false;
 
-            if(group == "Group Tasker"){
-                tasker_group = true
-            }else if(group == "Solo Tasker"){
-                tasker_group = false
-            }
+      if (group == "Group Tasker") {
+        tasker_group = true;
+      } else if (group == "Solo Tasker") {
+        tasker_group = false;
+      }
 
             const { data: document, error: document_error } = await supabase.from("document_verification").insert({documents_link_pdf: tesda_documents_link, user_id: user_id}).select("id").single();
             if (document_error) {
@@ -21,18 +36,24 @@ class TaskerController{
             }
             const document_id = document.id;
 
-            const { data: specializations, error: spec_error} = await supabase.from("specializations").select("specialization_id").eq('specialization', specialization).single()
-            if(spec_error) throw new Error(spec_error.message)
+      const { data: specializations, error: spec_error } = await supabase
+        .from("tasker_specialization")
+        .select("specialization_id")
+        .eq("specialization", specialization)
+        .single();
+      if (spec_error) throw new Error(spec_error.message);
 
-            const specialization_id = specializations.specialization_id
+      const specialization_id = specializations.specialization_id;
 
-            await TaskerModel.createTasker({user_id, group: tasker_group, bio, specialization_id, skills, availability: true, document_id, social_media_links});
+      await TaskerModel.createTasker({gender, tasker_is_group: tasker_group, contact_number, address, birthdate, profile_picture, user_id, bio, specialization_id, skills, availability, wage_per_hour, tesda_documents_id: document_id, social_media_links});
 
-            res.status(200).json({message: "Successfully created new profile."});
-        } catch(error){
-            res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
-        }
+      res.status(200).json({ message: "Successfully created new profile." });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
+  }
 }
 
 class ClientController{
