@@ -43,21 +43,21 @@ class TaskerController {
 
       const specialization_id = specializations.specialization_id;
 
-      await TaskerModel.createTasker(
-        user_id,
-        tasker_group,
-        bio,
-        specialization_id,
-        skills,
-        availability,
-        availability,
-        availability,
-        availability,
-        availability,
-        availability,
-        document_id,
-        social_media_links
-      );
+      // await TaskerModel.createTasker(
+      //   user_id,
+      //   tasker_group,
+      //   bio,
+      //   specialization_id,
+      //   skills,
+      //   availability,
+      //   availability,
+      //   availability,
+      //   availability,
+      //   availability,
+      //   availability,
+      //   document_id,
+      //   social_media_links
+      // );
 
       res.status(200).json({ message: "Successfully created new profile." });
     } catch (error) {

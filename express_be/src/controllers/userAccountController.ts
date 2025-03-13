@@ -105,25 +105,25 @@ class UserAccountController {
         social_media_links,
       } = req.body;
 
-      const newTask = await taskerModel.createTasker(
-        gender,
-        contact_number,
-        address,
-        birthdate,
-        profile_picture,
-        user_id,
-        bio,
-        specialization,
-        skills,
-        availability,
-        wage_per_hour,
-        tesda_documents_link,
-        social_media_links
-      );
+      // const newTask = await taskerModel.createTasker(
+      //   gender,
+      //   contact_number,
+      //   address,
+      //   birthdate,
+      //   profile_picture,
+      //   user_id,
+      //   bio,
+      //   specialization,
+      //   skills,
+      //   availability,
+      //   wage_per_hour,
+      //   tesda_documents_link,
+      //   social_media_links
+      // );
 
       res
         .status(201)
-        .json({ message: "Task created successfully", task: newTask });
+        // .json({ message: "Task created successfully", task: newTask });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",

@@ -62,8 +62,8 @@ router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/displayTask/:id", TaskController.getTaskById);
 router.patch("/displayTask/:id/disable", TaskController.disableTask);
-router.get("/displayTask/:clientId", TaskController.getTaskforClient);
-router.post("/assign-task", TaskController.assignTask);
+// router.get("/displayTask/:clientId", TaskController.getTaskforClient);
+// router.post("/assign-task", TaskController.assignTask);
 router.post("/send-message", ConversationController.sendMessage);
 router.get(
   "/messages/:user_id/:task_taken_id",
@@ -72,10 +72,10 @@ router.get(
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
-router.get("/specializations", TaskController.getAllSpecializations);
+// router.get("/specializations", TaskController.getAllSpecializations);
 router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
-router.get("/get-specializations", TaskController.getAllSpecializations);
+// router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
 
 export default router;
