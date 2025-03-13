@@ -72,7 +72,6 @@ class UserAccountController {
         hashed_password: hashedPassword,
         acc_status,
         user_role,
-        acc_status
       });
 
       res.status(201).json({
