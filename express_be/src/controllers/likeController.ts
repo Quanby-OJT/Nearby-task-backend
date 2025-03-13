@@ -7,10 +7,10 @@ class LikeController {
   static async createLike(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received insert data:", req.body);
-      const { user_id, job_post_id, created_at} = req.body;
+      const { user_id, task_id, created_at} = req.body;
 
       // Check for missing fields
-      if (!user_id || !job_post_id || !created_at) {
+      if (!user_id || !task_id || !created_at) {
         res.status(400).json({ error: "Missing required fields" });
         return;
       }
@@ -18,7 +18,7 @@ class LikeController {
       // Call the model to insert data into Supabase
       const newTask = await likeModel.create({
         user_id, 
-        job_post_id, 
+        job_post_id: task_id, 
         created_at
       });
 
@@ -56,10 +56,10 @@ class LikeController {
   static async deleteLike(req: Request, res: Response): Promise<void> {
       try {
           console.log("Delete like request:", req.body);
-          const { user_id, job_post_id } = req.body;
+          const { user_id, task_id } = req.body;
 
           // Check for missing fields
-          if (!user_id || !job_post_id) {
+          if (!user_id || !task_id) {
               res.status(400).json({ message: "Missing required fields" });
               return;
           }
@@ -70,7 +70,7 @@ class LikeController {
               .delete()
               .match({ 
                   user_id: user_id,
-                  job_post_id: job_post_id 
+                  task_id: task_id 
               });
 
           if (error) {

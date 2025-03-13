@@ -92,15 +92,6 @@ class TaskController {
     }
   }
 
-  // static async assignTask(req: Request, res: Response): Promise<void> {
-  //   const {user_id, task_id } = req.body
-
-  //   const {data, error} = await supabase.from("task_taken").insert({
-  //     user_id,
-  //     task_id,
-
-  // }
-
   /**
    * The purpose of the codes is to display all tasks that belong to the user.
    * @param req
@@ -130,6 +121,7 @@ class TaskController {
 
   static async assignTask(req: Request, res: Response): Promise<void> {
     const { tasker_id, task_id, client_id } = req.body;
+    console.log("Received data:", req.body);
 
     const { data, error } = await supabase.from("task_taken").insert({
       tasker_id, //Tasker ID siya
@@ -139,7 +131,7 @@ class TaskController {
     });
 
     if (error) {
-      console.error(error.message);
+      console.error("Error", error.message);
       res
         .status(500)
         .json({ error: "An Error Occured while opening the conversation." });

@@ -6,7 +6,10 @@ class ConversationController {
         const {task_taken_id, user_id, conversation} = req.body
 
         const {data, error} = await supabase.from("conversation_history").insert({
-            task_taken_id, user_id, conversation
+            task_taken_id, 
+            user_id, 
+            conversation,
+            reported: false
         })
 
         if(error){
@@ -23,6 +26,7 @@ class ConversationController {
         const { data, error } = await supabase
             .from("task_taken")
             .select(`
+                task_taken_id,
                 tasks!task_id (task_title),
                 clients!client_id (
                     user!user_id (first_name, middle_name, last_name)
@@ -31,13 +35,31 @@ class ConversationController {
                     user!user_id (first_name, middle_name, last_name)
                 )
             `)
-            .eq("tasker_id", user_id);
+            .eq("tasker_id", user_id)
         
         console.log(data, error)
     
         if(error){
             console.error(error.message)
-            res.status(500).json({error: "An Error Occurred while Sending a New Message"})
+            res.status(500).json({error: "An Error Occurred while Retrieving Your Messages."})
+            return
+        }
+    
+        res.status(200).json({data: data})
+    }
+
+    static async getMessagesByTaskTakenId(req: Request, res: Response): Promise<void> {
+        const task_taken_id = req.params.task_taken_id
+        const { data, error } = await supabase
+            .from("conversation_history")
+            .select("*")
+            .eq("task_taken_id", task_taken_id);
+        
+        console.log(data, error)
+    
+        if(error){
+            console.error(error.message)
+            res.status(500).json({error: "An Error Occurred while Retrieving Your Messages."})
             return
         }
     

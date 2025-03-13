@@ -67,7 +67,8 @@ router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get("/displayTask/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.post("/send-message", ConversationController.sendMessage);
-router.get("/messages/:user_id", ConversationController.getAllMessages);
+router.get("/all-messages/:user_id", ConversationController.getAllMessages);
+router.get("/messages/:task_taken_id", ConversationController.getMessagesByTaskTakenId);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
