@@ -146,7 +146,7 @@ class AuthenticationController {
         return;
       }
 
-      console.log("Data: ", { user_id: user_id, user_role: user.user_role, session: userLogin.session })
+      console.log("Data: ", { user_id: user_id, user_role: user.user_role, session: sessionToken });
 
       res.status(200).json({ user_id: user_id, user_role: user.user_role, session: sessionToken }); 
     } catch (error) {

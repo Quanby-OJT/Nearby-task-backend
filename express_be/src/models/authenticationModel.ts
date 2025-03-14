@@ -56,11 +56,12 @@ class Auth {
       
       const loggedIn = new Date().toISOString();
 
-      const { error: errorInsert } = await supabase.from("user_logs").insert({
+      const { error: errorInsert, data: loggedUser } = await supabase.from("user_logs").insert({
         user_id,
         session,
         logged_in: loggedIn,
       });
+      console.log("Error Insert:", errorInsert, "Logged Data: ", loggedUser);
 
       if (errorInsert) {
         console.error("Error inserting user log:", errorInsert.message);

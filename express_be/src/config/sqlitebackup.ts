@@ -27,11 +27,15 @@ sqliteDb.serialize(() => {
     id TEXT PRIMARY KEY,
     data TEXT
   )`)
-  sqliteDb.run(`CREATE TABLE IF NOT EXISTS activity_logs (
+  sqliteDb.run(`CREATE TABLE IF NOT EXISTS client (
     id TEXT PRIMARY KEY,
     data TEXT
   )`)
-  sqliteDb.run(`CREATE TABLE IF NOT EXISTS clients (
+  sqliteDb.run(`CREATE TABLE IF NOT EXISTS tasker (
+    id TEXT PRIMARY KEY,
+    data TEXT
+  )`)
+  sqliteDb.run(`CREATE TABLE IF NOT EXISTS activity_logs (
     id TEXT PRIMARY KEY,
     data TEXT
   )`)
@@ -52,10 +56,6 @@ sqliteDb.serialize(() => {
     data TEXT
   )`)
   sqliteDb.run(`CREATE TABLE IF NOT EXISTS task_reviews (
-    id TEXT PRIMARY KEY,
-    data TEXT
-  )`)
-  sqliteDb.run(`CREATE TABLE IF NOT EXISTS tasker (
     id TEXT PRIMARY KEY,
     data TEXT
   )`)
