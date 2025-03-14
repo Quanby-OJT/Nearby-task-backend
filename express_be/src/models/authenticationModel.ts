@@ -82,6 +82,11 @@ class Auth {
     }
   }
 
+  /**
+   * To be edited to utilize Supabase Authentication Table.
+   * @param email 
+   * @returns 
+   */
   static async authenticateLogin(email: string) {
     //console.log("Authenticating login for email:", email); // Add logging
 

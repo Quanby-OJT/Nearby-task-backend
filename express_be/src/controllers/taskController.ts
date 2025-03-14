@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
+import { cacheData, checkSupabaseStatus, getFromFallback } from "../config/sqlitebackup"
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -15,6 +16,17 @@ class TaskController {
       //     !remarks || !task_begin_date) {
       //   res.status(400).json({ message: "Missing required fields" });
       //   return;
+      // }
+
+      /**
+       * Temporarily Commenting out this one to test login first.
+       */
+      // const isSupabaseOnline = await checkSupabaseStatus();
+      // if (!isSupabaseOnline) {
+      //   res
+      //     .status(503)
+      //     .set("Retry-After", "300")
+      //     .json({ error: "Service temporarily unavailable, try again later" });
       // }
 
       if(urgency == "Urgent") urgent = true

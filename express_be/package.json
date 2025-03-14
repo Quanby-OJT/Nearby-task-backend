@@ -21,12 +21,15 @@
     "express-validator": "^7.2.1",
     "multer": "^1.4.5-lts.1",
     "ngx-cookie-service": "^19.1.2",
+    "node-cache": "^5.1.2",
     "nodemailer": "^6.10.0",
     "otp-generator": "^4.0.1",
-    "postgres": "^3.4.5"
+    "postgres": "^3.4.5",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/connect-sqlite3": "^0.9.5",
     "@types/cors": "^2.8.17",
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.0",
@@ -36,6 +39,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/otp-generator": "^4.0.2",
     "autoprefixer": "^10.4.20",
+    "connect-sqlite3": "^0.9.15",
     "postcss": "^8.5.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"

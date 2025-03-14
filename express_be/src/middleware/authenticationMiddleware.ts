@@ -11,7 +11,7 @@ export async function isAuthenticated(req: Request, res: Response, next: NextFun
             return;
         }
 
-        //console.log(sessionToken)
+        console.log(sessionToken)
         let session_id = ""
         if(sessionToken.startsWith("Bearer ")){
             session_id = sessionToken.replace("Bearer ", "").trim()
@@ -28,9 +28,15 @@ export async function isAuthenticated(req: Request, res: Response, next: NextFun
             .select("user_id")
             .eq("session", session_id)
             .single();
-        //console.log(userLog, error);
+        console.log(userLog, error);
+ 
+        if(error){
+            console.error(error.message)
+            res.status(401).json({ error: "Error occured while checking your session. Please Try Again." });
+            return;
+        }
 
-        if (error || !userLog) {
+        if (!userLog) {
             res.status(401).json({ error: "Unauthorized: Invalid session" });
             return;
         }

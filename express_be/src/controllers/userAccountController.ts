@@ -4,6 +4,7 @@ import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
 import taskerModel from "../models/taskerModel";
 import { mailer, supabase } from "../config/configuration";
+import { cacheData, checkSupabaseStatus, getFromFallback } from "../config/sqlitebackup"
 import crypto from "crypto";
 import { randomUUID } from "crypto";
 import {Auth} from "../models/authenticationModel";
@@ -23,6 +24,14 @@ class UserAccountController {
       } = req.body;
       const imageFile = req.file;
       console.log("Received insert data:", req.body);
+
+      // const isSupabaseOnline = await checkSupabaseStatus();
+      // if (!isSupabaseOnline) {
+      //   return res
+      //     .status(503)
+      //     .set("Retry-After", "300")
+      //     .json({ error: "Service temporarily unavailable, try again later" });
+      // }
 
       // check if the email exists
       const { data: existingUser, error: findError } = await supabase
@@ -261,17 +270,19 @@ class UserAccountController {
   }
   static async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
-      const { data, error } = await supabase.from("user").select();
-
-      if (error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(200).json({ users: data });
-      }
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+      const users = await cacheData("users", async () => {
+        const { data, error } = await supabase.from("users").select("*");
+        if (error) throw error;
+        return data;
       });
+      res.json(users);
+    } catch (err) {
+      const isSupabaseOnline = await checkSupabaseStatus();
+      if (!isSupabaseOnline) {
+        const fallbackUsers = await getFromFallback("users");
+        res.json(fallbackUsers);
+      }
+      res.status(500).json({ error: "Failed to fetch users" });
     }
   }
 
