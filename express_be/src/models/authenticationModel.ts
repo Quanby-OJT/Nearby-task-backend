@@ -170,6 +170,8 @@ class Auth {
       .eq("user_id", user_id)
       .maybeSingle(); // Allows 0 or 1 row without error
 
+      console.log(data, error)
+
     if (error) {
       //console.error("Error authenticating OTP:", error.message); // Add logging
       throw new Error(error.message);
