@@ -54,6 +54,6 @@ const PORT = port || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(
-    "Click this to direct: http://192.168.43.15:" + PORT + "/connect"
+    "Click this to direct: http://localhost:" + PORT + "/connect"
   );
 });
