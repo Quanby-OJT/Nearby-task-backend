@@ -85,8 +85,6 @@ class Auth {
   }
 
   static async authenticateLogin(email: string) {
-    //console.log("Authenticating login for email:", email); // Add logging
-
     const { data, error } = await supabase
       .from("user")
       .select("user_id, email, hashed_password, user_role")
@@ -97,8 +95,6 @@ class Auth {
 
     if (error) {
       if (error.code === "PGRST116") {
-        // No rows found
-        //console.warn("No user found for email:", email); // Add logging
         return null;
       }
       throw new Error(error.message);

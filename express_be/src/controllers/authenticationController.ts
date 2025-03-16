@@ -37,32 +37,20 @@ class AuthenticationController {
         return;
       }
 
-      const otp = generateOTP.generate(6, {
-        digits: true,
-        upperCaseAlphabets: false,
-        lowerCaseAlphabets: false,
-        specialChars: false,
-      });
-
-      await Auth.createOTP({ user_id: verifyLogin.user_id, two_fa_code: otp });
-
-      // const otpHtml = `
-      //   <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-      //     <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
-      //     <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
-      //     <div class="mt-4 text-center">
-      //       <span class="text-3xl font-bold text-blue-600">${otp}</span>
-      //     </div>
-      //     <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
-      //     <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
-      //   </div>`;
-
-      // await mailer.sendMail({
-      //   from: "noreply@nearbytask.com",
-      //   to: email,
-      //   subject: "Your OTP Code for NearByTask",
-      //   html: otpHtml,
+      // const otp = generateOTP.generate(6, {
+      //   digits: true,
+      //   upperCaseAlphabets: false,
+      //   lowerCaseAlphabets: false,
+      //   specialChars: false,
       // });
+
+      // For testing purposes, we will use a fixed OTP
+      const otp = 123456;
+
+      await Auth.createOTP({
+        user_id: verifyLogin.user_id,
+        two_fa_code: otp.toString(),
+      });
 
       res.status(200).json({ user_id: verifyLogin.user_id });
     } catch (error) {
@@ -105,6 +93,8 @@ class AuthenticationController {
       const { user_id, otp } = req.body;
       const verifyOtp = await Auth.authenticateOTP(user_id);
 
+      console.log("User Id: " + user_id + " OTP :" + otp);
+
       if (verifyOtp == null) {
         res.status(401).json({ error: "Please Login again" });
         return;
@@ -146,9 +136,17 @@ class AuthenticationController {
         return;
       }
 
-      console.log("Data: ", { user_id: user_id, user_role: user.user_role, session: userLogin.session })
+      console.log("Data: ", {
+        user_id: user_id,
+        user_role: user.user_role,
+        session: userLogin.session,
+      });
 
-      res.status(200).json({ user_id: user_id, user_role: user.user_role, session: sessionToken }); 
+      res.status(200).json({
+        user_id: user_id,
+        user_role: user.user_role,
+        session: sessionToken,
+      });
     } catch (error) {
       console.error(error);
       res.status(500).json({
