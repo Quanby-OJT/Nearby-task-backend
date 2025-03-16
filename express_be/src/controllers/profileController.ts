@@ -5,49 +5,76 @@ import { supabase } from "../config/configuration";
 
 class TaskerController {
   static async createTasker(req: Request, res: Response): Promise<any> {
+    /**
+     * Needs to fix the following:
+     * 1. Inserting data to the database
+     * 2. Inserting documents to storage.
+     * 
+     */
     try {
+      console.log("Received insert data:", req.body);
       const {
-        user_id,
-        gender, //
-        address, //
+        gender,
         contact_number,
+        address,
         birthdate,
         profile_picture,
+        user_id,
+        bio,
+        specialization,
+        skills,
+        availability,
         wage_per_hour,
-        group,
-        bio, //
-        specialization, //
-        skills, //
-        availability, //
-        tesda_documents_link, //
-        social_media_links, //
+        tesda_documents_link,
+        social_media_links,
       } = req.body;
-      let tasker_group = false;
 
-      if (group == "Group Tasker") {
-        tasker_group = true;
-      } else if (group == "Solo Tasker") {
-        tasker_group = false;
-      }
+      const { data: specializations, error: specialization_error } = await supabase.from("tasker_specialization").select("spec_id").eq("specialization", specialization).single();
+      if (specialization_error) throw new Error("Specialization Error: " + specialization_error.message);
 
-            const { data: document, error: document_error } = await supabase.from("document_verification").insert({documents_link_pdf: tesda_documents_link, user_id: user_id}).select("id").single();
-            if (document_error) {
-                throw document_error;
-            }
-            const document_id = document.id;
+      const { data: tesda_documents, error: tesda_error} = await supabase.from("tasker_documents").insert({tesda_document_link: tesda_documents_link}).select("id").single();
+      if (tesda_error) console.error(tesda_error.message);
+      if (!tesda_documents) throw new Error("Specialization Error: " + "Tesda documents not found");
 
-      const { data: specializations, error: spec_error } = await supabase
-        .from("tasker_specialization")
-        .select("specialization_id")
-        .eq("specialization", specialization)
-        .single();
-      if (spec_error) throw new Error(spec_error.message);
+      await TaskerModel.createTasker({
+        gender,
+        tasker_is_group: false,
+        contact_number,
+        address,
+        birthdate,
+        profile_picture,
+        user_id,
+        bio,
+        specialization_id: specializations.spec_id,
+        skills,
+        availability,
+        wage_per_hour,
+        tesda_documents_id: tesda_documents.id,
+        social_media_links
+      });
 
-      const specialization_id = specializations.specialization_id;
+      res
+        .status(201)
+        .json({ taskerStatus: true});
+    } catch (error) {
+      console.error("Error in createTasker:", error instanceof Error ? error.message : "Internal Server Error");
+      res.status(500).json({error: "An Error Occured while Creating Tasker. Please Try Again."});
+    }
+  }
+}
 
-      await TaskerModel.createTasker({gender, tasker_is_group: tasker_group, contact_number, address, birthdate, profile_picture, user_id, bio, specialization_id, skills, availability, wage_per_hour, tesda_documents_id: document_id, social_media_links});
+class ClientController {
+  static async createClient(req: Request, res: Response): Promise<any> {
+    try {
+      const { user_id, preferences, client_address } = req.body;
 
-      res.status(200).json({ message: "Successfully created new profile." });
+      await ClientModel.createNewClient({
+        user_id,
+        preferences,
+        client_address,
+      });
+
+      res.status(201).json({ message: "Successfully created new profile." });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
@@ -56,18 +83,4 @@ class TaskerController {
   }
 }
 
-class ClientController{
-    static async createClient(req: Request, res: Response): Promise<any>{
-        try{
-            const {user_id, preferences, client_address} = req.body;
-
-            await ClientModel.createNewClient({user_id, preferences, client_address});
-
-            res.status(201).json({message: "Successfully created new profile."});
-        }catch(error){
-            res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
-        }
-    }
-}
-
-export default {TaskerController, ClientController}
+export default { TaskerController, ClientController };

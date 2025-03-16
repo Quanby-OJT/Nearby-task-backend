@@ -3,6 +3,9 @@ import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
 import { mailer } from "../config/configuration";
+import { supabase } from "../config/configuration";
+import session from "express-session";
+import { randomUUID } from "crypto";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -10,7 +13,6 @@ declare module "express-session" {
 }
 
 class AuthenticationController {
-
   static async loginAuthentication(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
@@ -75,7 +77,7 @@ class AuthenticationController {
   static async generateOTP(req: Request, res: Response): Promise<void> {
     try {
       const { user_id } = req.body;
-      console.log(user_id)
+      console.log(user_id);
 
       const otp = generateOTP.generate(6, {
         digits: true,
@@ -120,41 +122,8 @@ class AuthenticationController {
         return;
       }
 
-      // req.session.userId = user_id;
-
-      // const { data, error: loggingError } = await Auth.insertLogData(user_id);
-      // if (loggingError) {
-      //   console.error(loggingError);
-      // }
-
-      // res.cookie("session", data.session, {
-      //   httpOnly: true,
-      //   secure: true,
-      //   maxAge: 24 * 60 * 60 * 1000,
-      // });
-
-      // console.log("Session: ", data.session);
-
-      // res.status(200).json({ user_id: user_id });
-
-      // const { data: user, error } = await supabase
-      //   .from("user")
-      //   .select("user_role")
-      //   .eq("user_id", user_id)
-      //   .single();
-
-      // if (error) {
-      //   res.status(500).json({ error: error.message });
-      //   return;
-      // }
-
-      // if (!user) {
-      //   res.status(404).json({ error: "User not found" });
-      //   return;
-      // }
-// UNCOMMENT FOR TESTING
-//       req.session.userId = user_id; // Assign to a writable property
-//       res.status(200).json({ user_id: user_id, user_role: user.user_role });
+      req.session.userId = user_id;
+      const sessionToken = randomUUID();
 
       const session_id = req.sessionID
       //console.log(session_id)
@@ -272,33 +241,32 @@ class AuthenticationController {
     }
   }
 
-  
   static async logout(req: Request, res: Response): Promise<void> {
-    const {user_id, session} = req.body
-    
-    Auth.logout(user_id, session)
+    const { user_id, session } = req.body;
+
+    Auth.logout(user_id, session);
 
     if (req.session.id) {
       req.session.destroy((error) => {
-        if(error) {
-          res.status(500).json({ error: "An error occurred while logging out. Please try again." });
+        if (error) {
+          res.status(500).json({
+            error: "An error occurred while logging out. Please try again.",
+          });
         }
-        
+
         res.clearCookie("cookie.sid");
 
-        
-          res.status(200).json({ message: "Successfully logged out." });
-          // req.session.regenerate((error) => {
-          //     if (error) {
-          //         res.status(500).json({ error: "An error occurred while logging out. Please try again." })
-          //         return
-          //     }
-          // })
-      })
+        res.status(200).json({ message: "Successfully logged out." });
+        // req.session.regenerate((error) => {
+        //     if (error) {
+        //         res.status(500).json({ error: "An error occurred while logging out. Please try again." })
+        //         return
+        //     }
+        // })
+      });
     } else {
       res.status(400).json({ error: "User is not logged in." });
       return;
-
     }
   }
 }

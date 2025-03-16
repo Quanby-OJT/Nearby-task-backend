@@ -20,21 +20,27 @@ class ConversationController {
 
     static async getAllMessages(req: Request, res: Response): Promise<void> {
         const user_id = req.params.user_id
-        const task_taken_id = req.params.task_taken_id
-
-        /**
-         * Etong mga susunod na lines of code is kukunin siya from 2 tables using relationships: conversation_history and tasks_taken.
-         * 
-         * -Ces
-         */
-        const {data, error} = await supabase.from("conversation_history").select().eq("task_taken_id", task_taken_id).eq("user_id", user_id)
-
+        const { data, error } = await supabase
+            .from("task_taken")
+            .select(`
+                tasks!task_id (task_title),
+                clients!client_id (
+                    user!user_id (first_name, middle_name, last_name)
+                ),
+                tasker!tasker_id (
+                    user!user_id (first_name, middle_name, last_name)
+                )
+            `)
+            .eq("tasker_id", user_id);
+        
+        console.log(data, error)
+    
         if(error){
             console.error(error.message)
-            res.status(500).json({error: "An Error Occured while Sending a New Message"})
+            res.status(500).json({error: "An Error Occurred while Sending a New Message"})
             return
         }
-
+    
         res.status(200).json({data: data})
     }
 }

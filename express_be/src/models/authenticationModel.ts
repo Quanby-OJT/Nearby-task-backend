@@ -1,5 +1,5 @@
 import { supabase } from "../config/configuration";
-import { randomUUID } from "crypto";
+
 
 // class User {
 
@@ -25,7 +25,7 @@ class Auth {
    * @returns
    */
 
-  static async insertLogData(user_id: number): Promise<any> {
+  static async insertLogData(user_id: number, session: string): Promise<any> {
     try {
       const { data, error } = await supabase
         .from("user")
@@ -34,8 +34,7 @@ class Auth {
         .maybeSingle();
 
       if (error) {
-        console.error("Database error while fetching user:", error.message);
-        return { error: "Error fetching user data" };
+        throw new Error("Database error while fetching user:" + error.message);
       }
 
       if (!data) {
@@ -54,12 +53,12 @@ class Auth {
         return { error: "Error updating user status" };
       }
 
-      const sessionToken = randomUUID();
+      
       const loggedIn = new Date().toISOString();
 
       const { error: errorInsert } = await supabase.from("user_logs").insert({
-        user_id: user_id,
-        session: sessionToken,
+        user_id,
+        session,
         logged_in: loggedIn,
       });
 
@@ -69,13 +68,13 @@ class Auth {
       }
 
       console.log(
-        `User ID ${user_id} status updated successfully. ${sessionToken}`
+        `User ID ${user_id} status updated successfully. ${session}`
       );
-      console.log("Sesssion:" + sessionToken);
+      console.log("Sesssion:" + session);
 
       return {
         success: true,
-        data: { user_id: user_id, session: sessionToken },
+        data: { user_id: user_id, session: session },
       };
     } catch (error: any) {
       console.error("Unexpected error inserting log data:", error.message);
@@ -170,6 +169,8 @@ class Auth {
       .select("two_fa_code, two_fa_code_expires_at")
       .eq("user_id", user_id)
       .maybeSingle(); // Allows 0 or 1 row without error
+
+      console.log(data, error)
 
     if (error) {
       //console.error("Error authenticating OTP:", error.message); // Add logging
