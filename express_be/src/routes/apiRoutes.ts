@@ -51,6 +51,8 @@ router.get("/check-session", (req, res) => {
 });
 
 router.post("/logout", AuthenticationController.logout);
+//ito yung temporary par
+router.get("/get-specializations", TaskController.getAllSpecializations);
 
 router.use(isAuthenticated);
 
@@ -72,7 +74,7 @@ router.get("/userDisplay", UserAccountController.getAllUsers);
 router.get("/specializations", TaskController.getAllSpecializations);
 router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
-router.get("/get-specializations", TaskController.getAllSpecializations);
+
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
 
 export default router;
