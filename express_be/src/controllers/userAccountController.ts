@@ -1,10 +1,16 @@
-import { supabase } from "./../config/configuration";
 // controllers/userController.ts
 import { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
 import taskerModel from "../models/taskerModel";
+import { mailer, supabase } from "../config/configuration";
+import crypto from "crypto";
+import { randomUUID } from "crypto";
+import {Auth} from "../models/authenticationModel";
 
+/**
+ * General Information ABout the User.
+ */
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
     try {
@@ -12,13 +18,14 @@ class UserAccountController {
         first_name,
         middle_name,
         last_name,
-        address,
         birthday,
         email,
+        password,
         acc_status,
         user_role,
       } = req.body;
       const imageFile = req.file;
+      console.log("Received insert data:", req.body);
 
       // check if the email exists
       const { data: existingUser, error: findError } = await supabase
@@ -28,7 +35,7 @@ class UserAccountController {
         .maybeSingle();
 
       if (existingUser) {
-        return res.status(400).json({ error: "Email already exists" });
+        return res.status(400).json({ errors: "Email already exists" });
       }
 
       if (findError && findError.message !== "No rows found") {
@@ -36,7 +43,7 @@ class UserAccountController {
       }
 
       // Hash password
-      const hashedPassword = await bcrypt.hash(last_name, 10);
+      const hashedPassword = await bcrypt.hash(password, 10);
 
       let imageUrl = "";
       if (imageFile) {
@@ -61,75 +68,141 @@ class UserAccountController {
         imageUrl = publicUrlData.publicUrl;
       }
 
+      const unique_token = crypto.randomBytes(32).toString("hex"); 
+
       // Insert user into Supabase database
-      const newUser = await UserAccount.create({
+      await UserAccount.create({
         first_name,
         middle_name,
         last_name,
-        address,
         birthdate: birthday,
         email,
         image_link: imageUrl,
         hashed_password: hashedPassword,
         acc_status,
         user_role,
+        verification_token: unique_token,
       });
+
+      const verificationLink = `myapp://verify?token=${unique_token}&email=${email}`
+      const webLink = `http://localhost:5000/connect/verify-web?token=${unique_token}&email=${email}`
+
+      
+      const otpHtml = `
+        <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+          <h2 class="text-xl font-bold text-gray-800">You are ONE SWIPE away from getting a new Job.</h2>
+          <p class="text-gray-700 mt-4">Hello. I'm Juan, and I am so excited to introduce you to the world of NearByTask - getting a new task/tasker is as easy as right-swiping away your favorite tasks. If you are a client, you can swipe away your favorite tasker. To Start, we need to verify your email to ensure that you are a real human.</p>
+          <div class="mt-4 text-center">
+            Click <a href=${verificationLink} class="text-3xl font-bold text-blue-600">here</a> to verify your email. Or if you can't click the link, you can use the alternative: <a href="${webLink}">Alternative Link.</a>
+          </div><br>
+          <p class="text-red-500 mt-4">See you on the other side.</p>
+          <p class="text-gray-500 mt-6 text-sm">Best Regards:</p>
+          <p class="text-gray-500 mt-6 text-sm">Juan</p>
+        </div>`;
+
+      const sent = await mailer.sendMail({
+        from: "noreply@nearbytask.com",
+        to: email,
+        subject: "Welcome to NearByTask - ONE SWIPE away from getting a new Job",
+        html: otpHtml,
+      });
+
+      console.log(sent);
 
       res.status(201).json({
-        message: "User registered successfully!",
-        user: newUser,
+        message: "Successfully Created a new Account. Please check your email for verification.",
       });
     } catch (error) {
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Internal Server Error",
       });
     }
   }
 
-  static async createTasker(req: Request, res: Response): Promise<void> {
+  static async verifyEmail(req: Request, res: Response): Promise<void> {
     try {
-      console.log("Received insert data:", req.body);
-      const {
-        gender,
-        contact_number,
-        address,
-        birthdate,
-        profile_picture,
-        user_id,
-        bio,
-        specialization,
-        skills,
-        availability,
-        wage_per_hour,
-        tesda_documents_link,
-        social_media_links,
-      } = req.body;
+      const { token, email } = req.body;
+      console.log(req.body)
 
-      const newTask = await taskerModel.createTasker(
-        gender,
-        contact_number,
-        address,
-        birthdate,
-        profile_picture,
-        user_id,
-        bio,
-        specialization,
-        skills,
-        availability,
-        wage_per_hour,
-        tesda_documents_link,
-        social_media_links
-      );
+      const verifyToken = await UserAccount.getUser(email)
 
-      res
-        .status(201)
-        .json({ message: "Task created successfully", task: newTask });
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+      if(verifyToken.verification_token != token)
+      {
+        res.status(401).json({error: "Sorry. Your Email Token has been Expired."})
+      }
+
+      const userId = await UserAccount.resetEmailToken(email)
+
+      const sessionToken = randomUUID();
+
+      const userLogin = await Auth.insertLogData(userId.user_id, sessionToken);
+
+      res.cookie("session", userLogin.session, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 24 * 60 * 60 * 1000,
       });
+
+      //res.redirect(`myapp://verify?token=${token}&email=${email}`)
+      res.status(200).json({message: "Successfully Verified Email.", user_id: userId.user_id, session: sessionToken})
+    } catch (error) {
+      console.error("Error in verifyEmail:", error instanceof Error ? error.message : "Internal Server Error");
+      res.status(500).json({error: "An Error Occured while Verifying Email. Please Try Again."});
     }
   }
+
+  // static async createTasker(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     console.log("Received insert data:", req.body);
+  //     const {
+  //       gender,
+  //       contact_number,
+  //       address,
+  //       birthdate,
+  //       profile_picture,
+  //       user_id,
+  //       bio,
+  //       specialization,
+  //       skills,
+  //       availability,
+  //       wage_per_hour,
+  //       tesda_documents_link,
+  //       social_media_links,
+  //     } = req.body;
+
+  //     const { data: specializations, error: specialization_error } = await supabase.from("tasker_specialization").select("specialization_id").eq("specialization", specialization).single();
+  //     if (specialization_error) throw new Error(specialization_error.message);
+
+  //     const { data: tesda_documents, error: tesda_error} = await supabase.from("tesda_documents").select("tesda_documents_id").eq("tesda_documents_link", tesda_documents_link).single();
+      
+  //     if (tesda_error) throw new Error(tesda_error.message);
+  //     if (!tesda_documents) throw new Error("Tesda documents not found");
+
+  //     await taskerModel.createTasker({
+  //       gender,
+  //       tasker_is_group: false,
+  //       contact_number,
+  //       address,
+  //       birthdate,
+  //       profile_picture,
+  //       user_id,
+  //       bio,
+  //       specialization_id: specializations.specialization_id,
+  //       skills,
+  //       availability,
+  //       wage_per_hour,
+  //       tesda_documents_id: tesda_documents.tesda_documents_id,
+  //       social_media_links
+  //     });
+
+  //     res
+  //       .status(201)
+  //       .json({ taskerStatus: true});
+  //   } catch (error) {
+  //     console.error("Error in createTasker:", error instanceof Error ? error.message : "Internal Server Error");
+  //     res.status(500).json({error: "An Error Occured while Creating Tasker. Please Try Again."});
+  //   }
+  // }
 
   // static async deleteUser(req: Request, res: Response): Promise<void> {
   //   try {
