@@ -71,7 +71,7 @@ class TaskModel {
     }
 
     // Step 3: Insert the task
-    const { data, error } = await supabase.from("tasks").insert([
+    const { data, error } = await supabase.from("post_task").insert([
       {
         client_id,
         task_title: job_title,
@@ -85,7 +85,7 @@ class TaskModel {
         location: location,
         specialization: specialization,
         status: statuses,
-        work_type: tasker_role, //
+        work_type: tasker_role,
       },
     ]);
 
