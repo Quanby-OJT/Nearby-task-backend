@@ -37,15 +37,14 @@ class AuthenticationController {
         return;
       }
 
-      // const otp = generateOTP.generate(6, {
-      //   digits: true,
-      //   upperCaseAlphabets: false,
-      //   lowerCaseAlphabets: false,
-      //   specialChars: false,
-      // });
+      const otp = generateOTP.generate(6, {
+        digits: true,
+        upperCaseAlphabets: false,
+        lowerCaseAlphabets: false,
+        specialChars: false,
+      });
 
       // For testing purposes, we will use a fixed OTP
-      const otp = 123456;
 
       await Auth.createOTP({
         user_id: verifyLogin.user_id,
