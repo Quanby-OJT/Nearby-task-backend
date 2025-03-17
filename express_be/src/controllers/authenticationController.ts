@@ -143,7 +143,7 @@ class AuthenticationController {
                   console.error("Session save error:", err);
               }
               //console.log("Session after save:", req.session);
-              res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session_id: session_id});
+              res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session: session_id});
           });
       });
       

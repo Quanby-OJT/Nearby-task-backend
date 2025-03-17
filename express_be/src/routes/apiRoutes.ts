@@ -38,6 +38,7 @@ router.post(
 
 
 router.post("/verify", UserAccountController.verifyEmail)
+//router.post("verify-via-web", UserAccountController.verifyEmailViaWeb)
 
 // router.get("/check-session", (req, res) => {
 //   res.json({ sessionUser: req.session || "No session found" });

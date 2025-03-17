@@ -2,7 +2,7 @@ import { supabase } from "../config/configuration";
 
 class TaskerModel {
   /**
-   *
+   * Profile Creation for Tasker
    * @param tasker - {bio: Text, specialization: Text, skills: Text, availability: boolean, wage_per_hour: number, tesda_documents_link: Text, social_media_links: Text}
    * @returns
    */

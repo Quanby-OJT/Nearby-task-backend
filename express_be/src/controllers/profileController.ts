@@ -25,14 +25,16 @@ class TaskerController {
         skills,
         availability,
         wage_per_hour,
-        tesda_documents_link,
+        tesda_document,
         social_media_links,
       } = req.body;
 
       const { data: specializations, error: specialization_error } = await supabase.from("tasker_specialization").select("spec_id").eq("specialization", specialization).single();
       if (specialization_error) throw new Error("Specialization Error: " + specialization_error.message);
 
-      const { data: tesda_documents, error: tesda_error} = await supabase.from("tasker_documents").insert({tesda_document_link: tesda_documents_link}).select("id").single();
+      //Upload First the TESDA Documents then retrieve the id
+
+      const { data: tesda_documents, error: tesda_error} = await supabase.from("tasker_documents").insert({tesda_document_link: tesda_document}).select("id").single();
       if (tesda_error) console.error(tesda_error.message);
       if (!tesda_documents) throw new Error("Specialization Error: " + "Tesda documents not found");
 

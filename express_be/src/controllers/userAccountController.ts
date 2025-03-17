@@ -85,7 +85,7 @@ class UserAccountController {
       });
 
       const verificationLink = `myapp://verify?token=${unique_token}&email=${email}`
-      const webLink = `http://localhost:5000/connect/verify?token=${unique_token}&email=${email}`
+      const webLink = `http://localhost:5000/connect/verify-web?token=${unique_token}&email=${email}`
 
       
       const otpHtml = `
