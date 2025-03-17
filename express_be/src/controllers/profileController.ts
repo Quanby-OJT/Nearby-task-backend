@@ -5,62 +5,108 @@ import { supabase } from "../config/configuration";
 
 class TaskerController {
   static async createTasker(req: Request, res: Response): Promise<any> {
-    /**
-     * Needs to fix the following:
-     * 1. Inserting data to the database
-     * 2. Inserting documents to storage.
-     * 
-     */
     try {
-      console.log("Received insert data:", req.body);
       const {
         gender,
         contact_number,
         address,
-        birthdate,
-        profile_picture,
+        birth_date: birthdate,
         user_id,
         bio,
         specialization,
         skills,
         availability,
         wage_per_hour,
-        tesda_document,
         social_media_links,
       } = req.body;
+  
+      console.log("Request body:", req.body);
 
-      const { data: specializations, error: specialization_error } = await supabase.from("tasker_specialization").select("spec_id").eq("specialization", specialization).single();
+      const { data: specializations, error: specialization_error } = await supabase
+        .from("tasker_specialization")
+        .select("spec_id")
+        .eq("specialization", specialization)
+        .single();
+  
       if (specialization_error) throw new Error("Specialization Error: " + specialization_error.message);
+  
+      // Validate file uploads
+      if (!req.files) {
+        throw new Error("Missing required files (image and/or document)");
+      }
+      const { image, document } = req.files as {
+        image: Express.Multer.File[],
+        document: Express.Multer.File[]
+      };
 
-      //Upload First the TESDA Documents then retrieve the id
-
-      const { data: tesda_documents, error: tesda_error} = await supabase.from("tasker_documents").insert({tesda_document_link: tesda_document}).select("id").single();
-      if (tesda_error) console.error(tesda_error.message);
-      if (!tesda_documents) throw new Error("Specialization Error: " + "Tesda documents not found");
-
+      console.log(image, document);
+  
+      // Upload profile picture
+      const profileImagePath = `profile_pictures/${user_id}_${Date.now()}_${image[0].originalname}`;
+      const { error: profilePicError } = await supabase.storage
+        .from("documents")
+        .upload(profileImagePath, image[0].buffer, {
+          contentType: image[0].mimetype,
+          cacheControl: "3600",
+          upsert: true,
+        });
+  
+      if (profilePicError) throw new Error("Error uploading profile picture: " + profilePicError.message);
+  
+      // Upload TESDA document
+      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${document[0].originalname}`;
+      const { error: tesdaDocError } = await supabase.storage
+        .from("documents")
+        .upload(documentPath, document[0].buffer, {
+          contentType: document[0].mimetype,
+          cacheControl: "3600",
+          upsert: true,
+        });
+  
+      if (tesdaDocError) throw new Error("Error uploading TESDA document: " + tesdaDocError.message);
+  
+      // Get public URLs
+      const profilePicUrl = supabase.storage
+        .from("documents")
+        .getPublicUrl(profileImagePath).data.publicUrl;
+  
+      const tesdaDocUrl = supabase.storage
+        .from("documents")
+        .getPublicUrl(documentPath).data.publicUrl;
+  
+      // Store TESDA document reference
+      const { data: tesda_documents, error: tesda_error } = await supabase
+        .from("tasker_documents")
+        .insert({ tesda_document_link: tesdaDocUrl })
+        .select("id")
+        .single();
+  
+      if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
+  
+      // Create tasker profile
       await TaskerModel.createTasker({
         gender,
-        tasker_is_group: false,
         contact_number,
         address,
         birthdate,
-        profile_picture,
+        profile_picture: profilePicUrl,
         user_id,
         bio,
         specialization_id: specializations.spec_id,
         skills,
-        availability,
-        wage_per_hour,
+        availability: availability === 'true',
+        wage_per_hour: parseFloat(wage_per_hour),
         tesda_documents_id: tesda_documents.id,
-        social_media_links
+        social_media_links: social_media_links
       });
-
-      res
-        .status(201)
-        .json({ taskerStatus: true});
+  
+      res.status(201).json({ taskerStatus: true });
     } catch (error) {
       console.error("Error in createTasker:", error instanceof Error ? error.message : "Internal Server Error");
-      res.status(500).json({error: "An Error Occured while Creating Tasker. Please Try Again."});
+      console.error("Error in createTasker:", error instanceof Error ? error.stack : "Internal Server Error");
+      res.status(500).json({
+        error: "An Error Occurred while Creating Tasker. Please Try Again.",
+      });
     }
   }
 }

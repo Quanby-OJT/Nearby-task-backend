@@ -9,6 +9,9 @@ import { clientValidation, taskerValidation } from "../validator/userValidator";
 import TaskController from "../controllers/taskController";
 import { isAuthenticated } from "../middleware/authenticationMiddleware";
 import ConversationController from "../controllers/conversartionController";
+import multer, { memoryStorage } from "multer";
+
+const upload = multer({storage: memoryStorage()})
 
 const router = Router();
 
@@ -52,8 +55,29 @@ router.use(isAuthenticated);
  * Application Routes (if the user is authenticated). All routes beyond this point had a middleware
  *
  * */
-router.post("/create-new-client", clientValidation, ProfileController.ClientController.createClient);
-router.post("/create-new-tasker", taskerValidation, ProfileController.TaskerController.createTasker);
+
+//For client and tasker, part of the creation is uploading their image and relevant documents.
+router.post(
+  "/create-new-client",
+  clientValidation,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "document", maxCount: 1 }
+  ]),
+  ProfileController.ClientController.createClient
+);
+
+router.post(
+  "/create-new-tasker",
+  taskerValidation,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "document", maxCount: 1 }
+  ]),
+  ProfileController.TaskerController.createTasker
+);
+
+
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/displayTask/:id", TaskController.getTaskById);
@@ -61,7 +85,7 @@ router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get("/displayTask/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.post("/send-message", ConversationController.sendMessage);
-router.get("/messages/:user_id", ConversationController.getAllMessages);
+router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
