@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import TaskerModel from "../models/taskerModel";
 import ClientModel from "../models/clientModel";
 import { supabase } from "../config/configuration";
+import { UserAccount } from "../models/userAccountModel";
 
 class TaskerController {
   static async createTasker(req: Request, res: Response): Promise<any> {
@@ -82,6 +83,8 @@ class TaskerController {
         .single();
   
       if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
+
+      await UserAccount.uploadImageLink(user_id, profilePicUrl);
   
       // Create tasker profile
       await TaskerModel.createTasker({
