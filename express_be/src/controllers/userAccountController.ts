@@ -88,6 +88,7 @@ class UserAccountController {
       });
 
       const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
+      console.log(verificationLink);
 
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
@@ -139,7 +140,7 @@ class UserAccountController {
         .update({ 
           acc_status: "Active",
           verification_token: null,
-          email_verified_at: new Date().toISOString()
+          emailVerified: true
         })
         .eq("user_id", user.user_id);
 
