@@ -111,13 +111,13 @@ class TaskController {
       const clientId = req.params.clientId;
       console.log(clientId);
       const { data, error } = await supabase
-        .from("tasks")
+        .from("post_task")
         .select()
         .eq("client_id", clientId);
 
       if (error) {
         console.error(error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "An Error occured while retrieving your tasks. Please try again." });
       } else {
         res.status(200).json({ tasks: data });
       }

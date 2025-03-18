@@ -82,10 +82,11 @@ router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/displayTask/:id", TaskController.getTaskById);
 router.patch("/displayTask/:id/disable", TaskController.disableTask);
-router.get("/displayTask/:clientId", TaskController.getTaskforClient);
+router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.post("/send-message", ConversationController.sendMessage);
 router.get("/all-messages/:user_id", ConversationController.getAllMessages);
+router.get("/messages/:task_taken_id", ConversationController.getMessages);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);

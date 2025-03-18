@@ -28,9 +28,14 @@ export async function isAuthenticated(req: Request, res: Response, next: NextFun
             .select("user_id")
             .eq("session", session_id)
             .single();
-        //console.log(userLog, error);
+        console.log(userLog, error);
+        
 
-        if (error || !userLog) {
+        if(error){
+            console.error(error instanceof Error, error.message ?? "Unable to Verify your session. Please Try Again.")
+            res.status(401).json({ error: "Unable to Verify your session. Please Try Again." });
+            return
+        }else if (!userLog) {
             res.status(401).json({ error: "Unauthorized: Invalid session" });
             return;
         }
