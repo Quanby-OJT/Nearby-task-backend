@@ -55,22 +55,33 @@ class UserAccount {
     return data;
   }
 
-  static async completeRegisterTasker(userData: {
-    gender: string;
-    middle_name: string;
-    last_name: string;
-    //birthdate: Date;
-    email: string;
-    image_link?: string;
-    hashed_password: string;
-    acc_status: string;
-    user_role: string;
-  }) {
-    const { data, error } = await supabase.from("user").insert([userData]);
+  static async uploadImageLink(user_id: string, image_link: string){
+    const { data, error } = await supabase
+    .from("user")
+    .update({ image_link: image_link })
+    .eq("user_id", user_id)
 
-    if (error) throw new Error(error.message);
+    if(error) throw new Error(error.message);
+
     return data;
   }
+
+  // static async completeRegisterTasker(userData: {
+  //   gender: string;
+  //   middle_name: string;
+  //   last_name: string;
+  //   //birthdate: Date;
+  //   email: string;
+  //   image_link?: string;
+  //   hashed_password: string;
+  //   acc_status: string;
+  //   user_role: string;
+  // }) {
+  //   const { data, error } = await supabase.from("user").insert([userData]);
+
+  //   if (error) throw new Error(error.message);
+  //   return data;
+  // }
 
   static async  showUser(user_id: string){
     const {data, error} = await supabase.from("user").select("first_name, middle_name, last_name, image_link, email, birthdate, user_role").eq("user_id", user_id).single()

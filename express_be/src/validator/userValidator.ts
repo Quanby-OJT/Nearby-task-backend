@@ -2,7 +2,7 @@ import {body} from "express-validator"
 
 export const userValidation = [
     body("first_name")
-        .notEmpty().withMessage("First name is required")
+        .notEmpty().withMessage("First name is required").bail()
         .isString().withMessage("First name must be a string")
         .trim()
         .escape(),
@@ -13,18 +13,18 @@ export const userValidation = [
         .escape(),
     
     body("last_name")
-        .notEmpty().withMessage("Last name is required")
+        .notEmpty().withMessage("Last name is required").bail()
         .isString().withMessage("Last name must be a string")
         .trim()
         .escape(),
     
     body("email")
-        .notEmpty().withMessage("Email is required")
+        .notEmpty().withMessage("Email is required").bail()
         .isEmail().withMessage("Please enter a valid email address")
         .normalizeEmail(),
     
     body("password")
-        .notEmpty().withMessage("Please enter your password")
+        .notEmpty().withMessage("Please enter your password").bail()
         .isStrongPassword({
             minLength: 8,
             minLowercase: 1,

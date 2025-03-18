@@ -8,6 +8,9 @@ import crypto from "crypto";
 import { randomUUID } from "crypto";
 import {Auth} from "../models/authenticationModel";
 
+/**
+ * General Information ABout the User.
+ */
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
     try {
@@ -149,55 +152,63 @@ class UserAccountController {
       //res.redirect(`myapp://verify?token=${token}&email=${email}`)
       res.status(200).json({message: "Successfully Verified Email.", user_id: userId.user_id, session: sessionToken})
     } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      console.error("Error in verifyEmail:", error instanceof Error ? error.message : "Internal Server Error");
+      res.status(500).json({error: "An Error Occured while Verifying Email. Please Try Again."});
     }
   }
 
-  static async createTasker(req: Request, res: Response): Promise<void> {
-    try {
-      console.log("Received insert data:", req.body);
-      const {
-        gender,
-        contact_number,
-        address,
-        birthdate,
-        profile_picture,
-        user_id,
-        bio,
-        specialization,
-        skills,
-        availability,
-        wage_per_hour,
-        tesda_documents_link,
-        social_media_links,
-      } = req.body;
+  // static async createTasker(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     console.log("Received insert data:", req.body);
+  //     const {
+  //       gender,
+  //       contact_number,
+  //       address,
+  //       birthdate,
+  //       profile_picture,
+  //       user_id,
+  //       bio,
+  //       specialization,
+  //       skills,
+  //       availability,
+  //       wage_per_hour,
+  //       tesda_documents_link,
+  //       social_media_links,
+  //     } = req.body;
 
-      const newTask = await taskerModel.createTasker(
-        gender,
-        contact_number,
-        address,
-        birthdate,
-        profile_picture,
-        user_id,
-        bio,
-        specialization,
-        skills,
-        availability,
-        wage_per_hour,
-        tesda_documents_link,
-        social_media_links
-      );
+  //     const { data: specializations, error: specialization_error } = await supabase.from("tasker_specialization").select("specialization_id").eq("specialization", specialization).single();
+  //     if (specialization_error) throw new Error(specialization_error.message);
 
-      res
-        .status(201)
-        .json({ message: "Task created successfully", task: newTask });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({error: "An error occured while creating a new account. Please Try Again."});
-    }
-  }
+  //     const { data: tesda_documents, error: tesda_error} = await supabase.from("tesda_documents").select("tesda_documents_id").eq("tesda_documents_link", tesda_documents_link).single();
+      
+  //     if (tesda_error) throw new Error(tesda_error.message);
+  //     if (!tesda_documents) throw new Error("Tesda documents not found");
+
+  //     await taskerModel.createTasker({
+  //       gender,
+  //       tasker_is_group: false,
+  //       contact_number,
+  //       address,
+  //       birthdate,
+  //       profile_picture,
+  //       user_id,
+  //       bio,
+  //       specialization_id: specializations.specialization_id,
+  //       skills,
+  //       availability,
+  //       wage_per_hour,
+  //       tesda_documents_id: tesda_documents.tesda_documents_id,
+  //       social_media_links
+  //     });
+
+  //     res
+  //       .status(201)
+  //       .json({ taskerStatus: true});
+  //   } catch (error) {
+  //     console.error("Error in createTasker:", error instanceof Error ? error.message : "Internal Server Error");
+  //     res.status(500).json({error: "An Error Occured while Creating Tasker. Please Try Again."});
+  //   }
+  // }
 
   // static async deleteUser(req: Request, res: Response): Promise<void> {
   //   try {

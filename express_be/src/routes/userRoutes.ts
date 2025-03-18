@@ -8,7 +8,7 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Register user with image upload
-router.post("/add", upload.single("image"), UserController.registerUser);
+// router.post("/add", upload.single("image"), UserController.registerUser);
 
 // Display all records
 router.get("/display", UserController.getAllUsers);
