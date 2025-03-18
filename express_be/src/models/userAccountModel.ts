@@ -19,6 +19,7 @@ class UserAccount {
     verification_token: string;
   }) {
     const { data, error } = await supabase.from("user").insert([userData]);
+    console.log(data, error)
 
     if (error) throw new Error(error.message);
     return data;
