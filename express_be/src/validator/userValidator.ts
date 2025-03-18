@@ -1,21 +1,25 @@
 import {body} from "express-validator"
 
 export const userValidation = [
-    body("name").isEmpty().isString().withMessage("Please Enter a Valid Name."),
-    body("email").isEmpty().isEmail().withMessage("Email is not Valid. Please Try Again."),
-    body("password").isEmpty().isStrongPassword().withMessage("Your password must have at least: symbols, numbers, letters, and it must be unique.")
+    body("first_name").notEmpty().isString().withMessage("Please enter your first name"),
+    body("last_name").notEmpty().isString().withMessage("Please enter your last name"),
+    body("email").notEmpty().isEmail().withMessage("Please enter a valid email address"),
+    body("password").notEmpty().isLength({ min: 6 }).withMessage("Password must be at least 6 characters long")
+        .matches(/[A-Z]/).withMessage("Password must contain at least one uppercase letter")
+        .matches(/[0-9]/).withMessage("Password must contain at least one number"),
+    body("user_role").notEmpty().isIn(['Client', 'Tasker']).withMessage("Invalid user role")
 ]
 
 export const taskerValidation = [
-    body("bio").isEmpty().isString().withMessage("Please Enter a Valid Bio."),
-    body("specialization").isString().withMessage("Please Enter Your Specialization."),
-    body("skills").isEmpty().isString().withMessage("Please Enter Your Desired Skills."),
-    body("wage").isEmpty().isNumeric().withMessage("Please Enter Your Desired Wage."),
-    body("tesda_documents_link").isEmpty().isURL().withMessage("Please Enter a Valid URL."),
-    body("social_media_links").isEmpty().isURL().withMessage("Please Enter a Valid URL.")
+    body("bio").notEmpty().isString().withMessage("Please enter your bio"),
+    body("specialization").notEmpty().isString().withMessage("Please enter your specialization"),
+    body("skills").notEmpty().isString().withMessage("Please enter your skills"),
+    body("wage").notEmpty().isNumeric().withMessage("Please enter a valid wage"),
+    body("tesda_documents_link").optional().isURL().withMessage("Please enter a valid URL for TESDA documents"),
+    body("social_media_links").optional().isURL().withMessage("Please enter a valid URL for social media")
 ]
 
 export const clientValidation = [
-    body("preferences").isEmpty().isString().withMessage("Please Enter Your Preferences."),
-    body("client_address").isEmpty().isString().withMessage("Please Enter Your Address."),
+    body("preferences").notEmpty().isString().withMessage("Please enter your preferences"),
+    body("client_address").notEmpty().isString().withMessage("Please enter your address")
 ]

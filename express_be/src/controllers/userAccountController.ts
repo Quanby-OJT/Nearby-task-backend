@@ -1,9 +1,11 @@
 import { supabase } from "./../config/configuration";
-// controllers/userController.ts
-import e, { Request, Response } from "express";
+import { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
 import taskerModel from "../models/taskerModel";
+import { Auth } from "../models/authenticationModel";
+import { randomUUID } from "crypto";
+import nodemailer from "nodemailer";
 
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
@@ -12,15 +14,12 @@ class UserAccountController {
         first_name,
         middle_name,
         last_name,
-        address,
-        birthday,
         email,
-        acc_status,
-        user_role,
+        password,
+        user_role
       } = req.body;
-      const imageFile = req.file;
 
-      // check if the email exists
+      // Check if the email exists
       const { data: existingUser, error: findError } = await supabase
         .from("user")
         .select("email")
@@ -28,60 +27,137 @@ class UserAccountController {
         .maybeSingle();
 
       if (existingUser) {
-        return res.status(400).json({ error: "Email already exists" });
+        return res.status(400).json({ errors: "Email already exists" });
       }
 
       if (findError && findError.message !== "No rows found") {
         throw new Error(findError.message);
       }
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(last_name, 10);
-
-      let imageUrl = "";
-      if (imageFile) {
-        // Upload image to Supabase Storage (crud_bucket)
-        const { data, error } = await supabase.storage
-          .from("crud_bucket")
-          .upload(
-            `users/${Date.now()}_${imageFile.originalname}`,
-            imageFile.buffer,
-            {
-              cacheControl: "3600",
-              upsert: false,
-            }
-          );
-
-        if (error) throw new Error(error.message);
-
-        const { data: publicUrlData } = supabase.storage
-          .from("crud_bucket")
-          .getPublicUrl(data.path);
-
-        imageUrl = publicUrlData.publicUrl;
-      }
+      // Generate verification token
+      const verificationToken = randomUUID();
+      
+      // Hash password with bcrypt
+      const hashedPassword = await bcrypt.hash(password, 10);
 
       // Insert user into Supabase database
-      const newUser = await UserAccount.create({
-        first_name,
-        middle_name,
-        last_name,
-        address,
-        birthdate: birthday,
-        email,
-        image_link: imageUrl,
-        hashed_password: hashedPassword,
-        acc_status,
-        user_role,
+      const { data: newUser, error: insertError } = await supabase
+        .from("user")
+        .insert([{
+          first_name,
+          middle_name,
+          last_name,
+          email,
+          hashed_password: hashedPassword,
+          acc_status: 'Pending',
+          user_role,
+          verification_token: verificationToken
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+
+      // inserting null value in clients table
+      const { error: errorInsert } = await supabase
+        .from("clients")
+        .insert([
+          {
+            user_id: newUser.user_id,
+            preferences: '',
+            client_address: '',
+          },
+        ]);
+
+        console.log("New user ID: " + newUser.user_id);
+
+      if(errorInsert) {
+        throw new Error(errorInsert.message);
+      }
+
+      // Send verification email
+      const transporter = nodemailer.createTransport({
+        // Configure your email service here
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Verify your email for NearbyTask',
+        html: `
+          <h1>Welcome to NearbyTask!</h1>
+          <p>Please click the link below to verify your email address:</p>
+          <a href="${verificationLink}">Verify Email</a>
+          <p>If you didn't create an account, please ignore this email.</p>
+        `
       });
 
       res.status(201).json({
-        message: "User registered successfully!",
-        user: newUser,
+        message: "Registration successful! Please check your email to verify your account.",
+        user: {
+          id: newUser.user_id,
+          email: newUser.email,
+          first_name: newUser.first_name,
+          last_name: newUser.last_name
+        }
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({
+        errors: error instanceof Error ? error.message : "An error occurred during registration"
+      });
+    }
+  }
+
+  static async verifyEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const { token, email } = req.body;
+
+      const { data: user, error } = await supabase
+        .from("user")
+        .select("*")
+        .eq("email", email)
+        .eq("verification_token", token)
+        .single();
+
+      if (error || !user) {
+        res.status(400).json({ error: "Invalid verification token" });
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from("user")
+        .update({ 
+          acc_status: "Active",
+          verification_token: null,
+          email_verified_at: new Date().toISOString()
+        })
+        .eq("user_id", user.user_id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      // Create session
+      req.session.userId = user.user_id;
+      
+      res.status(200).json({ 
+        message: "Email verified successfully",
+        user_id: user.user_id,
+        session: req.session
       });
     } catch (error) {
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "An error occurred during email verification"
       });
     }
   }
@@ -130,28 +206,6 @@ class UserAccountController {
       });
     }
   }
-
-  // static async deleteUser(req: Request, res: Response): Promise<void> {
-  //   try {
-  //     const { verificationToken } = req.body;
-
-  //     const { data, error } = await supabase
-  //       .from("user")
-  //       .select("email")
-  //       .eq("verification_token", verificationToken)
-  //       .maybeSingle();
-
-  //     if (error) {
-  //       return res.status(500).json({ error: error.message });
-  //     }
-
-  //     return res.status(200).json({ message: "Email Successfully Verified. You may now proceed to creating Your New Profile." });
-  //   } catch (error) {
-  //     res.status(500).json({
-  //       error: error instanceof Error ? error.message : "Unknown error",
-  //     });
-  //   }
-  // }
 
   static async deleteUser(req: Request, res: Response): Promise<void> {
     try {
