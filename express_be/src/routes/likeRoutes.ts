@@ -4,7 +4,7 @@ import { isAuthenticated } from "../middleware/authenticationMiddleware";
 
 const router = Router();
 
-router.use(isAuthenticated)
+// router.use(isAuthenticated);
 
 router.post("/likeJob", LikeController.createLike);
 router.delete("/unlikeJob", LikeController.deleteLike);

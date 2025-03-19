@@ -115,8 +115,7 @@ class auth {
         .eq("user_id", userID);
 
       if (error) {
-        console.log(error);
-        return res.status(500).json({ message: "Error updating user status" });
+        return res.status(500).json({ message: "Error updating user" });
       }
 
       const { data: sessionExists, error: sessionError } = await supabase
@@ -164,7 +163,7 @@ class auth {
           .update({ logged_out: loggedOut })
           .eq("session", sessionID);
 
-        return res.status(200).status(200).json({ message: "User logged out" });
+        return res.status(200).json({ message: "User logged out" });
       }
 
       if (sessionError) {
@@ -172,7 +171,7 @@ class auth {
         return res.status(500).json({ message: "Error updating user log" });
       }
 
-      return res.status(200).status(200).json({ message: "User logged out" });
+      return res.status(200).json({ message: "User logged out" });
     } catch (error) {
       return res.status(500).json({ message: "Error" + error });
     }

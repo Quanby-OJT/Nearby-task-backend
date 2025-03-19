@@ -1,16 +1,12 @@
-// controllers/userController.ts
+
+import { supabase } from "../config/configuration";
 import { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
-import taskerModel from "../models/taskerModel";
-import { mailer, supabase } from "../config/configuration";
-import crypto from "crypto";
+import { Auth } from "../models/authenticationModel";
 import { randomUUID } from "crypto";
-import {Auth} from "../models/authenticationModel";
+import nodemailer from "nodemailer";
 
-/**
- * General Information ABout the User.
- */
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
     try {
@@ -27,7 +23,8 @@ class UserAccountController {
       const imageFile = req.file;
       console.log("Received insert account data:", req.body);
 
-      // check if the email exists
+
+      // Check if the email exists
       const { data: existingUser, error: findError } = await supabase
         .from("user")
         .select("email")
@@ -43,10 +40,78 @@ class UserAccountController {
       if (findError && findError.message !== "No rows found") {
         throw new Error(findError.message);
       }
-
-      // Hash password
+      // Generate verification token
+      const verificationToken = randomUUID();
+      
+      // Hash password with bcrypt
       const hashedPassword = await bcrypt.hash(password, 10);
 
+      // Insert user into Supabase database
+      
+
+      // Send verification email
+      const transporter = nodemailer.createTransport({
+        // Configure your email service here
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
+      console.log(verificationLink);
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Verify your email for NearbyTask',
+        html: `
+          <h1>Welcome to NearbyTask!</h1>
+          <p>Please click the link below to verify your email address:</p>
+          <a href="${verificationLink}">Verify Email</a>
+          <p>If you didn't create an account, please ignore this email.</p>
+        `
+
+
+      });
+      
+      const { data: newUser, error: insertError } = await supabase
+        .from("user")
+        .insert([{
+          first_name,
+          middle_name,
+          last_name,
+          email,
+          hashed_password: hashedPassword,
+          acc_status: 'Pending',
+          user_role,
+          verification_token: verificationToken
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+
+      // inserting null value in clients table
+      const { error: errorInsert } = await supabase
+        .from("clients")
+        .insert([
+          {
+            user_id: newUser.user_id,
+            preferences: '',
+            client_address: '',
+          },
+        ]);
+
+        console.log("New user ID: " + newUser.user_id);
+
+      if(errorInsert) {
+        throw new Error(errorInsert.message);
+      }
+    
       // let imageUrl = "";
       // if (imageFile) {
       //   // Upload image to Supabase Storage (crud_bucket)
@@ -70,57 +135,19 @@ class UserAccountController {
       //   imageUrl = publicUrlData.publicUrl;
       // }
 
-      const unique_token = crypto.randomBytes(32).toString("hex"); 
-      const verificationLink = `myapp://verify?token=${unique_token}&email=${email}`
-      console.log(verificationLink)
-
-      // Insert user into Supabase database
-      await UserAccount.create({
-        first_name,
-        middle_name,
-        last_name,
-        birthdate: birthday,
-        email,
-        hashed_password: hashedPassword,
-        acc_status,
-        user_role,
-        verification_token: unique_token,
-      });
-
-
-      //const webLink = `http://localhost:5000/connect/verify?token=${unique_token}&email=${email}`
-
-      
-      /**
-       * This is to save some space on Mailtrap.
-       */
-      // const otpHtml = `
-      //   <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-      //     <h2 class="text-xl font-bold text-gray-800">You are ONE SWIPE away from getting a new Job.</h2>
-      //     <p class="text-gray-700 mt-4">Hello. I'm Juan, and I am so excited to introduce you to the world of NearByTask - getting a new task/tasker is as easy as right-swiping away your favorite tasks. If you are a client, you can swipe away your favorite tasker. To Start, we need to verify your email to ensure that you are a real human.</p>
-      //     <div class="mt-4 text-center">
-      //       Click <a href=${verificationLink} class="text-3xl font-bold text-blue-600">here</a> to verify your email. Or if you can't click the link, you can use the alternative: <a href="${webLink}">Alternative Link.</a>
-      //     </div><br>
-      //     <p class="text-red-500 mt-4">See you on the other side.</p>
-      //     <p class="text-gray-500 mt-6 text-sm">Best Regards:</p>
-      //     <p class="text-gray-500 mt-6 text-sm">Juan</p>
-      //   </div>`;
-
-      // const sent = await mailer.sendMail({
-      //   from: "noreply@nearbytask.com",
-      //   to: email,
-      //   subject: "Welcome to NearByTask - ONE SWIPE away from getting a new Job",
-      //   html: otpHtml,
-      // });
-
-      // console.log(sent);
-
       res.status(201).json({
-        message: "Successfully Created a new Account. Please check your email for verification.",
+        message: "Registration successful! Please check your email to verify your account.",
+        user: {
+          id: newUser.user_id,
+          email: newUser.email,
+          first_name: newUser.first_name,
+          last_name: newUser.last_name
+        }
       });
     } catch (error) {
+      console.error('Registration error:', error);
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Internal Server Error",
+        errors: error instanceof Error ? error.message : "An error occurred during registration"
       });
     }
   }
@@ -128,34 +155,78 @@ class UserAccountController {
   static async verifyEmail(req: Request, res: Response): Promise<void> {
     try {
       const { token, email } = req.body;
-      console.log(req.body)
 
-      const verifyToken = await UserAccount.getUser(email)
+      const { data: user, error } = await supabase
+        .from("user")
+        .select("*")
+        .eq("email", email)
+        .eq("verification_token", token)
+        .single();
 
-      if(verifyToken.verification_token != token)
-      {
-        res.status(401).json({error: "Sorry. Your Email Token has been Expired."})
+      if (error || !user) {
+        res.status(400).json({ error: "Invalid verification token" });
+        return;
       }
 
-      const userId = await UserAccount.resetEmailToken(email)
+      const { error: updateError } = await supabase
+        .from("user")
+        .update({ 
+          acc_status: "Active",
+          verification_token: null,
+          emailVerified: true
+        })
+        .eq("user_id", user.user_id);
 
-      const sessionToken = randomUUID();
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
 
-      const userLogin = await Auth.insertLogData(userId.user_id, sessionToken);
-
-      res.cookie("session", userLogin.session, {
-        httpOnly: true,
-        secure: true,
-        maxAge: 24 * 60 * 60 * 1000,
+      // Create session
+      req.session.userId = user.user_id;
+      
+      res.status(200).json({ 
+        message: "Email verified successfully",
+        user_id: user.user_id,
+        session: req.session
       });
-
-      //res.redirect(`myapp://verify?token=${token}&email=${email}`)
-      res.status(200).json({message: "Successfully Verified Email.", user_id: userId.user_id, session: sessionToken})
     } catch (error) {
-      console.error("Error in verifyEmail:", error instanceof Error ? error.message : "Internal Server Error");
-      res.status(500).json({error: "An Error Occured while Verifying Email. Please Try Again."});
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "An error occurred during email verification"
+      });
     }
   }
+
+  // static async verifyEmail(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { token, email } = req.body;
+  //     console.log(req.body)
+
+  //     const verifyToken = await UserAccount.getUser(email)
+
+  //     if(verifyToken.verification_token != token)
+  //     {
+  //       res.status(401).json({error: "Sorry. Your Email Token has been Expired."})
+  //     }
+
+  //     const userId = await UserAccount.resetEmailToken(email)
+
+  //     const sessionToken = randomUUID();
+
+  //     const userLogin = await Auth.insertLogData(userId.user_id, sessionToken);
+
+  //     res.cookie("session", userLogin.session, {
+  //       httpOnly: true,
+  //       secure: true,
+  //       maxAge: 24 * 60 * 60 * 1000,
+  //     });
+
+  //     //res.redirect(`myapp://verify?token=${token}&email=${email}`)
+  //     res.status(200).json({message: "Successfully Verified Email.", user_id: userId.user_id, session: sessionToken})
+  //   } catch (error) {
+  //     console.error("Error in verifyEmail:", error instanceof Error ? error.message : "Internal Server Error");
+  //     res.status(500).json({error: "An Error Occured while Verifying Email. Please Try Again."});
+  //   }
+  // }
 
   // static async createTasker(req: Request, res: Response): Promise<void> {
   //   try {
@@ -253,7 +324,7 @@ class UserAccountController {
     }
   }
 
-  static async getUserData(req: Request, res: Response): Promise<void> {
+  static async getUserData(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.id;
       console.log("Retrieving User Data for..." + userID);
@@ -262,11 +333,11 @@ class UserAccountController {
 
       if (userData.user_role === "Client") {
         const clientData = await UserAccount.showClient(userID);
-        console.log(clientData);
+        console.log("Your role is: " + clientData);
         res.status(200).json({ user: userData, client: clientData });
       } else if (userData.user_role === "Tasker") {
         const taskerData = await UserAccount.showTasker(userID);
-        console.log(taskerData);
+        console.log("Your role is: " + taskerData);
         res.status(200).json({ user: userData, tasker: taskerData });
       }
     } catch (error) {
