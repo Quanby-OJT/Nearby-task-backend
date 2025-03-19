@@ -91,6 +91,7 @@ class ConversationController {
         console.log("Retrieving Messages for Task Taken ID of: ", task_taken_id)
 
         const {data, error} = await supabase.from("conversation_history").select("conversation, user_id").eq("task_taken_id", task_taken_id)
+        console.log(data, error)
         if(error){
             console.error(error.message)
             res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})

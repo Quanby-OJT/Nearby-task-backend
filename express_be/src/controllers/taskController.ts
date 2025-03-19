@@ -176,6 +176,46 @@ class TaskController {
       });
     }
   }
+
+  static async updateTaskStatusforTasker(req: Request, res: Response): Promise<void> {
+    try {
+      const { task_taken_id, status } = req.body;
+      const { data, error } = await supabase
+        .from("task_taken")
+        .update({ task_status: status })
+        .eq("task_id", task_taken_id);
+
+      if (error) {
+        console.error("Error while updating Task Status", error.message, error.stack);
+        res.status(500).json({ error: "An Error Occurred while updating the task status." });
+      } else {
+        res.status(200).json({ message: "Task status updated successfully", task: data });
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Error Unknown.")
+      res.status(500).json({error: "Internal Server error",});
+    }
+  }
+
+  static async updateTaskStatusforClient(req: Request, res: Response): Promise<void> {
+    try {
+      const { task_id, status } = req.body;
+      const { data, error } = await supabase
+        .from("post_task")
+        .update({ status })
+        .eq("task_id", task_id);
+
+      if (error) {
+        console.error("Error while updating Task Status", error.message, error.stack);
+        res.status(500).json({ error: "An Error Occurred while updating the task status." });
+      } else {
+        res.status(200).json({ message: "Task status updated successfully", task: data });
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Error Unknown.")
+      res.status(500).json({error: "Internal Server error",});
+    }
+  }
 }
 
 export default TaskController;
