@@ -1,4 +1,5 @@
-import { supabase } from "./../config/configuration";
+
+import { mailer, supabase } from "../config/configuration";
 import { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
@@ -6,6 +7,8 @@ import taskerModel from "../models/taskerModel";
 import { Auth } from "../models/authenticationModel";
 import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
+import { mailer, supabase } from "../config/configuration";
+import crypto from "crypto";
 
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
@@ -14,10 +17,15 @@ class UserAccountController {
         first_name,
         middle_name,
         last_name,
+        birthday,
         email,
         password,
-        user_role
+        acc_status,
+        user_role,
       } = req.body;
+      const imageFile = req.file;
+      console.log("Received insert account data:", req.body);
+
 
       // Check if the email exists
       const { data: existingUser, error: findError } = await supabase
@@ -25,6 +33,8 @@ class UserAccountController {
         .select("email")
         .eq("email", email)
         .maybeSingle();
+      
+      console.log(existingUser, findError)
 
       if (existingUser) {
         return res.status(400).json({ errors: "Email already exists" });
@@ -33,7 +43,6 @@ class UserAccountController {
       if (findError && findError.message !== "No rows found") {
         throw new Error(findError.message);
       }
-
       // Generate verification token
       const verificationToken = randomUUID();
       
@@ -41,6 +50,35 @@ class UserAccountController {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // Insert user into Supabase database
+      
+
+      // Send verification email
+      const transporter = nodemailer.createTransport({
+        // Configure your email service here
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
+      console.log(verificationLink);
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Verify your email for NearbyTask',
+        html: `
+          <h1>Welcome to NearbyTask!</h1>
+          <p>Please click the link below to verify your email address:</p>
+          <a href="${verificationLink}">Verify Email</a>
+          <p>If you didn't create an account, please ignore this email.</p>
+        `
+
+
+      });
+      
       const { data: newUser, error: insertError } = await supabase
         .from("user")
         .insert([{
@@ -76,31 +114,29 @@ class UserAccountController {
       if(errorInsert) {
         throw new Error(errorInsert.message);
       }
+    
+      // let imageUrl = "";
+      // if (imageFile) {
+      //   // Upload image to Supabase Storage (crud_bucket)
+      //   const { data, error } = await supabase.storage
+      //     .from("crud_bucket")
+      //     .upload(
+      //       `users/${Date.now()}_${imageFile.originalname}`,
+      //       imageFile.buffer,
+      //       {
+      //         cacheControl: "3600",
+      //         upsert: false,
+      //       }
+      //     );
 
-      // Send verification email
-      const transporter = nodemailer.createTransport({
-        // Configure your email service here
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        }
-      });
+      //   if (error) throw new Error(error.message);
 
-      const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
-      console.log(verificationLink);
+      //   const { data: publicUrlData } = supabase.storage
+      //     .from("crud_bucket")
+      //     .getPublicUrl(data.path);
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'Verify your email for NearbyTask',
-        html: `
-          <h1>Welcome to NearbyTask!</h1>
-          <p>Please click the link below to verify your email address:</p>
-          <a href="${verificationLink}">Verify Email</a>
-          <p>If you didn't create an account, please ignore this email.</p>
-        `
-      });
+      //   imageUrl = publicUrlData.publicUrl;
+      // }
 
       res.status(201).json({
         message: "Registration successful! Please check your email to verify your account.",
@@ -163,50 +199,112 @@ class UserAccountController {
     }
   }
 
-  static async createTasker(req: Request, res: Response): Promise<void> {
+  static async verifyEmail(req: Request, res: Response): Promise<void> {
     try {
-      console.log("Received insert data:", req.body);
-      const {
-        gender,
-        contact_number,
-        address,
-        birthdate,
-        profile_picture,
-        user_id,
-        bio,
-        specialization,
-        skills,
-        availability,
-        wage_per_hour,
-        tesda_documents_link,
-        social_media_links,
-      } = req.body;
+      const { token, email } = req.body;
+      console.log(req.body)
 
-      const newTask = await taskerModel.createTasker(
-        gender,
-        contact_number,
-        address,
-        birthdate,
-        profile_picture,
-        user_id,
-        bio,
-        specialization,
-        skills,
-        availability,
-        wage_per_hour,
-        tesda_documents_link,
-        social_media_links
-      );
+      const verifyToken = await UserAccount.getUser(email)
 
-      res
-        .status(201)
-        .json({ message: "Task created successfully", task: newTask });
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+      if(verifyToken.verification_token != token)
+      {
+        res.status(401).json({error: "Sorry. Your Email Token has been Expired."})
+      }
+
+      const userId = await UserAccount.resetEmailToken(email)
+
+      const sessionToken = randomUUID();
+
+      const userLogin = await Auth.insertLogData(userId.user_id, sessionToken);
+
+      res.cookie("session", userLogin.session, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 24 * 60 * 60 * 1000,
       });
+
+      //res.redirect(`myapp://verify?token=${token}&email=${email}`)
+      res.status(200).json({message: "Successfully Verified Email.", user_id: userId.user_id, session: sessionToken})
+    } catch (error) {
+      console.error("Error in verifyEmail:", error instanceof Error ? error.message : "Internal Server Error");
+      res.status(500).json({error: "An Error Occured while Verifying Email. Please Try Again."});
     }
   }
+
+  // static async createTasker(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     console.log("Received insert data:", req.body);
+  //     const {
+  //       gender,
+  //       contact_number,
+  //       address,
+  //       birthdate,
+  //       profile_picture,
+  //       user_id,
+  //       bio,
+  //       specialization,
+  //       skills,
+  //       availability,
+  //       wage_per_hour,
+  //       tesda_documents_link,
+  //       social_media_links,
+  //     } = req.body;
+
+  //     const { data: specializations, error: specialization_error } = await supabase.from("tasker_specialization").select("specialization_id").eq("specialization", specialization).single();
+  //     if (specialization_error) throw new Error(specialization_error.message);
+
+  //     const { data: tesda_documents, error: tesda_error} = await supabase.from("tesda_documents").select("tesda_documents_id").eq("tesda_documents_link", tesda_documents_link).single();
+      
+  //     if (tesda_error) throw new Error(tesda_error.message);
+  //     if (!tesda_documents) throw new Error("Tesda documents not found");
+
+  //     await taskerModel.createTasker({
+  //       gender,
+  //       tasker_is_group: false,
+  //       contact_number,
+  //       address,
+  //       birthdate,
+  //       profile_picture,
+  //       user_id,
+  //       bio,
+  //       specialization_id: specializations.specialization_id,
+  //       skills,
+  //       availability,
+  //       wage_per_hour,
+  //       tesda_documents_id: tesda_documents.tesda_documents_id,
+  //       social_media_links
+  //     });
+
+  //     res
+  //       .status(201)
+  //       .json({ taskerStatus: true});
+  //   } catch (error) {
+  //     console.error("Error in createTasker:", error instanceof Error ? error.message : "Internal Server Error");
+  //     res.status(500).json({error: "An Error Occured while Creating Tasker. Please Try Again."});
+  //   }
+  // }
+
+  // static async deleteUser(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { verificationToken } = req.body;
+
+  //     const { data, error } = await supabase
+  //       .from("user")
+  //       .select("email")
+  //       .eq("verification_token", verificationToken)
+  //       .maybeSingle();
+
+  //     if (error) {
+  //       return res.status(500).json({ error: error.message });
+  //     }
+
+  //     return res.status(200).json({ message: "Email Successfully Verified. You may now proceed to creating Your New Profile." });
+  //   } catch (error) {
+  //     res.status(500).json({
+  //       error: error instanceof Error ? error.message : "Unknown error",
+  //     });
+  //   }
+  // }
 
   static async deleteUser(req: Request, res: Response): Promise<void> {
     try {

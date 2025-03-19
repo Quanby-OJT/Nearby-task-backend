@@ -87,7 +87,7 @@ class Auth {
   static async authenticateLogin(email: string) {
     const { data, error } = await supabase
       .from("user")
-      .select("user_id, email, hashed_password, user_role")
+      .select("user_id, email, hashed_password")
       .eq("email", email)
       .in("user_role", ["Tasker", "Client"])
       .in("acc_status", ["Active", "Pending", "Review"])
@@ -164,6 +164,8 @@ class Auth {
       .select("two_fa_code, two_fa_code_expires_at")
       .eq("user_id", user_id)
       .maybeSingle(); // Allows 0 or 1 row without error
+
+      console.log(data, error)
 
     if (error) {
       //console.error("Error authenticating OTP:", error.message); // Add logging
@@ -263,4 +265,4 @@ class Auth {
   }
 }
 
-export { User, Auth };
+export { Auth };

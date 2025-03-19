@@ -3,11 +3,21 @@ import {body} from "express-validator"
 export const userValidation = [
     body("first_name").notEmpty().isString().withMessage("Please enter your first name"),
     body("last_name").notEmpty().isString().withMessage("Please enter your last name"),
-    body("email").notEmpty().isEmail().withMessage("Please enter a valid email address"),
-    body("password").notEmpty().isLength({ min: 6 }).withMessage("Password must be at least 6 characters long")
-        .matches(/[A-Z]/).withMessage("Password must contain at least one uppercase letter")
-        .matches(/[0-9]/).withMessage("Password must contain at least one number"),
+        body("password")
+        .notEmpty().withMessage("Please enter your password").bail()
+        .isStrongPassword({
+            minLength: 8,
+            minLowercase: 1,
+            minUppercase: 1,
+            minNumbers: 1,
+            minSymbols: 1
+        }).withMessage("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one symbol")
     body("user_role").notEmpty().isIn(['Client', 'Tasker']).withMessage("Invalid user role")
+
+    body("email")
+        .notEmpty().withMessage("Email is required").bail()
+        .isEmail().withMessage("Please enter a valid email address")
+        .normalizeEmail(),
 ]
 
 export const taskerValidation = [
