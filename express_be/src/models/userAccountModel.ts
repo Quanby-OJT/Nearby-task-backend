@@ -1,3 +1,4 @@
+import { console } from "inspector";
 import { supabase } from "../config/configuration";
 
 class UserAccount {
@@ -10,6 +11,7 @@ class UserAccount {
     first_name: string;
     middle_name: string;
     last_name: string;
+    address: string;
     birthdate: Date;
     email: string;
     image_link?: string;
@@ -66,45 +68,72 @@ class UserAccount {
     return data;
   }
 
-  // static async completeRegisterTasker(userData: {
-  //   gender: string;
-  //   middle_name: string;
-  //   last_name: string;
-  //   //birthdate: Date;
-  //   email: string;
-  //   image_link?: string;
-  //   hashed_password: string;
-  //   acc_status: string;
-  //   user_role: string;
-  // }) {
-  //   const { data, error } = await supabase.from("user").insert([userData]);
+  static async showUser(user_id: string) {
+    const { data, error } = await supabase
+      .from("user")
+      .select(
+        "first_name, middle_name, last_name, image_link, email, birthdate, user_role"
+      )
+      .eq("user_id", user_id)
+      .single();
 
-  //   if (error) throw new Error(error.message);
-  //   return data;
-  // }
-
-  static async  showUser(user_id: string){
-    const {data, error} = await supabase.from("user").select("first_name, middle_name, last_name, image_link, email, birthdate, user_role").eq("user_id", user_id).single()
-
-    if(error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
     return data;
   }
 
   static async showClient(user_id: string) {
-    const {data, error} = await supabase.from("clients").select("preferences, client_address").eq("user_id", user_id).single();
-    console.log(data, error)
+    const { data, error } = await supabase
+      .from("clients")
+      .select("preferences, client_address")
+      .eq("user_id", user_id)
+      .single();
+    console.log(data, error);
 
-    if(error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
     return data;
   }
 
-  static async showTasker(user_id: string){
-    const {data, error} = await supabase.from("tasker").select("bio, tasker_specialization(specialization), skills, availability, wage_per_hour, tasker_documents(tesda_document_link), social_media_links, address").eq('user_id', user_id).single()
-    console.log(data, error)
+  static async showTasker(user_id: string) {
+    const { data, error } = await supabase
+      .from("tasker")
+      .select(
+        "bio, tasker_specialization(specialization), skills, availability, wage_per_hour, tasker_documents(tesda_document_link), social_media_links, address"
+      )
+      .eq("user_id", user_id)
+      .single();
+    console.log(data, error);
 
-    if(error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
+
+    return data;
+  }
+
+  static async getUser(email: string) {
+    console.log("This is from email verification: " + email);
+
+    const { data, error } = await supabase
+      .from("user")
+      .select("verification_token")
+      .eq("email", email)
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async resetEmailToken(email: string) {
+    const { data, error } = await supabase
+      .from("user")
+      .update({ verification_token: null, emailVerified: true })
+      .eq("email", email)
+      .select("user_id")
+      .single();
+
+    console.log("Verified email: " + data);
+
+    if (error) throw new Error(error.message);
 
     return data;
   }

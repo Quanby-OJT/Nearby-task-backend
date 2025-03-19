@@ -6,7 +6,8 @@ class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received insert data:", req.body);
-      const {
+  
+      const newTask = await taskModel.createNewTask(
         client_id,
         task_title,
         specialization,

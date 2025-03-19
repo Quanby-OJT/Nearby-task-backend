@@ -41,14 +41,6 @@ router.post(
 
 
 router.post("/verify", UserAccountController.verifyEmail)
-//router.post("verify-via-web", UserAccountController.verifyEmailViaWeb)
-
-// router.get("/check-session", (req, res) => {
-//   res.json({ sessionUser: req.session || "No session found" });
-// });
-
-
-
 router.use(isAuthenticated);
 
 /**
@@ -77,6 +69,15 @@ router.post(
   ProfileController.TaskerController.createTasker
 );
 
+router.post("/verify", UserAccountController.verifyEmail);
+
+router.get("/check-session", (req, res) => {
+  res.json({ sessionUser: req.session || "No session found" });
+});
+
+router.post("/logout", AuthenticationController.logout);
+
+router.use(isAuthenticated);
 
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
