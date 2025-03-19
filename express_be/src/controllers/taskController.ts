@@ -90,7 +90,7 @@ class TaskController {
         return;
       }
 
-      res.status(200).json(task);
+      res.status(200).json({tasks: task});
     } catch (error) {
       console.error("Server error:", error);
       res.status(500).json({

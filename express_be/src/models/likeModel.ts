@@ -7,7 +7,7 @@ class Like {
    * @param likeData 
    * @returns 
    */
-  async create(likeData: { user_id: number; job_post_id: number; created_at: string; }) {
+  async create(likeData: { user_id: number; job_post_id: number; created_at: string;  like: boolean }) {
     console.log("Creating like with data:", likeData); // Add logging
 
     const { data, error } = await supabase

@@ -38,7 +38,10 @@ class ConversationController {
             .from("task_taken")
             .select(`
                 task_taken_id,
-                post_task!task_id (task_title),
+                post_task!task_id (
+                    task_id,
+                    task_title
+                ),
                 clients!client_id (
                     user!user_id (first_name, middle_name, last_name)
                 ),
@@ -59,7 +62,10 @@ class ConversationController {
         }else if(role === "Client"){
             const { data, error } = await supabase.from("task_taken").select(`
                 task_taken_id,
-                post_task!task_id (task_title),
+                post_task!task_id (
+                    task_id,
+                    task_title
+                ),
                 clients!client_id (
                     user!user_id (first_name, middle_name, last_name)
                 ),
