@@ -1,13 +1,14 @@
 import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
+import { error } from "console";
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received insert data:", req.body);
   
-      const newTask = await taskModel.createNewTask(
+      const {
         client_id,
         task_title,
         specialization,
@@ -62,6 +63,7 @@ class TaskController {
       });
     }
   }
+
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
@@ -158,6 +160,7 @@ class TaskController {
     }
   }
 
+
   static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received request to get all specializations");
@@ -177,6 +180,11 @@ class TaskController {
       });
     }
   }
+
+
+
+
 }
+
 
 export default TaskController;

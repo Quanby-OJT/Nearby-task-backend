@@ -1,14 +1,11 @@
 
-import { mailer, supabase } from "../config/configuration";
+import { supabase } from "../config/configuration";
 import { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
-import taskerModel from "../models/taskerModel";
 import { Auth } from "../models/authenticationModel";
 import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
-import { mailer, supabase } from "../config/configuration";
-import crypto from "crypto";
 
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
@@ -199,37 +196,37 @@ class UserAccountController {
     }
   }
 
-  static async verifyEmail(req: Request, res: Response): Promise<void> {
-    try {
-      const { token, email } = req.body;
-      console.log(req.body)
+  // static async verifyEmail(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { token, email } = req.body;
+  //     console.log(req.body)
 
-      const verifyToken = await UserAccount.getUser(email)
+  //     const verifyToken = await UserAccount.getUser(email)
 
-      if(verifyToken.verification_token != token)
-      {
-        res.status(401).json({error: "Sorry. Your Email Token has been Expired."})
-      }
+  //     if(verifyToken.verification_token != token)
+  //     {
+  //       res.status(401).json({error: "Sorry. Your Email Token has been Expired."})
+  //     }
 
-      const userId = await UserAccount.resetEmailToken(email)
+  //     const userId = await UserAccount.resetEmailToken(email)
 
-      const sessionToken = randomUUID();
+  //     const sessionToken = randomUUID();
 
-      const userLogin = await Auth.insertLogData(userId.user_id, sessionToken);
+  //     const userLogin = await Auth.insertLogData(userId.user_id, sessionToken);
 
-      res.cookie("session", userLogin.session, {
-        httpOnly: true,
-        secure: true,
-        maxAge: 24 * 60 * 60 * 1000,
-      });
+  //     res.cookie("session", userLogin.session, {
+  //       httpOnly: true,
+  //       secure: true,
+  //       maxAge: 24 * 60 * 60 * 1000,
+  //     });
 
-      //res.redirect(`myapp://verify?token=${token}&email=${email}`)
-      res.status(200).json({message: "Successfully Verified Email.", user_id: userId.user_id, session: sessionToken})
-    } catch (error) {
-      console.error("Error in verifyEmail:", error instanceof Error ? error.message : "Internal Server Error");
-      res.status(500).json({error: "An Error Occured while Verifying Email. Please Try Again."});
-    }
-  }
+  //     //res.redirect(`myapp://verify?token=${token}&email=${email}`)
+  //     res.status(200).json({message: "Successfully Verified Email.", user_id: userId.user_id, session: sessionToken})
+  //   } catch (error) {
+  //     console.error("Error in verifyEmail:", error instanceof Error ? error.message : "Internal Server Error");
+  //     res.status(500).json({error: "An Error Occured while Verifying Email. Please Try Again."});
+  //   }
+  // }
 
   // static async createTasker(req: Request, res: Response): Promise<void> {
   //   try {

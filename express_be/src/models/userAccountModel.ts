@@ -1,4 +1,3 @@
-import { console } from "inspector";
 import { supabase } from "../config/configuration";
 
 class UserAccount {
@@ -46,7 +45,7 @@ class UserAccount {
     .from("user")
     .update({
       verification_token: null,
-      emailVerified: true
+      emailVerified: true,
     })
     .eq("email", email)
     .select("user_id")
@@ -110,33 +109,6 @@ class UserAccount {
     return data;
   }
 
-  static async getUser(email: string) {
-    console.log("This is from email verification: " + email);
-
-    const { data, error } = await supabase
-      .from("user")
-      .select("verification_token")
-      .eq("email", email)
-      .single();
-
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
-  static async resetEmailToken(email: string) {
-    const { data, error } = await supabase
-      .from("user")
-      .update({ verification_token: null, emailVerified: true })
-      .eq("email", email)
-      .select("user_id")
-      .single();
-
-    console.log("Verified email: " + data);
-
-    if (error) throw new Error(error.message);
-
-    return data;
-  }
 }
 
 export { UserAccount };

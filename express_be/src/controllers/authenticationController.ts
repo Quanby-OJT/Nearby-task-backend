@@ -3,8 +3,7 @@ import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
 import { mailer } from "../config/configuration";
-import { supabase } from "../config/configuration";
-import session from "express-session";
+import { supabase } from "../config/configuration"
 import { randomUUID } from "crypto";
 declare module "express-session" {
   interface SessionData {
@@ -13,17 +12,16 @@ declare module "express-session" {
 }
 
 class AuthenticationController {
-  static async loginAuthentication(req: Request, res: Response): Promise<void> {
+  static async loginAuthentication(req: Request, res: Response): Promise<any> {
     try {
       const { email, password } = req.body;
       const verifyLogin = await Auth.authenticateLogin(email);
 
       if (!verifyLogin) {
-        res.status(404).json({
+        return res.status(404).json({
           error:
             "Sorry, your email does not exist. Maybe you can sign up to find your clients/taskers.",
         });
-        return;
       }
 
       const isPasswordValid = await bcrypt.compare(
@@ -31,10 +29,9 @@ class AuthenticationController {
         verifyLogin.hashed_password
       );
       if (!isPasswordValid) {
-        res
+        return res
           .status(414)
           .json({ error: "Password is incorrect. Please try again." });
-        return;
       }
 
       const otp = generateOTP.generate(6, {
@@ -51,17 +48,17 @@ class AuthenticationController {
         two_fa_code: otp.toString(),
       });
 
-      res.status(200).json({ user_id: verifyLogin.user_id });
+      return res.status(200).json({ user_id: verifyLogin.user_id });
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         error:
           "An error occurred while logging in. If the issue persists, contact the Administrator.",
       });
     }
   }
 
-  static async generateOTP(req: Request, res: Response): Promise<void> {
+  static async generateOTP(req: Request, res: Response): Promise<any> {
     try {
       const { user_id } = req.body;
       console.log(user_id);
@@ -75,19 +72,19 @@ class AuthenticationController {
 
       await Auth.createOTP({ user_id: user_id, two_fa_code: otp });
 
-      res.status(200).json({
+      return res.status(200).json({
         message: "Successfully Regenerated OTP. Please Check Your Email.",
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         error:
           "An Error Occurred while regenerating OTP. Please Try Again. If Issue persists, contact the Administrator.",
       });
     }
   }
 
-  static async otpAuthentication(req: Request, res: Response): Promise<void> {
+  static async otpAuthentication(req: Request, res: Response): Promise<any> {
     try {
       const { user_id, otp } = req.body;
       const verifyOtp = await Auth.authenticateOTP(user_id);
@@ -95,20 +92,17 @@ class AuthenticationController {
       console.log("User Id: " + user_id + " OTP :" + otp);
 
       if (verifyOtp == null) {
-        res.status(401).json({ error: "Please Login again" });
-        return;
+        return res.status(401).json({ error: "Please Login again" });
       }
 
       if (verifyOtp.two_fa_code !== otp) {
-        res.status(401).json({ error: "Invalid OTP. Please try again." });
-        return;
+        return res.status(401).json({ error: "Invalid OTP. Please try again." });
       }
 
       if (Date.parse(verifyOtp.two_fa_code_expires_at) <= Date.now()) {
-        res
+        return res
           .status(401)
           .json({ error: "Your OTP has expired. Please Sign In again." });
-        return;
       }
 
       req.session.userId = user_id;
@@ -132,7 +126,7 @@ class AuthenticationController {
                   console.error("Session save error:", err);
               }
               //console.log("Session after save:", req.session);
-              res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session: session_id});
+              return res.status(200).json({ user_id: user_id, user_role: userRole.user_role, session: session_id});
           });
       });
 
@@ -145,46 +139,41 @@ class AuthenticationController {
 
       if (userError) {
         console.error("Error fetching user role:", userError.message);
-        res.status(500).json({ error: "Failed to fetch user role" });
-        return;
+        return res.status(500).json({ error: "Failed to fetch user role" });
       }
 
       console.log("Data: ", {
         user_id: user_id,
         user_role: user.user_role,
-        session: userLogin.session,
+        session: sessionToken,
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         user_id: user_id,
         user_role: user.user_role,
         session: sessionToken,
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         error: "An error occurred while verifying OTP. Please try again.",
       });
     }
   }
 
-  static async resetOTP(req: Request, res: Response): Promise<void> {
+  static async resetOTP(req: Request, res: Response): Promise<any> {
     try {
       const { user_id } = req.body;
 
       if (!user_id) {
-        res.status(400).json({ error: "User ID is required" });
-        return;
+        return res.status(400).json({ error: "User ID is required" });
       }
 
       // Assuming you have a method to get user by ID that returns user with email
       const user = await Auth.getUserById(user_id);
 
-      if (!user || !user.email) {
-        res
-          .status(404)
-          .json({ error: "User not found or email not available" });
-        return;
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
       }
 
       // Generate a new OTP
@@ -225,16 +214,16 @@ class AuthenticationController {
         html: otpHtml,
       });
 
-      res.status(200).json({ message: "OTP reset and sent successfully" });
+      return res.status(200).json({ message: "OTP reset and sent successfully" });
     } catch (error) {
       console.error("Error in resetOTP:", error);
-      res.status(500).json({
+      return res.status(500).json({
         error: "An error occurred while resetting OTP. Please try again.",
       });
     }
   }
 
-  static async logout(req: Request, res: Response): Promise<void> {
+  static async logout(req: Request, res: Response): Promise<any> {
     const { user_id, session } = req.body;
 
     Auth.logout(user_id, session);
@@ -242,18 +231,17 @@ class AuthenticationController {
     if (req.session.id) {
       req.session.destroy((error) => {
         if (error) {
-          res.status(500).json({
+          return res.status(500).json({
             error: "An error occurred while logging out. Please try again.",
           });
         }
 
         res.clearCookie("cookie.sid");
 
-        res.status(200).json({ message: "Successfully logged out." });
+        return res.status(200).json({ message: "Successfully logged out." });
       });
     } else {
-      res.status(400).json({ error: "User is not logged in." });
-      return;
+      return res.status(400).json({ error: "User is not logged in." });
     }
   }
 }

@@ -41,7 +41,7 @@ router.post(
 
 
 router.post("/verify", UserAccountController.verifyEmail)
-router.use(isAuthenticated);
+// router.use(isAuthenticated);
 
 /**
  * Application Routes (if the user is authenticated). All routes beyond this point had a middleware
@@ -77,7 +77,7 @@ router.get("/check-session", (req, res) => {
 
 router.post("/logout", AuthenticationController.logout);
 
-router.use(isAuthenticated);
+// router.use(isAuthenticated);
 
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
