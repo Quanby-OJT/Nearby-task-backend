@@ -25,7 +25,7 @@ class UserAccountController {
         user_role,
       } = req.body;
       const imageFile = req.file;
-      console.log("Received insert data:", req.body);
+      console.log("Received insert account data:", req.body);
 
       // check if the email exists
       const { data: existingUser, error: findError } = await supabase
@@ -33,6 +33,8 @@ class UserAccountController {
         .select("email")
         .eq("email", email)
         .maybeSingle();
+      
+      console.log(existingUser, findError)
 
       if (existingUser) {
         return res.status(400).json({ errors: "Email already exists" });
@@ -45,30 +47,32 @@ class UserAccountController {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      let imageUrl = "";
-      if (imageFile) {
-        // Upload image to Supabase Storage (crud_bucket)
-        const { data, error } = await supabase.storage
-          .from("crud_bucket")
-          .upload(
-            `users/${Date.now()}_${imageFile.originalname}`,
-            imageFile.buffer,
-            {
-              cacheControl: "3600",
-              upsert: false,
-            }
-          );
+      // let imageUrl = "";
+      // if (imageFile) {
+      //   // Upload image to Supabase Storage (crud_bucket)
+      //   const { data, error } = await supabase.storage
+      //     .from("crud_bucket")
+      //     .upload(
+      //       `users/${Date.now()}_${imageFile.originalname}`,
+      //       imageFile.buffer,
+      //       {
+      //         cacheControl: "3600",
+      //         upsert: false,
+      //       }
+      //     );
 
-        if (error) throw new Error(error.message);
+      //   if (error) throw new Error(error.message);
 
-        const { data: publicUrlData } = supabase.storage
-          .from("crud_bucket")
-          .getPublicUrl(data.path);
+      //   const { data: publicUrlData } = supabase.storage
+      //     .from("crud_bucket")
+      //     .getPublicUrl(data.path);
 
-        imageUrl = publicUrlData.publicUrl;
-      }
+      //   imageUrl = publicUrlData.publicUrl;
+      // }
 
       const unique_token = crypto.randomBytes(32).toString("hex"); 
+      const verificationLink = `myapp://verify?token=${unique_token}&email=${email}`
+      console.log(verificationLink)
 
       // Insert user into Supabase database
       await UserAccount.create({
@@ -77,37 +81,39 @@ class UserAccountController {
         last_name,
         birthdate: birthday,
         email,
-        image_link: imageUrl,
         hashed_password: hashedPassword,
         acc_status,
         user_role,
         verification_token: unique_token,
       });
 
-      const verificationLink = `myapp://verify?token=${unique_token}&email=${email}`
-      const webLink = `http://localhost:5000/connect/verify-web?token=${unique_token}&email=${email}`
+
+      //const webLink = `http://localhost:5000/connect/verify?token=${unique_token}&email=${email}`
 
       
-      const otpHtml = `
-        <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-          <h2 class="text-xl font-bold text-gray-800">You are ONE SWIPE away from getting a new Job.</h2>
-          <p class="text-gray-700 mt-4">Hello. I'm Juan, and I am so excited to introduce you to the world of NearByTask - getting a new task/tasker is as easy as right-swiping away your favorite tasks. If you are a client, you can swipe away your favorite tasker. To Start, we need to verify your email to ensure that you are a real human.</p>
-          <div class="mt-4 text-center">
-            Click <a href=${verificationLink} class="text-3xl font-bold text-blue-600">here</a> to verify your email. Or if you can't click the link, you can use the alternative: <a href="${webLink}">Alternative Link.</a>
-          </div><br>
-          <p class="text-red-500 mt-4">See you on the other side.</p>
-          <p class="text-gray-500 mt-6 text-sm">Best Regards:</p>
-          <p class="text-gray-500 mt-6 text-sm">Juan</p>
-        </div>`;
+      /**
+       * This is to save some space on Mailtrap.
+       */
+      // const otpHtml = `
+      //   <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+      //     <h2 class="text-xl font-bold text-gray-800">You are ONE SWIPE away from getting a new Job.</h2>
+      //     <p class="text-gray-700 mt-4">Hello. I'm Juan, and I am so excited to introduce you to the world of NearByTask - getting a new task/tasker is as easy as right-swiping away your favorite tasks. If you are a client, you can swipe away your favorite tasker. To Start, we need to verify your email to ensure that you are a real human.</p>
+      //     <div class="mt-4 text-center">
+      //       Click <a href=${verificationLink} class="text-3xl font-bold text-blue-600">here</a> to verify your email. Or if you can't click the link, you can use the alternative: <a href="${webLink}">Alternative Link.</a>
+      //     </div><br>
+      //     <p class="text-red-500 mt-4">See you on the other side.</p>
+      //     <p class="text-gray-500 mt-6 text-sm">Best Regards:</p>
+      //     <p class="text-gray-500 mt-6 text-sm">Juan</p>
+      //   </div>`;
 
-      const sent = await mailer.sendMail({
-        from: "noreply@nearbytask.com",
-        to: email,
-        subject: "Welcome to NearByTask - ONE SWIPE away from getting a new Job",
-        html: otpHtml,
-      });
+      // const sent = await mailer.sendMail({
+      //   from: "noreply@nearbytask.com",
+      //   to: email,
+      //   subject: "Welcome to NearByTask - ONE SWIPE away from getting a new Job",
+      //   html: otpHtml,
+      // });
 
-      console.log(sent);
+      // console.log(sent);
 
       res.status(201).json({
         message: "Successfully Created a new Account. Please check your email for verification.",
