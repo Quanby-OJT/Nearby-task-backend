@@ -10,6 +10,7 @@ import TaskController from "../controllers/taskController";
 import { isAuthenticated } from "../middleware/authenticationMiddleware";
 import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
+import profileController from "../controllers/profileController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -98,6 +99,10 @@ router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
+
+//User CRUD
+router.put("user/client/:id", profileController.ClientController.updateClient);
+router.put("user/tasker/:id", profileController.TaskerController.updateTasker);
 router.post("/logout", AuthenticationController.logout);
 
 export default router;
