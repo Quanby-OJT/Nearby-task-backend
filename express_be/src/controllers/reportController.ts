@@ -1,27 +1,24 @@
-// reportController.ts
 import { Request, Response } from "express";
 import multer from "multer";
-import mime from "mime-types"; // Import mime-types library
+import mime from "mime-types"; 
 import reportModel from "../models/reportModel";
 import { supabase } from "../config/configuration";
 
-// Configure multer for file uploads
+
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5MB
-}).array("images[]", 5); // Expect an array of files under the key "images[]", max 5 files
+  limits: { fileSize: 5 * 1024 * 1024 }, 
+}).array("images[]", 5); 
 
 class ReportController {
   static async createReport(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received report data:", req.body);
 
-      // Extract data from the request
       const { reported_whom, reason } = req.body;
       const files = req.files as Express.Multer.File[];
 
-      // Parse reported_whom if provided
       let reportedWhomId: number | undefined;
       if (reported_whom) {
         reportedWhomId = parseInt(reported_whom, 10);
@@ -34,20 +31,18 @@ class ReportController {
         }
       }
 
-      // Upload images to Supabase Storage (bucket: "reports")
       let imageUrls: string[] = [];
       if (files && files.length > 0) {
         for (const file of files) {
-          const fileName = `${Date.now()}_${file.originalname}`; // Changed to match UserController format
-          // Determine the content type using mime-types based on the file extension
-          const contentType = mime.lookup(file.originalname) || "image/jpeg"; // Fallback to image/jpeg if unknown
+          const fileName = `${Date.now()}_${file.originalname}`; 
+          const contentType = mime.lookup(file.originalname) || "image/jpeg"; 
 
           const { data, error } = await supabase.storage
             .from("reports")
             .upload(fileName, file.buffer, {
-              contentType: contentType, // Explicitly set the content type
+              contentType: contentType, 
               cacheControl: "3600",
-              upsert: false, // Changed to match UserController
+              upsert: false,
             });
 
           if (error) {
@@ -59,7 +54,6 @@ class ReportController {
             return;
           }
 
-          // Get the public URL of the uploaded image using data.path
           const { data: publicUrlData } = supabase.storage
             .from("reports")
             .getPublicUrl(data.path);
@@ -70,11 +64,10 @@ class ReportController {
         }
       }
 
-      // Create the report(s) using the model
       const newReports = await reportModel.createReport(
-        undefined, // reported_by (no authentication for now)
-        reportedWhomId, // May be undefined if not provided
-        reason, // May be undefined if not provided
+        undefined,
+        reportedWhomId, 
+        reason,
         imageUrls.length > 0 ? imageUrls : undefined
       );
 

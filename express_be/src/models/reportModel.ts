@@ -1,16 +1,14 @@
-// reportModel.ts
 import { supabase } from "../config/configuration";
 
-// Define the Report interface based on the updated Supabase table structure
 interface Report {
-  report_id?: number; // Auto-incremented by Supabase
-  created_at?: string; // Set by Supabase
-  updated_at?: string; // Set by Supabase
-  reported_by?: number; // Foreign key (user who submitted the report), optional
-  reported_whom?: number; // Foreign key (user being reported), optional
-  reason?: string; // Description of the report, optional
-  status: boolean; // True for active, false for resolved
-  images?: string; // Changed from string[] to string (single URL)
+  report_id?: number; 
+  created_at?: string;
+  updated_at?: string; 
+  reported_by?: number; 
+  reported_whom?: number; 
+  reason?: string; 
+  status: boolean; 
+  images?: string; 
 }
 
 class ReportModel {
@@ -20,14 +18,13 @@ class ReportModel {
     reason: string | undefined,
     imageUrls?: string[]
   ): Promise<Report[]> {
-    // If there are no images, create a single report with no image
     if (!imageUrls || imageUrls.length === 0) {
       const reportData: Report = {
         reported_by,
         reported_whom,
         reason,
         status: true,
-        images: undefined, // No image
+        images: undefined, 
       };
 
       console.log("Creating report with data (no images):", reportData);
@@ -45,13 +42,12 @@ class ReportModel {
       return data;
     }
 
-    // Create one report row per image, with images as a single string
     const reportRows = imageUrls.map((imageUrl) => ({
       reported_by,
       reported_whom,
       reason,
       status: true,
-      images: imageUrl, // Store as a single string, not an array
+      images: imageUrl, 
     }));
 
     console.log("Creating report rows with data:", reportRows);
