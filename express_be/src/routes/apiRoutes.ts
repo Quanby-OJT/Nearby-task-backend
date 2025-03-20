@@ -70,6 +70,7 @@ router.post(
 );
 
 router.post("/verify", UserAccountController.verifyEmail);
+router.put("/update-client-user/:id", UserAccountController.updateUser);
 
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });

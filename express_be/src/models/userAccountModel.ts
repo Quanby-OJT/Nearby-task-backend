@@ -71,7 +71,7 @@ class UserAccount {
     const { data, error } = await supabase
       .from("user")
       .select(
-        "first_name, middle_name, last_name, image_link, email, birthdate, user_role"
+        "*"
       )
       .eq("user_id", user_id)
       .single();

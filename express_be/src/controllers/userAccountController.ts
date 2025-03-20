@@ -364,18 +364,21 @@ class UserAccountController {
 
   static async updateUser(req: Request, res: Response): Promise<any> {
     try {
-      const userId = Number(req.params.id);
+      const userId = Number(req.params.id); // Ensure ID is from params
       const {
         first_name,
         middle_name,
         last_name,
-        birthday,
         email,
-        acc_status,
         user_role,
+        contact,
+        gender,
+        birthdate,
+      
       } = req.body;
       const imageFile = req.file;
 
+      // Check if email already exists for another user
       const { data: existingUser, error: findError } = await supabase
         .from("user")
         .select("email, user_id")
@@ -383,66 +386,67 @@ class UserAccountController {
         .neq("user_id", userId)
         .maybeSingle();
 
+      if (findError && findError.message) {
+        return res.status(500).json({ error: findError.message });
+      }
+
       if (existingUser) {
         return res.status(400).json({ error: "Email already exists" });
       }
 
-      if (findError && findError.message !== "No rows found") {
-        throw new Error(findError.message);
-      }
-
       let imageUrl = "";
       if (imageFile) {
-        const { data, error } = await supabase.storage
+        const fileName = `users/${Date.now()}_${imageFile.originalname}`;
+        const { error } = await supabase.storage
           .from("crud_bucket")
-          .upload(
-            `users/${Date.now()}_${imageFile.originalname}`,
-            imageFile.buffer,
-            {
-              cacheControl: "3600",
-              upsert: false,
-            }
-          );
+          .upload(fileName, imageFile.buffer, {
+            cacheControl: "3600",
+            upsert: false,
+          });
 
-        if (error) throw new Error(error.message);
+        if (error) {
+          return res.status(500).json({ error: error.message });
+        }
 
         const { data: publicUrlData } = supabase.storage
           .from("crud_bucket")
-          .getPublicUrl(data.path);
+          .getPublicUrl(fileName);
 
-        imageUrl = publicUrlData.publicUrl;
+        imageUrl = publicUrlData?.publicUrl || "";
       }
 
       const updateData: Record<string, any> = {
         first_name,
         middle_name,
         last_name,
-        birthdate: birthday,
         email,
-        acc_status,
         user_role,
+        contact,
+        gender,
+        birthdate
       };
 
-      if (imageFile) {
+      if (imageUrl) {
         updateData.image_link = imageUrl;
       }
 
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("user")
         .update(updateData)
         .eq("user_id", userId);
 
-      if (error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(200).json({ message: "User updated successfully" });
+      if (updateError) {
+        return res.status(500).json({ error: updateError.message });
       }
+
+      return res.status(200).json({ message: "User updated successfully", user: updateData });
+
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+}
 
   static async getPaginationUsers(req: Request, res: Response): Promise<any> {
     try {
