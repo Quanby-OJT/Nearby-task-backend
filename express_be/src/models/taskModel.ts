@@ -17,7 +17,7 @@ class TaskModel {
     user_id?: number,
     work_type?: string 
   ) {
-    let statuses: string = "Pending";
+    let statuses: string = "Available";
     console.log(
       "Creating task with data:",
       client_id,
@@ -36,7 +36,6 @@ class TaskModel {
       statuses
     );
 
-    // Step 1: Check if the client_id exists in the clients table
     const { data: existingClient, error: clientError } = await supabase
       .from("clients")
       .select("client_id")

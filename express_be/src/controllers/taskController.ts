@@ -220,6 +220,42 @@ class TaskController {
       res.status(500).json({error: "Internal Server error",});
     }
   }
+
+      /**
+     * The contarct price set by the client will be sent first to Escrow and will be released to the Tasker once the task is completed.
+     * 
+     * 
+     * 
+     * How will it work, according to documentation?
+     * 
+     * 1. If the client and tasker come to the final contract price agreement and the tasker "Confirmed", the client will deposit the amount to Escrow.
+     * 2. As the tasker starts the task assigned, the client can monitor it.
+     * 3. Once the task is completed, the client will release the amount to the tasker.
+     * 4. If the tasker did not complete the task, the client can cancel the task and the amount will be returned to the client.
+     * 
+     * -Ces
+     */
+  static async depositTaskPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const { task_id, amount } = req.body;
+
+      
+      const { data, error } = await supabase
+        .from("escrow_payment_logs")
+        .update({ payment: amount })
+        .eq("task_id", task_id);
+
+      if (error) {
+        console.error("Error while updating Task Status", error.message, error.stack);
+        res.status(500).json({ error: "An Error Occurred while updating the task status." });
+      } else {
+        res.status(200).json({ message: "Task status updated successfully", task: data });
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Error Unknown.")
+      res.status(500).json({error: "Internal Server error",});
+    }
+  }
 }
 
 
