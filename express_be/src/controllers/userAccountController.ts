@@ -1,11 +1,12 @@
-
-import { supabase } from "../config/configuration";
+import { mailer, supabase } from "../config/configuration";
 import { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
+import taskerModel from "../models/taskerModel";
 import { Auth } from "../models/authenticationModel";
 import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
+import crypto from "crypto";
 
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {

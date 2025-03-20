@@ -10,7 +10,11 @@ router.get("/displayTask", TaskController.getAllTasks);
 
 router.get("/displayTask/:id", TaskController.getTaskById);
 
-router.put("/disableTask/:id", TaskController.disableTask);
+router.delete("/deleteTask/:id", TaskController.deleteTask);
+
+router.get("/getCreatedTaskByClient/:client_id", TaskController.getCreatedTaskByClient);
+
+router.put("/updateTask/:id", TaskController.updateTask);
 
 router.post("");
 
