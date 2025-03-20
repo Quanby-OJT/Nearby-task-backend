@@ -17,7 +17,7 @@ class TaskController {
         duration,
         num_of_days,
         urgency,
-        contact_price,
+        proposed_price,
         remarks,
         task_begin_date,
         user_id, 
@@ -34,9 +34,9 @@ class TaskController {
     }
 
     const parsedDuration = parseInt(duration as unknown as string);
-    const parsedContactPrice = parseFloat(contact_price as unknown as string);
+    const parsedContactPrice = parseFloat(proposed_price as unknown as string);
     if (isNaN(parsedDuration) || isNaN(parsedContactPrice)) {
-      res.status(400).json({ error: "Invalid duration or contact_price" });
+      res.status(400).json({ error: "Invalid duration or proposed_price" });
       return;
     }
 
