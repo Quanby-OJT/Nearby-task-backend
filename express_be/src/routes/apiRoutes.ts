@@ -99,4 +99,16 @@ router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
 router.post("/logout", AuthenticationController.logout);
 
+// New endpoint for updating user with both profile and ID images
+router.put(
+  "/update-user-with-images/:id",
+  upload.fields([
+    { name: "profileImage", maxCount: 1 },
+    { name: "idImage", maxCount: 1 }
+  ]),
+  UserAccountController.updateUserWithImages
+);
+
+router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
+
 export default router;
