@@ -55,7 +55,6 @@ router.post(
   clientValidation,
   upload.fields([
     { name: "image", maxCount: 1 },
-    { name: "document", maxCount: 1 }
   ]),
   ProfileController.ClientController.createClient
 );
@@ -101,8 +100,20 @@ router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
 
 //User CRUD
-router.put("user/client/:id", profileController.ClientController.updateClient);
-router.put("user/tasker/:id", profileController.TaskerController.updateTasker);
+router.put(
+  "user/client/:id", 
+  upload.fields([    
+    { name: "image", maxCount: 1 },
+  ]), 
+  profileController.ClientController.updateClient);
+router.put(
+  "user/tasker/:id", 
+  upload.fields([    
+    { name: "image", maxCount: 1 },
+    { name: "document", maxCount: 1 }
+  ]), 
+  profileController.TaskerController.updateTasker);
+
 router.post("/logout", AuthenticationController.logout);
 
 export default router;
