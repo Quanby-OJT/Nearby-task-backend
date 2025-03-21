@@ -252,16 +252,36 @@ class Auth {
   }
 
   static async logout(user_id: number, session_key: string) {
-    const loggedOutAt = new Date().toISOString(); // Converts timestamp to a proper string
+    
+try {
+  const loggedOutAt = new Date().toISOString();
 
-    const { data, error } = await supabase
-      .from("user_logs")
-      .update({ logged_out: loggedOutAt })
-      .eq("user_id", user_id)
-      .eq("session", session_key);
-    console.log("Logged Data:", data, "Error:", error);
-    if (error) throw new Error(error.message);
-    return data;
+    const { error: logError } = await supabase
+    .from("user_logs")
+    .update({ logged_out: loggedOutAt })
+    .eq("user_id", user_id)
+    .eq("session", session_key);
+
+  if (logError) {
+    throw new Error(`Error updating user_logs: ${logError.message}`);
+  }
+
+  // Update user status
+  const { error: userError } = await supabase
+  .from("user")
+  .update({ status: false })
+  .eq("user_id", user_id);
+
+if (userError) {
+  throw new Error(`Error updating user status: ${userError.message}`);
+}
+
+return { success: true, message: "User logged out successfully" };
+} catch (error:any) {
+  console.error("Logout Error:", error);
+    return { success: false, message: error.message };
+}
+     
   }
 }
 

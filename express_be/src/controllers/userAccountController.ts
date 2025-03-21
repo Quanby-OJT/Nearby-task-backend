@@ -111,28 +111,6 @@ class UserAccountController {
         throw new Error(errorInsert.message);
       }
     
-      // let imageUrl = "";
-      // if (imageFile) {
-      //   // Upload image to Supabase Storage (crud_bucket)
-      //   const { data, error } = await supabase.storage
-      //     .from("crud_bucket")
-      //     .upload(
-      //       `users/${Date.now()}_${imageFile.originalname}`,
-      //       imageFile.buffer,
-      //       {
-      //         cacheControl: "3600",
-      //         upsert: false,
-      //       }
-      //     );
-
-      //   if (error) throw new Error(error.message);
-
-      //   const { data: publicUrlData } = supabase.storage
-      //     .from("crud_bucket")
-      //     .getPublicUrl(data.path);
-
-      //   imageUrl = publicUrlData.publicUrl;
-      // }
 
       res.status(201).json({
         message: "Registration successful! Please check your email to verify your account.",
@@ -461,6 +439,8 @@ class UserAccountController {
     }
 }
 
+
+// updating client with both profile and ID images
   static async updateUserWithImages(req: Request, res: Response): Promise<any> {
     try {
       const userId = Number(req.params.id);
@@ -629,6 +609,257 @@ class UserAccountController {
         message: "User updated successfully",
         user: data,
         profileImage: profileImageUrl || null,
+        idImage: idImageUrl || null,
+      });
+    } catch (error: any) {
+      console.error("Error in updateUserWithImages:", error);
+      return res.status(500).json({ error: error.message || "An error occurred while updating user" });
+    }
+  }
+
+// updating client with profile image only
+  static async updateUserWithProfileImage(req: Request, res: Response): Promise<any> {
+    try {
+      const userId = Number(req.params.id);
+      const {
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        user_role,
+        contact,
+        gender,
+        birthdate,
+      } = req.body;
+
+      // Check if email already exists for another user
+      const { data: existingUser, error: findError } = await supabase
+        .from("user")
+        .select("email, user_id")
+        .eq("email", email)
+        .neq("user_id", userId)
+        .maybeSingle();
+
+      if (findError && findError.message) {
+        return res.status(500).json({ error: findError.message });
+      }
+
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+
+      // Handle file uploads (profileImage and idImage)
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      let profileImageUrl = "";
+
+      // Process profile image if it exists
+      if (files && files.profileImage && files.profileImage.length > 0) {
+        const profileImageFile = files.profileImage[0];
+        const fileName = `users/profile_${userId}_${Date.now()}_${profileImageFile.originalname}`;
+        
+        const { error } = await supabase.storage
+          .from("crud_bucket")
+          .upload(fileName, profileImageFile.buffer, {
+            cacheControl: "3600",
+            upsert: true,
+          });
+
+        if (error) {
+          return res.status(500).json({ error: `Error uploading profile image: ${error.message}` });
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from("crud_bucket")
+          .getPublicUrl(fileName);
+
+        profileImageUrl = publicUrlData?.publicUrl || "";
+      }
+
+      console.log("Profile Image URL:", profileImageUrl);
+      
+
+      // Prepare update data
+      const updateData: Record<string, any> = {
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        user_role,
+        contact,
+        gender,
+        birthdate,
+      };
+
+      console.log("Update Data:", updateData);
+
+      // Add image URLs if they exist
+      if (profileImageUrl) {
+        updateData.image_link = profileImageUrl;
+      }
+
+      // Update user data
+      const { data, error } = await supabase
+        .from("user")
+        .update(updateData)
+        .eq("user_id", userId)
+        .select("*")
+        .single();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      return res.status(200).json({
+        message: "User updated successfully",
+        user: data,
+        profileImage: profileImageUrl || null,
+      });
+    } catch (error: any) {
+      console.error("Error in updateUserWithImages:", error);
+      return res.status(500).json({ error: error.message || "An error occurred while updating user" });
+    }
+  }
+
+
+// updating client with ID image only
+  static async updateUserWithIdImage(req: Request, res: Response): Promise<any> {
+    try {
+      const userId = Number(req.params.id);
+      const {
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        user_role,
+        contact,
+        gender,
+        birthdate,
+      } = req.body;
+
+      // Check if email already exists for another user
+      const { data: existingUser, error: findError } = await supabase
+        .from("user")
+        .select("email, user_id")
+        .eq("email", email)
+        .neq("user_id", userId)
+        .maybeSingle();
+
+      if (findError && findError.message) {
+        return res.status(500).json({ error: findError.message });
+      }
+
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+
+      // Handle file uploads (profileImage and idImage)
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+  
+      let idImageUrl = "";
+
+      // Process ID image if it exists
+      if (files && files.idImage && files.idImage.length > 0) {
+        const idImageFile = files.idImage[0];
+        const fileName = `users/id_${userId}_${Date.now()}_${idImageFile.originalname}`;
+
+        console.log("ID Image File:", fileName);
+        
+        const { error } = await supabase.storage
+          .from("crud_bucket")
+          .upload(fileName, idImageFile.buffer, {
+            cacheControl: "3600",
+            upsert: true,
+          });
+
+        if (error) {
+          return res.status(500).json({ error: `Error uploading ID image: ${error.message}` });
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from("crud_bucket")
+          .getPublicUrl(fileName);
+
+      // id image url if they exist 
+        idImageUrl = publicUrlData?.publicUrl || "";
+      }
+
+      console.log("ID Image URL:", idImageUrl);
+      
+
+      // Prepare update data
+      const updateData: Record<string, any> = {
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        user_role,
+        contact,
+        gender,
+        birthdate,
+      };
+
+      console.log("Update Data:", updateData);
+
+
+      // Update user data
+      const { data, error } = await supabase
+        .from("user")
+        .update(updateData)
+        .eq("user_id", userId)
+        .select("*")
+        .single();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      // If ID image was uploaded, store it in a separate table or update the existing record
+      if (idImageUrl) {
+        // Check if user already has an ID image record
+        const { data: existingIdImage, error: idCheckError } = await supabase
+          .from("client_documents")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("document_type", "id")
+          .maybeSingle();
+
+        if (idCheckError) {
+          console.error("Error checking for existing ID image:", idCheckError);
+        }
+
+        if (existingIdImage) {
+          // Update existing record
+          const { error: updateIdError } = await supabase
+            .from("client_documents")
+            .update({
+              document_url: idImageUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingIdImage.id);
+
+          if (updateIdError) {
+            console.error("Error updating ID image record:", updateIdError);
+          }
+        } else {
+          // Create new record
+          const { error: insertIdError } = await supabase
+            .from("client_documents")
+            .insert({
+              user_id: userId,
+              document_type: "id",
+              document_url: idImageUrl,
+              created_at: new Date().toISOString(),
+            });
+
+          if (insertIdError) {
+            console.error("Error creating ID image record:", insertIdError);
+          }
+        }
+      }
+
+      return res.status(200).json({
+        message: "User updated successfully",
+        user: data,
         idImage: idImageUrl || null,
       });
     } catch (error: any) {
