@@ -36,7 +36,6 @@ class TaskModel {
       statuses
     );
 
-    // Step 1: Check if the client_id exists in the clients table
     const { data: existingClient, error: clientError } = await supabase
       .from("clients")
       .select("client_id")
@@ -100,7 +99,7 @@ class TaskModel {
 
   async showTaskforClient(client_id: number) {
     const { data, error } = await supabase
-      .from("job_post")
+      .from("post_task")
       .select("*")
       .eq("client_id", client_id);
 
@@ -109,16 +108,16 @@ class TaskModel {
   }
 
   async getAllTasks() {
-    const { data, error } = await supabase.from("job_post").select("*");
+    const { data, error } = await supabase.from("post_task").select("*");
     if (error) throw new Error(error.message);
     return data;
   }
 
   async getTaskById(jobPostId: number) {
     const { data, error } = await supabase
-      .from("job_post")
+      .from("post_task")
       .select("*")
-      .eq("job_post_id", jobPostId)
+      .eq("task_id", jobPostId)
       .single();
 
     if (error) throw new Error(error.message);
@@ -127,9 +126,9 @@ class TaskModel {
 
   async disableTask(jobPostId: number) {
     const { error } = await supabase
-      .from("job_post")
+      .from("post_task")
       .update({ status: "disabled" })
-      .eq("job_post_id", jobPostId);
+      .eq("task_id", jobPostId);
 
     if (error) throw new Error(error.message);
     return { message: "Task disabled successfully" };
