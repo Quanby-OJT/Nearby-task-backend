@@ -226,6 +226,8 @@ class AuthenticationController {
 
   static async logout(req: Request, res: Response): Promise<void> {
     const { user_id, session } = req.body;
+    console.log("User ID for logout:", user_id);
+    console.log("Session for logout:", session);
 
     Auth.logout(user_id, session);
 
