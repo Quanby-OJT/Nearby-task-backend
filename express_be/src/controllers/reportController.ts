@@ -14,9 +14,24 @@ class ReportController {
   static async createReport(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received report data:", req.body);
+      console.log("Received files:", req.files);
 
-      const { reported_whom, reason } = req.body;
+      const { reported_by, reported_whom, reason } = req.body;
       const files = req.files as Express.Multer.File[];
+
+      let reportedById: number | undefined;
+      if (reported_by) {
+        reportedById = parseInt(reported_by, 10);
+        if (isNaN(reportedById)) {
+          res.status(400).json({
+            success: false,
+            message: "Invalid reported_by ID",
+          });
+          return;
+        }
+      } else {
+        console.log("reported_by is missing in request body");
+      }
 
       let reportedWhomId: number | undefined;
       if (reported_whom) {
@@ -28,6 +43,8 @@ class ReportController {
           });
           return;
         }
+      } else {
+        console.log("reported_whom is missing in request body");
       }
 
       let imageUrls: string[] = [];
@@ -64,7 +81,7 @@ class ReportController {
       }
 
       const newReports = await reportModel.createReport(
-        undefined,
+        reportedById,
         reportedWhomId,
         reason,
         imageUrls.length > 0 ? imageUrls : undefined
@@ -97,7 +114,6 @@ class ReportController {
     });
   }
 
-  // New method to fetch all taskers
   static async getAllTaskers(req: Request, res: Response): Promise<void> {
     try {
       const taskers = await reportModel.getAllTaskersWithUsers();
