@@ -1,15 +1,14 @@
 import { Request, Response } from "express";
 import multer from "multer";
-import mime from "mime-types"; 
+import mime from "mime-types";
 import reportModel from "../models/reportModel";
 import { supabase } from "../config/configuration";
-
 
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, 
-}).array("images[]", 5); 
+  limits: { fileSize: 5 * 1024 * 1024 },
+}).array("images[]", 5);
 
 class ReportController {
   static async createReport(req: Request, res: Response): Promise<void> {
@@ -34,13 +33,13 @@ class ReportController {
       let imageUrls: string[] = [];
       if (files && files.length > 0) {
         for (const file of files) {
-          const fileName = `${Date.now()}_${file.originalname}`; 
-          const contentType = mime.lookup(file.originalname) || "image/jpeg"; 
+          const fileName = `${Date.now()}_${file.originalname}`;
+          const contentType = mime.lookup(file.originalname) || "image/jpeg";
 
           const { data, error } = await supabase.storage
             .from("reports")
             .upload(fileName, file.buffer, {
-              contentType: contentType, 
+              contentType: contentType,
               cacheControl: "3600",
               upsert: false,
             });
@@ -66,7 +65,7 @@ class ReportController {
 
       const newReports = await reportModel.createReport(
         undefined,
-        reportedWhomId, 
+        reportedWhomId,
         reason,
         imageUrls.length > 0 ? imageUrls : undefined
       );
@@ -96,6 +95,23 @@ class ReportController {
       }
       next();
     });
+  }
+
+  // New method to fetch all taskers
+  static async getAllTaskers(req: Request, res: Response): Promise<void> {
+    try {
+      const taskers = await reportModel.getAllTaskersWithUsers();
+      res.status(200).json({
+        success: true,
+        taskers: taskers,
+      });
+    } catch (error) {
+      console.error("Error fetching taskers:", error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   }
 }
 
