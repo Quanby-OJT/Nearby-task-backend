@@ -112,11 +112,11 @@ class UserAccount {
     const { data, error } = await supabase
       .from("tasker")
       .select(
-        "bio, tasker_specialization(specialization), skills, availability, wage_per_hour, tasker_documents(tesda_document_link), social_media_links, address"
+        "*"
       )
       .eq("user_id", user_id)
       .single();
-    console.log(data, error);
+    console.log("This is the data fetch from userAccountModel.showTasker()" + data, error);
 
     if (error) throw new Error(error.message);
 

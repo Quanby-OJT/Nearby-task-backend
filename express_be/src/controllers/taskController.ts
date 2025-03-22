@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
 import { error } from "console";
+import TaskerModel from "../models/taskerModel";
+import { UserAccount } from "../models/userAccountModel";
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -166,7 +168,7 @@ class TaskController {
       console.log("Received request to get all specializations");
       const { data, error } = await supabase
         .from("tasker_specialization")
-        .select("specialization");
+        .select("specialization").order("spec_id", { ascending: true });
 
       if (error) {
         console.error(error.message);
@@ -254,6 +256,231 @@ class TaskController {
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Error Unknown.")
       res.status(500).json({error: "Internal Server error",});
+    }
+  }
+
+  static async getDocumentLink(req: Request, res: Response): Promise<any> {
+    try {
+
+      const documentId = parseInt(req.params.id);
+      const { data, error } = await supabase
+        .from("tasker_documents")
+        .select("tesda_document_link")
+        .eq("id", documentId)
+        .single();
+
+        console.log("This is the document link: ", documentId, data);
+      res.status(200).json({ data: data?.tesda_document_link, error });
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Error Unknown.")
+      res.status(500).json({ data: null, error: error instanceof Error ? error.message : "Error Unknown." });
+    }
+  }
+
+  static async updateTaskerProfile(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        gender,
+        contact_number,
+        address,
+        birth_date: birthdate,
+        user_id,
+        bio,
+        specialization,
+        skills,
+        availability,
+        wage_per_hour,
+        social_media_links,
+      } = req.body;
+  
+      console.log("Request body:", req.body);
+
+      const { data: specializations, error: specialization_error } = await supabase
+        .from("tasker_specialization")
+        .select("spec_id")
+        .eq("specialization", specialization)
+        .single();
+  
+      if (specialization_error) throw new Error("Specialization Error: " + specialization_error.message);
+  
+      // Validate file uploads
+      if (!req.files) {
+        throw new Error("Missing required files (image and/or document)");
+      }
+      const { image, document } = req.files as {
+        image: Express.Multer.File[],
+        document: Express.Multer.File[]
+      };
+
+      console.log(image, document);
+  
+      // Upload profile picture
+      const profileImagePath = `profile_pictures/${user_id}_${Date.now()}_${image[0].originalname}`;
+      const { error: profilePicError } = await supabase.storage
+        .from("documents")
+        .upload(profileImagePath, image[0].buffer, {
+          contentType: image[0].mimetype,
+          cacheControl: "3600",
+          upsert: true,
+        });
+  
+      if (profilePicError) throw new Error("Error uploading profile picture: " + profilePicError.message);
+  
+      // Upload TESDA document
+      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${document[0].originalname}`;
+      const { error: tesdaDocError } = await supabase.storage
+        .from("documents")
+        .upload(documentPath, document[0].buffer, {
+          contentType: document[0].mimetype,
+          cacheControl: "3600",
+          upsert: true,
+        });
+  
+      if (tesdaDocError) throw new Error("Error uploading TESDA document: " + tesdaDocError.message);
+  
+      // Get public URLs
+      const profilePicUrl = supabase.storage
+        .from("documents")
+        .getPublicUrl(profileImagePath).data.publicUrl;
+  
+      const tesdaDocUrl = supabase.storage
+        .from("documents")
+        .getPublicUrl(documentPath).data.publicUrl;
+  
+      // Store TESDA document reference
+      const { data: tesda_documents, error: tesda_error } = await supabase
+        .from("tasker_documents")
+        .insert({ tesda_document_link: tesdaDocUrl })
+        .select("id")
+        .single();
+  
+      if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
+
+      await UserAccount.uploadImageLink(user_id, profilePicUrl);
+  
+      // Create tasker profile
+      await TaskerModel.createTasker({
+        gender,
+        contact_number,
+        address,
+        birthdate,
+        profile_picture: profilePicUrl,
+        user_id,
+        bio,
+        specialization_id: specializations.spec_id,
+        skills,
+        availability: availability === 'true',
+        wage_per_hour: parseFloat(wage_per_hour),
+        tesda_documents_id: tesda_documents.id,
+        social_media_links: social_media_links
+      });
+  
+      res.status(201).json({ taskerStatus: true });
+    } catch (error) {
+      console.error("Error in createTasker:", error instanceof Error ? error.message : "Internal Server Error");
+      console.error("Error in createTasker:", error instanceof Error ? error.stack : "Internal Server Error");
+      res.status(500).json({
+        error: "An Error Occurred while Creating Tasker. Please Try Again.",
+      });
+    }
+  }
+
+  static async updateTaskerProfileNoImages(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.params.id;
+      const {
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        user_role,
+        contact,
+        gender,
+        birthdate,
+        specialization,
+        bio,
+        skills,
+        wage_per_hour,
+        pay_period
+      } = req.body;
+
+      console.log("Request body:", req.body);
+      console.log("User ID:", userId);
+
+
+      // Get specialization ID
+      // const { data: specializationData, error: specializationError } = await supabase
+      //   .from("tasker_specialization")
+      //   .select("spec_id")
+      //   .eq("specialization", specialization)
+      //   .single();
+
+      // if (specializationError) {
+      //   throw new Error("Specialization Error: " + specializationError.message);
+      // }
+
+      // Update user account information
+      const { data: userData, error: userError } = await supabase
+        .from("user")
+        .update({
+          first_name,
+          middle_name,
+          last_name,
+          email,
+          user_role,
+          contact,
+          gender,
+          birthdate
+
+        })
+        .eq("user_id", userId)
+        .select("*")
+        .single();
+
+      if (userError) {
+        throw new Error("Error updating user account: " + userError.message);
+      }
+
+      // Get tasker record
+      const { data: taskerData, error: taskerFetchError } = await supabase
+        .from("tasker")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      if (taskerFetchError && taskerFetchError.code !== "PGRST116") {
+        throw new Error("Error fetching tasker data: " + taskerFetchError.message);
+      }
+
+      // Update tasker information
+      const { data: updatedTaskerData, error: taskerUpdateError } = await supabase
+        .from("tasker")
+        .update({
+          bio,
+          skills,
+          specialization_id: specialization,
+          wage_per_hour: parseFloat(wage_per_hour),
+          pay_period
+        })
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (taskerUpdateError) {
+        throw new Error("Error updating tasker data: " + taskerUpdateError.message);
+      }
+
+      res.status(200).json({
+        message: "Tasker profile updated successfully",
+        user: userData,
+        tasker: updatedTaskerData
+      });
+    } catch (error) {
+      console.error("Error in updateTaskerProfileNoImages:", error instanceof Error ? error.message : "Internal Server Error");
+      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace available");
+      res.status(500).json({
+        errors: "An error occurred while updating the tasker profile: " + (error instanceof Error ? error.message : "Unknown error")
+      });
     }
   }
 }
