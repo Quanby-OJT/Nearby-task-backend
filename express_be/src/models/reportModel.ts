@@ -18,6 +18,13 @@ interface TaskerWithUser {
   last_name: string;
 }
 
+interface ClientWithUser {
+  user_id: number;
+  first_name: string;
+  middle_name: string;
+  last_name: string;
+}
+
 class ReportModel {
   async createReport(
     reported_by: number | undefined,
@@ -77,7 +84,7 @@ class ReportModel {
       .from("tasker")
       .select(`
         user_id,
-        user:user (first_name, middle_name, last_name)  // Changed 'users' to 'user'
+        user:user (first_name, middle_name, last_name)
       `);
 
     if (error) {
@@ -85,10 +92,10 @@ class ReportModel {
       throw new Error(error.message);
     }
 
-    console.log("Raw Supabase data:", data); // Log raw data for debugging
+    console.log("Raw Supabase data (taskers):", data);
 
     const taskers: TaskerWithUser[] = data
-      .filter((tasker: any) => tasker.user !== null) // Filter out taskers with no user
+      .filter((tasker: any) => tasker.user !== null)
       .map((tasker: any) => ({
         user_id: tasker.user_id,
         first_name: tasker.user?.first_name ?? "Unknown",
@@ -96,9 +103,38 @@ class ReportModel {
         last_name: tasker.user?.last_name ?? "Unknown",
       }));
 
-    console.log("Mapped taskers:", taskers); // Log mapped data for debugging
+    console.log("Mapped taskers:", taskers);
 
     return taskers;
+  }
+
+  async getAllClientsWithUsers(): Promise<ClientWithUser[]> {
+    const { data, error } = await supabase
+      .from("clients")
+      .select(`
+        user_id,
+        user:user (first_name, middle_name, last_name)
+      `);
+
+    if (error) {
+      console.error("Supabase fetch clients error:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Raw Supabase data (clients):", data);
+
+    const clients: ClientWithUser[] = data
+      .filter((client: any) => client.user !== null)
+      .map((client: any) => ({
+        user_id: client.user_id,
+        first_name: client.user?.first_name ?? "Unknown",
+        middle_name: client.user?.middle_name ?? "",
+        last_name: client.user?.last_name ?? "Unknown",
+      }));
+
+    console.log("Mapped clients:", clients);
+
+    return clients;
   }
 }
 
