@@ -101,18 +101,19 @@ router.get("/get-specializations", TaskController.getAllSpecializations);
 
 //User CRUD
 router.put(
-  "user/client/:id", 
+  "/user/client/:id", 
   upload.fields([    
     { name: "image", maxCount: 1 },
   ]), 
   profileController.ClientController.updateClient);
 router.put(
-  "user/tasker/:id", 
+  "/user/tasker/:id",
   upload.fields([    
     { name: "image", maxCount: 1 },
-    { name: "document", maxCount: 1 }
-  ]), 
-  profileController.TaskerController.updateTasker);
+    { name: "documents", maxCount: 10 } // Adjust maxCount as needed
+  ]),
+  profileController.TaskerController.updateTasker
+);
 
 router.post("/logout", AuthenticationController.logout);
 

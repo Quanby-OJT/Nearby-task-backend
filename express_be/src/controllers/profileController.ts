@@ -7,6 +7,7 @@ import { UserAccount } from "../models/userAccountModel";
 class TaskerController {
   static async createTasker(req: Request, res: Response): Promise<any> {
     try {
+      console.log("Request body:", req.body);
       const {
         gender,
         contact_number,
@@ -21,7 +22,7 @@ class TaskerController {
         social_media_links,
       } = req.body;
 
-      console.log("Request body:", req.body);
+      
 
       const { data: specializations, error: specialization_error } = await supabase
         .from("tasker_specialization")
@@ -121,28 +122,34 @@ class TaskerController {
    * @throws
    */
   static async updateTasker(req: Request, res: Response): Promise<void> {
-    try{
-      const{user_id, first_name, middle_name, last_name, email, password, gender, contact_number, address, birth_date, bio, specialization, skills, availability, wage_per_hour, profile_picture, tesda_document_link, social_media_links} = req.body;
+    try {
+      const {
+        user_id, first_name, middle_name, last_name, email, password, gender,
+        contact_number, address, birth_date, bio, specialization, skills,
+        availability, wage_per_hour, profile_picture, tesda_document_link, social_media_links
+      } = req.body;
 
-      const { data: specializations, error: specialization_error } = await supabase
-        .from("tasker_specialization")
-        .select("spec_id")
-        .eq("specialization", specialization)
-        .single();
-
-      if (specialization_error) throw new Error("Specialization Error: " + specialization_error.message);
-
+      console.log(req.body)
+  
       // Validate file uploads
       if (!req.files) {
         throw new Error("Missing required files (image and/or document)");
       }
-      const { image, document } = req.files as {
-        image: Express.Multer.File[],
-        document: Express.Multer.File[]
-      };
-
-      console.log(image, document);
-
+  
+      const files = req.files as { [key: string]: Express.Multer.File[] };
+      const image = files['image'];
+      const documents = files['documents']; // Singular "document" to match Multer
+  
+      // console.log("Image Uploaded: ", image);
+      // console.log("Document Uploaded: ", documents);
+  
+      if (!image || image.length === 0) {
+        throw new Error("No profile image uploaded");
+      }
+      if (!documents || documents.length === 0) {
+        throw new Error("No TESDA document uploaded");
+      }
+  
       // Upload profile picture
       const profileImagePath = `profile_pictures/${user_id}_${Date.now()}_${image[0].originalname}`;
       const { error: profilePicError } = await supabase.storage
@@ -152,74 +159,56 @@ class TaskerController {
           cacheControl: "3600",
           upsert: true,
         });
-
+  
       if (profilePicError) throw new Error("Error uploading profile picture: " + profilePicError.message);
-
+  
       // Upload TESDA document
-      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${document[0].originalname}`;
+      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${documents[0].originalname}`;
       const { error: tesdaDocError } = await supabase.storage
         .from("documents")
-        .upload(documentPath, document[0].buffer, {
-          contentType: document[0].mimetype,
+        .upload(documentPath, documents[0].buffer, {
+          contentType: documents[0].mimetype,
           cacheControl: "3600",
           upsert: true,
         });
-
+  
       if (tesdaDocError) throw new Error("Error uploading TESDA document: " + tesdaDocError.message);
-
+  
       // Get public URLs
       const profilePicUrl = supabase.storage
         .from("documents")
         .getPublicUrl(profileImagePath).data.publicUrl;
-
+  
       const tesdaDocUrl = supabase.storage
         .from("documents")
         .getPublicUrl(documentPath).data.publicUrl;
-
+  
       // Store TESDA document reference
       const { data: tesda_documents, error: tesda_error } = await supabase
         .from("tasker_documents")
         .insert({ tesda_document_link: tesdaDocUrl })
         .select("id")
         .single();
-
+  
       if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
-
+  
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
-
+  
       await TaskerModel.update(
         {
-          gender,
-          contact_number,
-          address,
-          birthdate: birth_date,
-          profile_picture,
-          bio,
-          skills,
-          availability,
-          wage_per_hour,
-          social_media_links
+          gender, contact_number, address, birthdate: birth_date, profile_picture,
+          bio, skills, availability, wage_per_hour, social_media_links
         },
-        {
-          specialization,
-          tesda_documents_link: tesda_document_link,
-        },
-        {
-          user_id,
-          first_name,
-          middle_name,
-          last_name,
-          email,
-          password
-        }
+        { specialization, tesda_documents_link: tesda_document_link },
+        { user_id, first_name, middle_name, last_name, email, password }
       );
-
-      res.status(200).json({message: "Tasker Information Updated Successfully"});
-    }catch(error){
+  
+      res.status(200).json({ message: "Tasker Information Updated Successfully" });
+    } catch (error) {
       console.error("Error in updateTasker:", error instanceof Error ? error.message : "Internal Server Error");
       console.error("Error in updateTasker:", error instanceof Error ? error.stack : "Internal Server Error");
       res.status(500).json({
-        error: "An Error Occurred while Updating Tasker. Please Try Again.",
+        error: "An Error Occurred while Updating Tasker. Please try again.",
       });
     }
   }

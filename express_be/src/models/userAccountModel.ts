@@ -71,7 +71,7 @@ class UserAccount {
     const { data, error } = await supabase
       .from("user")
       .select(
-        "first_name, middle_name, last_name, image_link, email, birthdate, user_role"
+        "first_name, middle_name, last_name, image_link, email, birthdate, user_role, gender, contact"
       )
       .eq("user_id", user_id)
       .single();
@@ -98,7 +98,7 @@ class UserAccount {
     const { data, error } = await supabase
       .from("tasker")
       .select(
-        "bio, tasker_specialization(specialization), skills, availability, wage_per_hour, tasker_documents(tesda_document_link), social_media_links, address"
+        "bio, tasker_specialization(specialization), skills, availability, wage_per_hour, tasker_documents(tesda_document_link), social_media_links, address, pay_period, birthdate, contact_number, profile_picture"
       )
       .eq("user_id", user_id)
       .single();

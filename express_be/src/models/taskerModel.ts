@@ -21,7 +21,7 @@ class TaskerModel {
       availability: boolean;
       wage_per_hour: number;
       tesda_documents_id: number;
-      social_media_links: JSON;
+      social_media_links: string[];
     }) {
     const { data, error } = await supabase.from("tasker").insert([tasker]);
     console.log(data, error);
@@ -57,7 +57,7 @@ class TaskerModel {
       skills: string;
       availability: boolean;
       wage_per_hour: number;
-      social_media_links: JSON;
+      social_media_links: string[] | string; // Allow string or string[]
     },
     withForeignKeys: {
       specialization: string;
@@ -72,25 +72,34 @@ class TaskerModel {
       password: Text;
     }
   ) {
-
     const { data: specializations, error: specializationError } = await supabase
       .from("tasker_specialization")
       .select("spec_id")
       .eq("specialization", withForeignKeys.specialization)
       .single();
     if (specializationError) throw new Error(specializationError.message);
-
+  
     const { data: tesda_documents, error: tesda_error } = await supabase
       .from("tasker_documents")
       .insert({ tesda_document_link: withForeignKeys.tesda_documents_link })
       .select("id")
       .single();
     if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
-
-    const{data: userData, error: userError } = await supabase.from("user").update(user).eq("user_id", user.user_id);
+  
+    const { data: userData, error: userError } = await supabase
+      .from("user")
+      .update(user)
+      .eq("user_id", user.user_id);
     if (userError) throw new Error(userError.message);
-
-
+  
+    // Sanitize social_media_links
+    let sanitizedSocialMediaLinks: string[];
+    if (typeof tasker.social_media_links === 'string') {
+      sanitizedSocialMediaLinks = tasker.social_media_links === 'null' ? [] : [tasker.social_media_links];
+    } else {
+      sanitizedSocialMediaLinks = tasker.social_media_links ?? [];
+    }
+  
     const { data: taskerData, error: taskerError } = await supabase
       .from("tasker")
       .update({
@@ -104,12 +113,13 @@ class TaskerModel {
         availability: tasker.availability,
         wage_per_hour: tasker.wage_per_hour,
         tesda_documents_id: tesda_documents.id,
-        social_media_links: tasker.social_media_links,
+        social_media_links: sanitizedSocialMediaLinks,
         specialization_id: specializations.spec_id,
       })
       .eq("user_id", user.user_id);
+    console.log(taskerData, taskerError);
     if (taskerError) throw new Error(taskerError.message);
-
+  
     return { userData, taskerData };
   }
 }
