@@ -8,12 +8,17 @@ import ProfileController from "../controllers/profileController";
 import { clientValidation, taskerValidation } from "../validator/userValidator";
 import TaskController from "../controllers/taskController";
 import { isAuthenticated } from "../middleware/authenticationMiddleware";
+import auth from "../controllers/authAngularController";
 import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
 
 const upload = multer({storage: memoryStorage()})
 
 const router = Router();
+
+
+/** Public Authentication Routes */
+router.post("/login-angular", auth.login);
 
 /** Authentication Routes */
 router.post(
@@ -78,7 +83,7 @@ router.get("/check-session", (req, res) => {
 
 router.post("/logout", AuthenticationController.logout);
 
-// router.use(isAuthenticated);
+router.use(isAuthenticated);
 
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
