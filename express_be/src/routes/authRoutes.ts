@@ -1,11 +1,15 @@
 import { Router } from "express";
 import auth from "../controllers/authAngularController";
+import { isAuthenticated } from "../middleware/authenticationMiddleware";
+
 const router = Router();
 
-/** Authentication Routes */
+/** Public Authentication Routes */
+router.post("/login-angular", auth.login);
 
-router.post("/login", auth.login);
-router.post("/logout", auth.logout);
+router.use(isAuthenticated);
+
+router.post("/logout-angular", auth.logout);
 router.post("/logout-without-session", auth.logoutWithoutSession);
 router.post("/userInformation", auth.userInformation);
 
