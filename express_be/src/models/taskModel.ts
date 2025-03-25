@@ -108,7 +108,18 @@ class TaskModel {
   }
 
   async getAllTasks() {
-    const { data, error } = await supabase.from("post_task").select("*");
+    const { data, error } = await supabase.from("post_task").select(`
+      *,
+      clients:client_id (
+        client_id,
+          user:user_id (
+            user_id,
+            first_name,
+            middle_name,
+            last_name
+          )
+         )
+      `);
     if (error) throw new Error(error.message);
     return data;
   }
