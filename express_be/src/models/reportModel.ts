@@ -37,7 +37,7 @@ class ReportModel {
         reported_by,
         reported_whom,
         reason,
-        status: true,
+        status: false,
         images: undefined,
       };
 
@@ -60,7 +60,7 @@ class ReportModel {
       reported_by,
       reported_whom,
       reason,
-      status: true,
+      status: false,
       images: imageUrl,
     }));
 

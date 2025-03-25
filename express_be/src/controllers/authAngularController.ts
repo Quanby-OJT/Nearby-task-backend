@@ -37,7 +37,7 @@ class auth {
         .from("user")
         .select("*")
         .eq("email", email)
-        .in("user_role", ["admin", "moderator"])
+        .in("user_role", ["Admin", "Moderator"])
         .maybeSingle();
 
       if (!user || error) {
