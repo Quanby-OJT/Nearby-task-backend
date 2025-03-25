@@ -341,8 +341,10 @@ class UserAccountController {
         res.status(200).json({ user: userData, tasker: taskerData });
       }
     } catch (error) {
+      console.error(error instanceof Error ? error.message : "Unknown error")
+      console.error(error instanceof Error ? error.stack : "Unknown error") 
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "An Error Occured while Retrieving Your Information. Please try again.",
       });
     }
   }

@@ -124,30 +124,31 @@ class TaskerController {
   static async updateTasker(req: Request, res: Response): Promise<void> {
     try {
       const {
-        user_id, first_name, middle_name, last_name, email, password, gender,
+        user_id, tasker_id, first_name, middle_name, last_name, email, password, gender,
         contact_number, address, birth_date, bio, specialization, skills,
         availability, wage_per_hour, profile_picture, tesda_document_link, social_media_links
       } = req.body;
-
-      console.log(req.body)
+  
+      console.log(req.body);
   
       // Validate file uploads
       if (!req.files) {
-        throw new Error("Missing required files (image and/or document)");
+        res.status(413).json({ error: "Missing required files (image and/or document)" });
+        return;
       }
   
       const files = req.files as { [key: string]: Express.Multer.File[] };
       const image = files['image'];
-      const documents = files['documents']; // Singular "document" to match Multer
+      const documents = files['documents'];
   
-      // console.log("Image Uploaded: ", image);
-      // console.log("Document Uploaded: ", documents);
+      if ((!documents || documents.length === 0) && tesda_document_link === null) {
+        res.status(413).json({ error: "Please Upload your Credentials." });
+        return;
+      }
   
       if (!image || image.length === 0) {
-        throw new Error("No profile image uploaded");
-      }
-      if (!documents || documents.length === 0) {
-        throw new Error("No TESDA document uploaded");
+        res.status(413).json({ error: "No profile image uploaded" });
+        return;
       }
   
       // Upload profile picture
@@ -160,28 +161,39 @@ class TaskerController {
           upsert: true,
         });
   
-      if (profilePicError) throw new Error("Error uploading profile picture: " + profilePicError.message);
+      if (profilePicError) {
+        res.status(500).json({ error: "Error uploading profile picture: " + profilePicError.message });
+        return;
+      }
   
       // Upload TESDA document
-      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${documents[0].originalname}`;
-      const { error: tesdaDocError } = await supabase.storage
+      let tesdaDocUrl = tesda_document_link;
+      if(tesda_document_link === null && documents.length > 0) {      
+        const documentPath = `tesda_documents/${user_id}_${Date.now()}_${documents[0].originalname}`;
+        const { error: tesdaDocError } = await supabase.storage
+          .from("documents")
+          .upload(documentPath, documents[0].buffer, {
+            contentType: documents[0].mimetype,
+            cacheControl: "3600",
+            upsert: true,
+          });
+    
+        if (tesdaDocError) {
+          res.status(500).json({ error: "An Error occurred while uploading your files. Please try again." });
+          return;
+        }
+
+        tesdaDocUrl = supabase.storage
         .from("documents")
-        .upload(documentPath, documents[0].buffer, {
-          contentType: documents[0].mimetype,
-          cacheControl: "3600",
-          upsert: true,
-        });
-  
-      if (tesdaDocError) throw new Error("Error uploading TESDA document: " + tesdaDocError.message);
-  
+        .getPublicUrl(documentPath).data.publicUrl;
+      }
+
       // Get public URLs
       const profilePicUrl = supabase.storage
         .from("documents")
         .getPublicUrl(profileImagePath).data.publicUrl;
   
-      const tesdaDocUrl = supabase.storage
-        .from("documents")
-        .getPublicUrl(documentPath).data.publicUrl;
+
   
       // Store TESDA document reference
       const { data: tesda_documents, error: tesda_error } = await supabase
@@ -190,13 +202,16 @@ class TaskerController {
         .select("id")
         .single();
   
-      if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
+      if (tesda_error) {
+        res.status(500).json({ error: "Error storing document reference: " + tesda_error.message });
+        return;
+      }
   
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
   
       await TaskerModel.update(
         {
-          gender, contact_number, address, birthdate: birth_date, profile_picture,
+          tasker_id, gender, contact_number, address, birthdate: birth_date, profile_picture,
           bio, skills, availability, wage_per_hour, social_media_links
         },
         { specialization, tesda_documents_link: tesda_document_link },

@@ -62,7 +62,7 @@ class UserAccount {
     .update({ image_link: image_link })
     .eq("user_id", user_id)
 
-    if(error) throw new Error(error.message);
+    if(error) throw new Error("User Error: " + error.message);
 
     return data;
   }
@@ -89,22 +89,22 @@ class UserAccount {
       .single();
     console.log(data, error);
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Clientele Error: " + error.message);
 
     return data;
   }
 
   static async showTasker(user_id: string) {
     const { data, error } = await supabase
-      .from("tasker")
-      .select(
-        "bio, tasker_specialization(specialization), skills, availability, wage_per_hour, tasker_documents(tesda_document_link), social_media_links, address, pay_period, birthdate, contact_number, profile_picture"
-      )
-      .eq("user_id", user_id)
-      .single();
-    console.log(data, error);
+    .from("tasker_documents")
+    .select(
+      "tasker(tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period, birthdate, contact_number, profile_picture), tesda_document_link"
+    )
+    .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
+    .single();
+  console.log(data, error);
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Tasker Error: " + error.message);
 
     return data;
   }

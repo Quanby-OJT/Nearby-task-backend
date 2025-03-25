@@ -48,6 +48,7 @@ class TaskerModel {
    */
   static async update(
     tasker: {
+      tasker_id: number;
       gender: Text;
       contact_number: Text;
       address: Text;
@@ -79,12 +80,20 @@ class TaskerModel {
       .single();
     if (specializationError) throw new Error(specializationError.message);
   
-    const { data: tesda_documents, error: tesda_error } = await supabase
+    if(withForeignKeys.tesda_documents_link === null) {
+    const { error: tesda_error } = await supabase
       .from("tasker_documents")
       .insert({ tesda_document_link: withForeignKeys.tesda_documents_link })
       .select("id")
       .single();
     if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
+    }else{
+      const { error: tesda_error } = await supabase
+      .from("tasker_documents")
+      .update({ tesda_document_link: withForeignKeys.tesda_documents_link })
+      .eq("tasker_id", tasker.tasker_id)
+      if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
+    }
   
     const { data: userData, error: userError } = await supabase
       .from("user")
@@ -112,13 +121,12 @@ class TaskerModel {
         skills: tasker.skills,
         availability: tasker.availability,
         wage_per_hour: tasker.wage_per_hour,
-        tesda_documents_id: tesda_documents.id,
         social_media_links: sanitizedSocialMediaLinks,
         specialization_id: specializations.spec_id,
       })
       .eq("user_id", user.user_id);
     console.log(taskerData, taskerError);
-    if (taskerError) throw new Error(taskerError.message);
+    if (taskerError) throw new Error(taskerError.message + "\n\n" + taskerError.stack);
   
     return { userData, taskerData };
   }
