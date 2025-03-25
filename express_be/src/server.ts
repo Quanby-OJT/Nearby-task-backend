@@ -43,10 +43,12 @@ app.use(
 );
 
 // Mount auth routes - These should be public
-app.use("/connect", authRoutes);
+
 
 // Mount API routes - This contains both public and protected routes
 app.use("/connect", server);
+
+app.use("/connect", authRoutes);
 
 // Mount other routes - These will be protected by the isAuthenticated middleware in their respective files
 
