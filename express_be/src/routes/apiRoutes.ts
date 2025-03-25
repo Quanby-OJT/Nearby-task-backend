@@ -70,6 +70,7 @@ router.post(
 );
 
 router.post("/verify", UserAccountController.verifyEmail);
+router.put("/update-client-user/:id", UserAccountController.updateUser);
 
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
@@ -116,5 +117,36 @@ router.put(
 );
 
 router.post("/logout", AuthenticationController.logout);
+
+// updating client with both profile and ID images
+router.put(
+  "/update-user-with-images/:id",
+  upload.fields([
+    { name: "profileImage", maxCount: 1 },
+    { name: "idImage", maxCount: 1 }
+  ]),
+  UserAccountController.updateUserWithImages
+);
+
+// updating client with profile image only
+router.put(
+  "/update-user-with-profile-image/:id",
+  upload.fields([
+    { name: "profileImage", maxCount: 1 },
+  ]),
+  UserAccountController.updateUserWithProfileImage
+);
+
+
+// updating client with ID image only
+router.put(
+  "/update-user-with-id-image/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 }
+  ]),
+  UserAccountController.updateUserWithIdImage
+);
+
+router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
 
 export default router;

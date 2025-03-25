@@ -18,6 +18,7 @@ class UserAccount {
     acc_status: string;
     user_role: string;
     verification_token: string;
+
   }) {
     const { data, error } = await supabase.from("user").insert([userData]);
     console.log(data, error)
@@ -73,6 +74,19 @@ class UserAccount {
       .select(
         "first_name, middle_name, last_name, image_link, email, birthdate, user_role, gender, contact"
       )
+      .eq("user_id", user_id)
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    return data;
+  }
+
+
+  static async getUserDocs(user_id: string) {
+    const { data, error } = await supabase
+      .from("client_documents")
+      .select("*")
       .eq("user_id", user_id)
       .single();
 
