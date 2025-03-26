@@ -110,7 +110,7 @@ router.put(
   "/user/client/:id", 
   upload.fields([    
     { name: "image", maxCount: 1 },
-  ]), 
+  ]),
   profileController.ClientController.updateClient);
 router.put(
   "/user/tasker/:id",

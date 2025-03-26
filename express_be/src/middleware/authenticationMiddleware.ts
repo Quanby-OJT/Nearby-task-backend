@@ -5,14 +5,14 @@ export async function isAuthenticated(req: Request, res: Response, next: NextFun
     try {   
         const sessionToken = req.headers.authorization || req.cookies?.session;
 
-        console.log("To be authenticated: " + sessionToken);
+        //console.log("To be authenticated: " + sessionToken);
         
         if (!sessionToken) {
             res.status(401).json({ error: "Unauthorized: No session token provided" });
             return;
         }
 
-        console.log("Session token:", sessionToken);
+        //console.log("Session token:", sessionToken);
         
         // Extract session_id from either Bearer token or directly from cookie
         let session_id = sessionToken;
@@ -21,7 +21,7 @@ export async function isAuthenticated(req: Request, res: Response, next: NextFun
             session_id = sessionToken.replace("Bearer ", "").trim();
         }
         
-        console.log("Extracted session_id:", session_id);
+        //console.log("Extracted session_id:", session_id);
 
         if (!session_id) {
             res.status(401).json({ error: "Unauthorized: No session token provided" });
@@ -34,7 +34,7 @@ export async function isAuthenticated(req: Request, res: Response, next: NextFun
             .eq("session", session_id)
             .single();
             
-        console.log("User log:", userLog, "Error:", error);
+        //console.log("User log:", userLog, "Error:", error);
         
         if(error){
             console.error(error instanceof Error, error.message ?? "Unable to Verify your session. Please Try Again.")

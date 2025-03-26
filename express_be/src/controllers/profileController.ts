@@ -22,8 +22,6 @@ class TaskerController {
         social_media_links,
       } = req.body;
 
-      
-
       const { data: specializations, error: specialization_error } = await supabase
         .from("tasker_specialization")
         .select("spec_id")
@@ -131,11 +129,12 @@ class TaskerController {
   
       console.log(req.body);
   
-      // Validate file uploads
-      if (!req.files) {
-        res.status(413).json({ error: "Missing required files (image and/or document)" });
-        return;
-      }
+      // This is unecessary.
+      // // Validate file uploads
+      // if (!req.files) {
+      //   res.status(413).json({ error: "Missing required files (image and/or document)" });
+      //   return;
+      // }
   
       const files = req.files as { [key: string]: Express.Multer.File[] };
       const image = files['image'];
@@ -206,13 +205,27 @@ class TaskerController {
         res.status(500).json({ error: "Error storing document reference: " + tesda_error.message });
         return;
       }
+
+      // Parse social_media_links safely
+    let jsonedSocMed;
+    try {
+      jsonedSocMed = JSON.parse(social_media_links);
+      // Ensure it's an object (not a string or array)
+      if (typeof jsonedSocMed !== 'object' || jsonedSocMed === null || Array.isArray(jsonedSocMed)) {
+        throw new Error("social_media_links must be a JSON object");
+      }
+    } catch (parseError) {
+      console.error("Failed to parse social_media_links:", social_media_links, parseError);
+      res.status(400).json({ error: "Invalid social_media_links format. Must be a valid JSON object." });
+      return;
+    }
   
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
   
       await TaskerModel.update(
         {
           tasker_id, gender, contact_number, address, birthdate: birth_date, profile_picture,
-          bio, skills, availability, wage_per_hour, social_media_links
+          bio, skills, availability, wage_per_hour, social_media_links: jsonedSocMed,
         },
         { specialization, tesda_documents_link: tesda_document_link },
         { user_id, first_name, middle_name, last_name, email, password }
@@ -260,8 +273,9 @@ class ClientController {
 
       res.status(200).json({ message: "Client profile updated successfully." });
     } catch (error) {
+      console.error(error instanceof Error ? error.message : "Unknown error")
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "An Error occured while updating your information. Please Try Again.",
       });
     }
   }

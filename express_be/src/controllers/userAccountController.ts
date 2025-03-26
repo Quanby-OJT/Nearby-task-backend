@@ -328,9 +328,8 @@ class UserAccountController {
         res.status(200).json({ user: userData, client: clientData });
       } else if (userData.user_role === "Tasker") {
         const taskerData = await UserAccount.showTasker(userID);
-        console.log("Your role is: " + taskerData.user_role);
-        console.log("Tasker Data: " + taskerData["specialization"]);
-        res.status(200).json({ user: userData, tasker: taskerData });
+        console.log("Tasker Data: " + taskerData);
+        res.status(200).json({ user: userData, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Unknown error")

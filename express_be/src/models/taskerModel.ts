@@ -51,14 +51,14 @@ class TaskerModel {
       tasker_id: number;
       gender: Text;
       contact_number: Text;
-      address: Text;
+      address: Text;  
       birthdate: Text;
       profile_picture: string;
       bio: Text;
       skills: string;
       availability: boolean;
       wage_per_hour: number;
-      social_media_links: string[] | string; // Allow string or string[]
+      social_media_links: JSON; 
     },
     withForeignKeys: {
       specialization: string;
@@ -94,20 +94,12 @@ class TaskerModel {
       .eq("tasker_id", tasker.tasker_id)
       if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
     }
-  
+
     const { data: userData, error: userError } = await supabase
       .from("user")
       .update(user)
       .eq("user_id", user.user_id);
     if (userError) throw new Error(userError.message);
-  
-    // Sanitize social_media_links
-    let sanitizedSocialMediaLinks: string[];
-    if (typeof tasker.social_media_links === 'string') {
-      sanitizedSocialMediaLinks = tasker.social_media_links === 'null' ? [] : [tasker.social_media_links];
-    } else {
-      sanitizedSocialMediaLinks = tasker.social_media_links ?? [];
-    }
   
     const { data: taskerData, error: taskerError } = await supabase
       .from("tasker")
@@ -121,7 +113,7 @@ class TaskerModel {
         skills: tasker.skills,
         availability: tasker.availability,
         wage_per_hour: tasker.wage_per_hour,
-        social_media_links: sanitizedSocialMediaLinks,
+        social_media_links: tasker.social_media_links,
         specialization_id: specializations.spec_id,
       })
       .eq("user_id", user.user_id);

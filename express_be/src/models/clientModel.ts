@@ -24,8 +24,11 @@ class ClientModel {
   ) {
     const { data, error } = await supabase
       .from("clients")
-      .update(clientInfo)
-      .eq("id", clientInfo.user_id);
+      .update({
+        preferences: clientInfo.preferences,
+        client_address: clientInfo.client_address
+      })
+      .eq("user_id", clientInfo.user_id);
     if (error) throw new Error(error.message);
     return data;
   }

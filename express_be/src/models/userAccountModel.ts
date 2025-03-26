@@ -109,18 +109,28 @@ class UserAccount {
   }
 
   static async showTasker(user_id: string) {
-    const { data, error } = await supabase
-    .from("tasker_documents")
+    const { data: tasker, error: taskerError } = await supabase
+    .from("tasker")
     .select(
-      "tasker(tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period, birthdate, contact_number, profile_picture), tesda_document_link"
+      "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period, birthdate, contact_number, profile_picture"
     )
     .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
     .single();
-  console.log(data, error);
+    console.log(tasker, taskerError);
 
-    if (error) throw new Error("Tasker Error: " + error.message);
+    if (taskerError) throw new Error("Tasker Error: " + taskerError.message);
 
-    return data;
+    const { data: taskerDocument, error: taskerDocumentError } = await supabase
+    .from("tasker_documents")
+    .select(
+      "tesda_document_link"
+    )
+    .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
+    console.log(tasker, taskerError, taskerDocument, taskerDocumentError);
+
+    if (taskerDocumentError) throw new Error("Tasker Error: " + taskerDocumentError.message);
+
+    return {tasker, taskerDocument};
   }
 
 }
