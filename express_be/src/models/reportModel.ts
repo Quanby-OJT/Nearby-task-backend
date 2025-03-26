@@ -142,11 +142,61 @@ class ReportModel {
 
   // Moderator and Admin
 
-  async getAllReports(){
-    const { data, error } = await supabase.from("report").select("*");
-
-    if (error) throw new Error(error.message);
-    return data;
+  async getAllReports() {
+    try {
+  
+  const { data: reports, error: reportError } = await supabase.from("report").select("*");
+  
+      if (reportError) {
+        console.error("Supabase error fetching reports:", reportError);
+        throw new Error(reportError.message);
+      }
+  
+      if (!reports || reports.length === 0) {
+        return [];
+      }
+  
+      const userIds = [
+        ...new Set([
+          ...reports.map((report) => report.reported_by),
+          ...reports.map((report) => report.reported_whom),
+        ]),
+      ].filter((id) => id !== null && id !== undefined);
+  
+      const { data: users, error: userError } = await supabase
+        .from("user")
+        .select("user_id, first_name, middle_name, last_name")
+        .in("user_id", userIds);
+  
+      if (userError) {
+        console.error("Supabase error fetching users:", userError);
+        throw new Error(userError.message);
+      }
+  
+      const userMap = new Map(users.map((user) => [user.user_id, user]));
+  
+      const combinedData = reports.map((report) => ({
+        ...report,
+        reporter: userMap.get(report.reported_by) || {
+          user_id: report.reported_by,
+          first_name: "Unknown",
+          middle_name: "",
+          last_name: "User",
+        },
+        violator: userMap.get(report.reported_whom) || {
+          user_id: report.reported_whom,
+          first_name: "Unknown",
+          middle_name: "",
+          last_name: "User",
+        },
+      }));
+  
+      console.log("Combined reports with user data:", combinedData);
+      return combinedData;
+    } catch (err) {
+      console.error("Unexpected error in getAllReports:", err);
+      throw err;
+    }
   }
 }
 
