@@ -18,6 +18,7 @@ class UserAccount {
     acc_status: string;
     user_role: string;
     verification_token: string;
+
   }) {
     const { data, error } = await supabase.from("user").insert([userData]);
     console.log(data, error)
@@ -71,8 +72,21 @@ class UserAccount {
     const { data, error } = await supabase
       .from("user")
       .select(
-        "first_name, middle_name, last_name, image_link, email, birthdate, user_role"
+        "*"
       )
+      .eq("user_id", user_id)
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    return data;
+  }
+
+
+  static async getUserDocs(user_id: string) {
+    const { data, error } = await supabase
+      .from("client_documents")
+      .select("*")
       .eq("user_id", user_id)
       .single();
 
@@ -98,11 +112,11 @@ class UserAccount {
     const { data, error } = await supabase
       .from("tasker")
       .select(
-        "bio, tasker_specialization(specialization), skills, availability, wage_per_hour, tasker_documents(tesda_document_link), social_media_links, address"
+        "*"
       )
       .eq("user_id", user_id)
       .single();
-    console.log(data, error);
+    console.log("This is the data fetch from userAccountModel.showTasker()" + data, error);
 
     if (error) throw new Error(error.message);
 

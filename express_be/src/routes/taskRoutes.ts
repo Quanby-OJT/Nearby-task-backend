@@ -1,6 +1,8 @@
 // routes/userRoutes.ts
 import { Router } from "express";
 import TaskController from "../controllers/taskController";
+import multer, { memoryStorage } from "multer";
+const upload = multer({storage: memoryStorage()})
 
 const router = Router();
 
@@ -15,6 +17,19 @@ router.delete("/deleteTask/:id", TaskController.deleteTask);
 router.get("/getCreatedTaskByClient/:client_id", TaskController.getCreatedTaskByClient);
 
 router.put("/updateTask/:id", TaskController.updateTask);
+
+router.get("/document-link/:id", TaskController.getDocumentLink);
+
+router.put(
+    "/update-tasker-with-images/:id",
+    upload.fields([
+      { name: "profileImage", maxCount: 1 },
+      { name: "documentImage", maxCount: 1 }
+    ]),
+    TaskController.updateTaskerProfile
+  );
+
+router.put("/update-tasker-profile/:id", TaskController.updateTaskerProfileNoImages);
 
 router.post("");
 

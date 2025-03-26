@@ -38,7 +38,10 @@ class ConversationController {
             .from("task_taken")
             .select(`
                 task_taken_id,
-                post_task!task_id (task_title),
+                post_task!task_id (
+                    task_id,
+                    task_title
+                ),
                 clients!client_id (
                     user!user_id (first_name, middle_name, last_name)
                 ),
@@ -59,7 +62,10 @@ class ConversationController {
         }else if(role === "Client"){
             const { data, error } = await supabase.from("task_taken").select(`
                 task_taken_id,
-                post_task!task_id (task_title),
+                post_task!task_id (
+                    task_id,
+                    task_title
+                ),
                 clients!client_id (
                     user!user_id (first_name, middle_name, last_name)
                 ),
@@ -85,6 +91,7 @@ class ConversationController {
         console.log("Retrieving Messages for Task Taken ID of: ", task_taken_id)
 
         const {data, error} = await supabase.from("conversation_history").select("conversation, user_id").eq("task_taken_id", task_taken_id)
+        console.log(data, error)
         if(error){
             console.error(error.message)
             res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})

@@ -8,12 +8,17 @@ import ProfileController from "../controllers/profileController";
 import { clientValidation, taskerValidation } from "../validator/userValidator";
 import TaskController from "../controllers/taskController";
 import { isAuthenticated } from "../middleware/authenticationMiddleware";
+import auth from "../controllers/authAngularController";
 import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
 
 const upload = multer({storage: memoryStorage()})
 
 const router = Router();
+
+
+/** Public Authentication Routes */
+router.post("/login-angular", auth.login);
 
 /** Authentication Routes */
 router.post(
@@ -70,6 +75,7 @@ router.post(
 );
 
 router.post("/verify", UserAccountController.verifyEmail);
+router.put("/update-client-user/:id", UserAccountController.updateUser);
 
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
@@ -77,7 +83,7 @@ router.get("/check-session", (req, res) => {
 
 router.post("/logout", AuthenticationController.logout);
 
-// router.use(isAuthenticated);
+router.use(isAuthenticated);
 
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
@@ -88,6 +94,8 @@ router.post("/assign-task", TaskController.assignTask);
 router.post("/send-message", ConversationController.sendMessage);
 router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 router.get("/messages/:task_taken_id", ConversationController.getMessages);
+router.post("/update-status-tasker", TaskController.updateTaskStatusforTasker);
+router.post("/update-status-client", TaskController.updateTaskStatusforClient);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
@@ -97,5 +105,36 @@ router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
 router.post("/logout", AuthenticationController.logout);
+
+// updating client with both profile and ID images
+router.put(
+  "/update-user-with-images/:id",
+  upload.fields([
+    { name: "profileImage", maxCount: 1 },
+    { name: "idImage", maxCount: 1 }
+  ]),
+  UserAccountController.updateUserWithImages
+);
+
+// updating client with profile image only
+router.put(
+  "/update-user-with-profile-image/:id",
+  upload.fields([
+    { name: "profileImage", maxCount: 1 },
+  ]),
+  UserAccountController.updateUserWithProfileImage
+);
+
+
+// updating client with ID image only
+router.put(
+  "/update-user-with-id-image/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 }
+  ]),
+  UserAccountController.updateUserWithIdImage
+);
+
+router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
 
 export default router;
