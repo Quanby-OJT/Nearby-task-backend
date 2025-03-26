@@ -88,7 +88,7 @@ router.use(isAuthenticated);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/displayTask/:id", TaskController.getTaskById);
-router.patch("/displayTask/:id/disable", TaskController.disableTask);
+//router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.post("/send-message", ConversationController.sendMessage);
