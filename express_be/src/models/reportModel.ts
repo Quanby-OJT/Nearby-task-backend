@@ -26,6 +26,9 @@ interface ClientWithUser {
 }
 
 class ReportModel {
+
+// Client and Taskers
+
   async createReport(
     reported_by: number | undefined,
     reported_whom: number | undefined,
@@ -135,6 +138,15 @@ class ReportModel {
     console.log("Mapped clients:", clients);
 
     return clients;
+  }
+
+  // Moderator and Admin
+
+  async getAllReports(){
+    const { data, error } = await supabase.from("report").select("*");
+
+    if (error) throw new Error(error.message);
+    return data;
   }
 }
 

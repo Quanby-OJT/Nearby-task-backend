@@ -11,6 +11,8 @@ const upload = multer({
 }).array("images[]", 5);
 
 class ReportController {
+
+  // Client and Tasker 
   static async createReport(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received report data:", req.body);
@@ -143,6 +145,26 @@ class ReportController {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  }
+
+
+// Moderator and Admin
+  static async getAllReports(req: Request, res: Response){
+    try{
+      const reports = await reportModel.getAllReports();
+      console.log("Fetched Data: ", reports);
+      res.status(200).json({
+        success: true,
+        reports: reports,
+      })
+
+    }catch(error){
+      console.error("Failed to getch reports: ", error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown Error Occurred",
+      })
     }
   }
 }
