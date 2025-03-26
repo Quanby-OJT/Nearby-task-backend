@@ -144,8 +144,9 @@ class ReportModel {
 
   async getAllReports() {
     try {
-  
-  const { data: reports, error: reportError } = await supabase.from("report").select("*");
+      const { data: reports, error: reportError } = await supabase
+        .from("report")
+        .select("*");
   
       if (reportError) {
         console.error("Supabase error fetching reports:", reportError);
@@ -165,7 +166,7 @@ class ReportModel {
   
       const { data: users, error: userError } = await supabase
         .from("user")
-        .select("user_id, first_name, middle_name, last_name")
+        .select("user_id, first_name, middle_name, last_name, user_role")
         .in("user_id", userIds);
   
       if (userError) {
@@ -180,19 +181,32 @@ class ReportModel {
         reporter: userMap.get(report.reported_by) || {
           user_id: report.reported_by,
           first_name: "Unknown",
-          middle_name: "",
-          last_name: "User",
+          middle_name: "Unknown",
+          last_name: "Unknown",
+          user_role: "Unknown",
         },
         violator: userMap.get(report.reported_whom) || {
           user_id: report.reported_whom,
           first_name: "Unknown",
-          middle_name: "",
-          last_name: "User",
+          middle_name: "Unknown",
+          last_name: "Unknown",
+          user_role: "Unknown",
         },
       }));
-  
-      console.log("Combined reports with user data:", combinedData);
-      return combinedData;
+// Convert Date in Created_at Updated_at to a more ano readable way
+      const formattedData = combinedData.map((report) => ({
+        ...report,
+        created_at: report.created_at
+          ? new Date(report.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
+          : null,
+    //Update_at can be remove but for reference purpose i didn't remove it incase in the future we need to convert two date
+        updated_at: report.updated_at
+          ? new Date(report.updated_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
+          : null,
+      }));
+// Pag pass of the data
+      console.log("Combined reports with formatted dates:", formattedData);
+      return formattedData;
     } catch (err) {
       console.error("Unexpected error in getAllReports:", err);
       throw err;
