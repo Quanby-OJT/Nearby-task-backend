@@ -1,4 +1,3 @@
-// routes/userRoutes.ts
 import { Router } from "express";
 import UserAccountController from "../controllers/userAccountController";
 import multer from "multer";
