@@ -14,6 +14,8 @@ router.get("/displayTask/:id", TaskController.getTaskById);
 
 router.delete("/deleteTask/:id", TaskController.deleteTask);
 
+router.get("/task-taken/tasker/:taskerId", TaskController.getTaskforTasker);
+
 router.get("/getCreatedTaskByClient/:client_id", TaskController.getCreatedTaskByClient);
 
 router.put("/updateTask/:id", TaskController.updateTask);
