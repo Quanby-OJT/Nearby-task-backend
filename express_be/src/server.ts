@@ -12,7 +12,7 @@ import likeRoutes from "./routes/likeRoutes";
 import userlogRoutes from "./routes/userlogRoutes";
 import clientRooutes from "./routes/clientRoutes"; 
 import reportRoutes from "./routes/reportRoutes";
-
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 const app: Application = express();
@@ -28,6 +28,7 @@ app.use(
 );
 
 app.use(express.json());
+app.use(cookieParser()); 
 app.use(
   session({
     secret: session_key,
@@ -41,19 +42,23 @@ app.use(
   })
 );
 
-// Routes
-app.use(
-  "/connect",
-  server,
-  userAccountRoute,
-  userRoute,
-  taskRoutes,
-  authRoutes,
-  likeRoutes,
-  userlogRoutes,
-  clientRooutes,
-  reportRoutes
-);
+// Mount auth routes - These should be public
+
+
+// Mount API routes - This contains both public and protected routes
+app.use("/connect", server);
+
+app.use("/connect", authRoutes);
+
+// Mount other routes - These will be protected by the isAuthenticated middleware in their respective files
+
+app.use("/connect", userAccountRoute);
+app.use("/connect", userRoute);
+app.use("/connect", taskRoutes);
+app.use("/connect", likeRoutes);
+app.use("/connect", userlogRoutes);
+app.use("/connect", clientRooutes);
+app.use("/connect", reportRoutes);
 
 // Start server
 const PORT = port || 5000;

@@ -1,4 +1,3 @@
-
 import { supabase } from "../config/configuration";
 
 class TaskModel {
@@ -135,14 +134,56 @@ class TaskModel {
     return data;
   }
 
-  async disableTask(jobPostId: number) {
+  async getTasksByClientId(clientId: number) {
+    const { data, error } = await supabase
+      .from("post_task")
+      .select("*")
+      .eq("client_id", clientId);
+
+    if (error) {
+      console.error("Error fetching tasks by client ID:", error);
+      throw new Error(error.message);
+    }
+    
+    return data;
+  }
+
+  async deleteTask(taskId: number) {
     const { error } = await supabase
       .from("post_task")
-      .update({ status: "disabled" })
-      .eq("task_id", jobPostId);
+      .delete()
+      .eq("task_id", taskId);
+
+     // .update({ status: "disabled" })
+     //.eq("task_id", jobPostId)
 
     if (error) throw new Error(error.message);
-    return { message: "Task disabled successfully" };
+    return { success: true, message: "Task deleted successfully" };
+  }
+
+  async updateTask(taskId: number, taskData: any) {
+    console.log("Updating task:", taskId, taskData);
+    
+    // Remove any fields that should not be updated
+    const cleanedData = { ...taskData };
+    delete cleanedData.task_id; // Don't update primary key
+    delete cleanedData.client_id; // Don't update client_id
+    
+    console.log("Cleaned data for update:", cleanedData);
+    
+    const { data, error } = await supabase
+      .from("post_task")
+      .update(cleanedData)
+      .eq("task_id", taskId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating task:", error);
+      throw new Error(error.message);
+    }
+    
+    return { success: true, message: "Task updated successfully", task: data };
   }
 }
 

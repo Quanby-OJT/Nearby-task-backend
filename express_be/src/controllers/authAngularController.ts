@@ -94,9 +94,18 @@ class auth {
         }
       }
 
+      console.log("Session ID from Backend:", sessionID);
+
+      res.cookie("session", sessionID, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 24 * 60 * 60 * 1000,
+      });
+      
       return res.status(200).json({
         message: "Logged in successfully",
         userSession: userSession,
+        sessionID: sessionID,
       });
     } catch (err: any) {
       console.error("Login error:", err);
@@ -108,6 +117,9 @@ class auth {
     try {
       const { userID, cleanedSessionID } = req.body;
       const loggedOut = new Date().toISOString();
+
+      console.log("User ID from Backend to logout:", userID);
+      console.log("Session ID from Backend to logout:", cleanedSessionID);
 
       const { error } = await supabase
         .from("user")
@@ -139,7 +151,7 @@ class auth {
         );
         return res.status(500).json({ message: "Error updating user log" });
       }
-
+      res.clearCookie("session");
       return res.status(200).json({ message: "User updated successfully" });
     } catch (error) {
       return res.status(500).json({ message: "Error" + error });

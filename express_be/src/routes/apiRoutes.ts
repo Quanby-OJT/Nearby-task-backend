@@ -8,12 +8,18 @@ import ProfileController from "../controllers/profileController";
 import { clientValidation, taskerValidation } from "../validator/userValidator";
 import TaskController from "../controllers/taskController";
 import { isAuthenticated } from "../middleware/authenticationMiddleware";
+import auth from "../controllers/authAngularController";
 import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
+import profileController from "../controllers/profileController";
 
 const upload = multer({storage: memoryStorage()})
 
 const router = Router();
+
+
+/** Public Authentication Routes */
+router.post("/login-angular", auth.login);
 
 /** Authentication Routes */
 router.post(
@@ -54,7 +60,6 @@ router.post(
   clientValidation,
   upload.fields([
     { name: "image", maxCount: 1 },
-    { name: "document", maxCount: 1 }
   ]),
   ProfileController.ClientController.createClient
 );
@@ -78,12 +83,12 @@ router.get("/check-session", (req, res) => {
 
 router.post("/logout", AuthenticationController.logout);
 
-// router.use(isAuthenticated);
+router.use(isAuthenticated);
 
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/displayTask/:id", TaskController.getTaskById);
-router.patch("/displayTask/:id/disable", TaskController.disableTask);
+//router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.post("/send-message", ConversationController.sendMessage);
@@ -99,6 +104,23 @@ router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
+
+//User CRUD
+router.put(
+  "/user/client/:id", 
+  upload.fields([    
+    { name: "image", maxCount: 1 },
+  ]),
+  profileController.ClientController.updateClient);
+router.put(
+  "/user/tasker/:id",
+  upload.fields([    
+    { name: "image", maxCount: 1 },
+    { name: "documents", maxCount: 10 } // Adjust maxCount as needed
+  ]),
+  profileController.TaskerController.updateTasker
+);
+
 router.post("/logout", AuthenticationController.logout);
 
 // updating client with both profile and ID images
@@ -110,6 +132,19 @@ router.put(
   ]),
   UserAccountController.updateUserWithImages
 );
+
+// updating tasker with both profile and PDF images
+router.put(
+  "/update-tasker-with-file-profile/:id",
+  upload.fields([
+    { name: "file", maxCount: 1 },
+    { name: "image", maxCount: 1 }
+  ]),
+  UserAccountController.updateTaskerWithFile
+);
+
+
+
 
 // updating client with profile image only
 router.put(
