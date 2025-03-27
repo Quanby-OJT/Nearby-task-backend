@@ -63,7 +63,7 @@ class UserAccount {
     .update({ image_link: image_link })
     .eq("user_id", user_id)
 
-    if(error) throw new Error(error.message);
+    if(error) throw new Error("User Error: " + error.message);
 
     return data;
   }
@@ -72,7 +72,7 @@ class UserAccount {
     const { data, error } = await supabase
       .from("user")
       .select(
-        "*"
+        "first_name, middle_name, last_name, image_link, email, birthdate, user_role, gender, contact"
       )
       .eq("user_id", user_id)
       .single();
@@ -103,24 +103,34 @@ class UserAccount {
       .single();
     console.log(data, error);
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Clientele Error: " + error.message);
 
     return data;
   }
 
   static async showTasker(user_id: string) {
-    const { data, error } = await supabase
-      .from("tasker")
-      .select(
-        "*"
-      )
-      .eq("user_id", user_id)
-      .single();
-    console.log("This is the data fetch from userAccountModel.showTasker()" + data, error);
+    const { data: tasker, error: taskerError } = await supabase
+    .from("tasker")
+    .select(
+      "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period, birthdate, contact_number, profile_picture"
+    )
+    .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
+    .single();
+    console.log(tasker, taskerError);
 
-    if (error) throw new Error(error.message);
+    if (taskerError) throw new Error("Tasker Error: " + taskerError.message);
 
-    return data;
+    const { data: taskerDocument, error: taskerDocumentError } = await supabase
+    .from("tasker_documents")
+    .select(
+      "tesda_document_link"
+    )
+    .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
+    console.log(tasker, taskerError, taskerDocument, taskerDocumentError);
+
+    if (taskerDocumentError) throw new Error("Tasker Error: " + taskerDocumentError.message);
+
+    return {tasker, taskerDocument};
   }
 
 }

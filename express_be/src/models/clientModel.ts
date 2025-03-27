@@ -20,13 +20,15 @@ class ClientModel {
   }
 
   static async updateClient(
-    clientId: number,
     clientInfo: { user_id: number; preferences: Text; client_address: Text }
   ) {
     const { data, error } = await supabase
       .from("clients")
-      .update(clientInfo)
-      .eq("id", clientId);
+      .update({
+        preferences: clientInfo.preferences,
+        client_address: clientInfo.client_address
+      })
+      .eq("user_id", clientInfo.user_id);
     if (error) throw new Error(error.message);
     return data;
   }

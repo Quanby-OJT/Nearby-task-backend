@@ -23,9 +23,13 @@ export const taskerValidation = [
     body("bio").notEmpty().isString().withMessage("Please enter your bio"),
     body("specialization").notEmpty().isString().withMessage("Please enter your specialization"),
     body("skills").notEmpty().isString().withMessage("Please enter your skills"),
-    body("wage").notEmpty().isNumeric().withMessage("Please enter a valid wage"),
+    body("address").notEmpty().isString().withMessage("Please enter your address"),
+    body("availability").notEmpty().isString().withMessage("Please enter your availability"),
+    body("pay_period").notEmpty().isString().withMessage("Please enter your pay period"),
+    body("wage_per_hour").notEmpty().isNumeric().withMessage("Please enter a valid wage"),
     body("tesda_documents_link").optional().isURL().withMessage("Please enter a valid URL for TESDA documents"),
-    body("social_media_links").optional().isURL().withMessage("Please enter a valid URL for social media")
+    body("social_media_links").optional().isURL().withMessage("Please enter a valid URL for social media"),
+    body("contact_number").notEmpty().isMobilePhone("en-PH").withMessage("Please enter a valid contact number")
 ]
 
 export const clientValidation = [
