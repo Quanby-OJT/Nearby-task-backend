@@ -137,6 +137,21 @@ class TaskModel {
     return data;
   }
 
+  async getAssignedTask(task_taken_id: number){
+    const { data, error } = await supabase.from("task_taken").
+      select(`
+        task_taken_id, 
+        post_task!task_id (*),
+        task_status
+        `
+      ).
+      eq("task_taken_id", task_taken_id).
+      single();
+      console.log(data, error);
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
   async deleteTask(taskId: number) {
     const { error } = await supabase
       .from("post_task")

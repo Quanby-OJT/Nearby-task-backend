@@ -4,6 +4,8 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
+import fetch from "node-fetch";
+require("dotenv").config();
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -169,6 +171,27 @@ class TaskController {
     }
   }
 
+  static async getAssignedTaskbyId(req: Request, res: Response): Promise<void> {
+    try {
+      const taskTakenId = parseInt(req.params.task_taken_id);
+
+      if (isNaN(taskTakenId)) {
+        res.status(400).json({ success: false, error: "Invalid task taken ID" });
+        return;
+      }
+
+      const task_information = await taskModel.getAssignedTask(taskTakenId);
+
+      res.status(200).json({ success: true, task_information });
+    } catch (error) {
+      console.error("Error fetching task by task taken ID:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "An error occurred while retrieving task"
+      });
+    }
+  }
+
 
   static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     try {
@@ -308,13 +331,89 @@ class TaskController {
      */
   static async depositTaskPayment(req: Request, res: Response): Promise<void> {
     try {
-      const { task_id, amount } = req.body;
+      const { task_taken_id, amount } = req.body;
 
-      
+      const{data: userEmail, error: emailError} = await supabase
+      .from("task_taken")
+      .select(`
+        clients!client_id (
+          user!user_id(
+            email
+          )
+        ),
+        tasker!tasker_id (
+          user!user_id(
+            email
+          )
+        )
+        `)
+      .eq("task_taken_id", task_taken_id)
+      .single();
+
+      if(emailError){
+        console.error("Error while updating Task Status", emailError.message, emailError.stack);
+        res.status(500).json({ error: "An Error Occurred while processing your payment." });
+        return
+      }
+
+      const taskerEmail = userEmail.tasker
+      const clientEmail = userEmail.clients
+
+      //Escrow API
+      const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/transaction`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `${process.env.ESCROW_API_KEY}`
+        },
+        body: JSON.stringify({
+          "parties": [
+            {
+              "role": "buyer",
+              "email": clientEmail
+            },
+            {
+              "role": "seller",
+              "email": taskerEmail
+            }
+          ],
+          "amount": amount,
+          "description": "Initial Deposit for Task Assignment.",
+          "currency": "PHP"
+        })
+      }
+
+      )
+      const { data: escrowLog, error: escrowError } = await supabase
+        .from("escrow_payment_logs")
+        .insert({
+          task_taken_id: task_taken_id,
+          contract_price: amount,
+          status: "Pending",
+          escrow_transaction_id: escrowResponse,
+          payment: amount 
+        })
+        .eq("task_id", task_taken_id);
+
+      if (escrowError) {
+        console.error("Error while updating Task Status", escrowError.message, escrowError.stack);
+        res.status(500).json({ error: "An Error Occurred while processing your payment." });
+      } else {
+        res.status(200).json({ message: "Task status updated successfully", escrow: escrowLog });
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Error Unknown.")
+      res.status(500).json({error: "Internal Server error",});
+    }
+  }
+
+  static async updateTransactionStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const { task_taken_id, status } = req.body;
       const { data, error } = await supabase
         .from("escrow_payment_logs")
-        .update({ payment: amount })
-        .eq("task_id", task_id);
+        .update({ status })
+        .eq("task_taken_id", task_taken_id);
 
       if (error) {
         console.error("Error while updating Task Status", error.message, error.stack);
@@ -322,7 +421,87 @@ class TaskController {
       } else {
         res.status(200).json({ message: "Task status updated successfully", task: data });
       }
-    } catch (error) {
+    }
+    catch (error) {
+      console.error(error instanceof Error ? error.message : "Error Unknown.")
+      res.status(500).json({error: "Internal Server error",});
+    }
+  }
+
+  static async releasePayment(req: Request, res: Response): Promise<void> {
+    try {
+      const { task_taken_id, amount } = req.body;
+
+      const{data: userEmail, error: emailError} = await supabase
+      .from("task_taken")
+      .select(`
+        clients!client_id (
+          user!user_id(
+            email
+          )
+        ),
+        tasker!tasker_id (
+          user!user_id(
+            email
+          )
+        )
+        `)
+      .eq("task_taken_id", task_taken_id)
+      .single();
+
+      if(emailError){
+        console.error("Error while updating Task Status", emailError.message, emailError.stack);
+        res.status(500).json({ error: "An Error Occurred while processing your payment." });
+        return
+      }
+
+      const taskerEmail = userEmail.tasker
+      const clientEmail = userEmail.clients
+
+      //Escrow API
+      const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/transaction`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `${process.env.ESCROW_API_KEY}`
+        },
+        body: JSON.stringify({
+          "parties": [
+            {
+              "role": "buyer",
+              "email": clientEmail
+            },
+            {
+              "role": "seller",
+              "email": taskerEmail
+            }
+          ],
+          "amount": amount,
+          "description": "Initial Deposit for Task Assignment.",
+          "currency": "PHP"
+        })
+      }
+
+      )
+      const { data: escrowLog, error: escrowError } = await supabase
+        .from("escrow_payment_logs")
+        .insert({
+          task_taken_id: task_taken_id,
+          contract_price: amount,
+          status: "Pending",
+          escrow_transaction_id: escrowResponse,
+          payment: amount 
+        })
+        .eq("task_id", task_taken_id);
+
+      if (escrowError) {
+        console.error("Error while updating Task Status", escrowError.message, escrowError.stack);
+        res.status(500).json({ error: "An Error Occurred while processing your payment." });
+      } else {
+        res.status(200).json({ message: "Task status updated successfully", escrow: escrowLog });
+      }
+    }
+    catch (error) {
       console.error(error instanceof Error ? error.message : "Error Unknown.")
       res.status(500).json({error: "Internal Server error",});
     }
