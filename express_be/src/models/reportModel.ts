@@ -26,9 +26,7 @@ interface ClientWithUser {
 }
 
 class ReportModel {
-
-// Client and Taskers
-
+  // Client and Taskers
   async createReport(
     reported_by: number | undefined,
     reported_whom: number | undefined,
@@ -141,7 +139,6 @@ class ReportModel {
   }
 
   // Moderator and Admin
-
   async getAllReports() {
     try {
       const { data: reports, error: reportError } = await supabase
@@ -193,24 +190,39 @@ class ReportModel {
           user_role: "Unknown",
         },
       }));
-// Convert Date in Created_at Updated_at to a more ano readable way
+      // Convert Date in Created_at Updated_at to a more readable way
       const formattedData = combinedData.map((report) => ({
         ...report,
         created_at: report.created_at
           ? new Date(report.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
           : null,
-    //Update_at can be remove but for reference purpose i didn't remove it incase in the future we need to convert two date
         updated_at: report.updated_at
           ? new Date(report.updated_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
           : null,
       }));
-// Pag pass of the data
+      // Pass the data
       console.log("Combined reports with formatted dates:", formattedData);
       return formattedData;
     } catch (err) {
       console.error("Unexpected error in getAllReports:", err);
       throw err;
     }
+  }
+
+  async updateReportStatus(reportId: number, status: boolean) {
+    const { data, error } = await supabase
+      .from("report")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("report_id", reportId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase error updating report status:", error);
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 }
 
