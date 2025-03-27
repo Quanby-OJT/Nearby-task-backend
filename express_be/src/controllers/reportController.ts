@@ -166,10 +166,15 @@ class ReportController {
   }
 
   static async updateReportStatus(req: Request, res: Response) {
+    console.log("Data Header Received From Report Service: ", req.headers);
+    console.log("Data Body Received From Report Service: ", req.body);
+  
     try {
       const reportId = parseInt(req.params.reportId, 10);
-      const { status } = req.body;
-
+      const { status, moderatorId } = req.body;
+      const actionBy = moderatorId?.actionBy;
+  
+      // Validate reportId
       if (isNaN(reportId)) {
         res.status(400).json({
           success: false,
@@ -177,17 +182,28 @@ class ReportController {
         });
         return;
       }
-
-      if (typeof status !== 'boolean') {
+  
+      // Validate status
+      if (typeof status !== "boolean") {
         res.status(400).json({
           success: false,
           message: "Status must be a boolean",
         });
         return;
       }
-
-      const updatedReport = await reportModel.updateReportStatus(reportId, status);
-
+  
+      // Validate actionBy
+      if (typeof actionBy !== "number") {
+        res.status(400).json({
+          success: false,
+          message: "actionBy must be a number",
+        });
+        return;
+      }
+  
+      // Update the report with status and actionBy
+      const updatedReport = await reportModel.updateReportStatus(reportId, status, actionBy);
+  
       res.status(200).json({
         success: true,
         message: "Report status updated successfully",

@@ -209,19 +209,23 @@ class ReportModel {
     }
   }
 
-  async updateReportStatus(reportId: number, status: boolean) {
+  async updateReportStatus(reportId: number, status: boolean, actionBy: number) {
     const { data, error } = await supabase
       .from("report")
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({ 
+        status, 
+        action_by: actionBy, 
+        updated_at: new Date().toISOString() 
+      })
       .eq("report_id", reportId)
       .select()
       .single();
-
+  
     if (error) {
       console.error("Supabase error updating report status:", error);
       throw new Error(error.message);
     }
-
+  
     return data;
   }
 }
