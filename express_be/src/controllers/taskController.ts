@@ -262,14 +262,15 @@ class TaskController {
   static async getDocumentLink(req: Request, res: Response): Promise<any> {
     try {
 
-      const documentId = parseInt(req.params.id);
+      const taskerId = parseInt(req.params.id);
+      console.log("This is the tasker id: ", taskerId);
       const { data, error } = await supabase
         .from("tasker_documents")
         .select("tesda_document_link")
-        .eq("id", documentId)
+        .eq("tasker_id", taskerId)
         .single();
 
-        console.log("This is the document link: ", documentId, data);
+      console.log("This is the document link: ", taskerId, data);
       res.status(200).json({ data: data?.tesda_document_link, error });
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Error Unknown.")
@@ -293,7 +294,7 @@ class TaskController {
         social_media_links,
       } = req.body;
   
-      console.log("Request body:", req.body);
+      console.log("Request body from another tasker:", req.body);
 
       const { data: specializations, error: specialization_error } = await supabase
         .from("tasker_specialization")
@@ -385,6 +386,7 @@ class TaskController {
     }
   }
 
+  // tasker without email and profile image and file
   static async updateTaskerProfileNoImages(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.params.id;
@@ -404,22 +406,10 @@ class TaskController {
         pay_period
       } = req.body;
 
-      console.log("Request body:", req.body);
+      console.log("Request body from tasker:", req.body);
+
       console.log("User ID:", userId);
 
-
-      // Get specialization ID
-      // const { data: specializationData, error: specializationError } = await supabase
-      //   .from("tasker_specialization")
-      //   .select("spec_id")
-      //   .eq("specialization", specialization)
-      //   .single();
-
-      // if (specializationError) {
-      //   throw new Error("Specialization Error: " + specializationError.message);
-      // }
-
-      // Update user account information
       const { data: userData, error: userError } = await supabase
         .from("user")
         .update({
@@ -453,6 +443,8 @@ class TaskController {
       }
 
       // Update tasker information
+
+      console.log("Tasker Specialization:", specialization);
       const { data: updatedTaskerData, error: taskerUpdateError } = await supabase
         .from("tasker")
         .update({
@@ -483,7 +475,7 @@ class TaskController {
       });
     }
   }
-}
+} 
 
 
 export default TaskController;

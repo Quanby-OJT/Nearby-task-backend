@@ -7,7 +7,7 @@ import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
 
 class UserAccountController {
-
+  
 
   static async registerUser(req: Request, res: Response): Promise<any> {
     try {
@@ -444,9 +444,142 @@ class UserAccountController {
 }
 
 
+
+static async updateTaskerWithPDF(req: Request, res: Response): Promise<any> {
+  try {
+    const userId = Number(req.params.id);
+    const {
+      first_name, middle_name, last_name, email, user_role, contact, gender, birthdate,
+      specialization_id, bio, skills, wage_per_hour, pay_period
+    } = req.body;
+
+    console.log("Received Data:", req.body);
+
+    // Ensure email uniqueness check
+    const { data: existingUser, error: findError } = await supabase
+      .from("user")
+      .select("email, user_id")
+      .eq("email", email)
+      .neq("user_id", userId)
+      .maybeSingle();
+
+    if (findError) {
+      console.error("Error checking email existence:", findError);
+      return res.status(500).json({ error: findError.message });
+    }
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+    // File upload handling
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    let pdfUrl: string | null = null;
+
+    if (files && files.file && files.file.length > 0) {
+      const pdfFile = files.file[0];
+      const fileName = `users/pdf_${userId}_${Date.now()}_${pdfFile.originalname}.pdf`;
+
+      console.log("Uploading PDF File:", fileName);
+      
+      const { error } = await supabase.storage
+        .from("crud_bucket")
+        .upload(fileName, new Blob([pdfFile.buffer]), {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (error) {
+        return res.status(500).json({ error: `Error uploading PDF: ${error.message}` });
+      }
+
+      pdfUrl = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
+    }
+
+    console.log("PDF Document URL:", pdfUrl);
+
+    // Update user details
+    const updateUser = {
+      first_name, middle_name, last_name, email, user_role, contact,
+      gender, birthdate, 
+    };
+
+    const updateSkills = { specialization_id, bio, skills, wage_per_hour, pay_period, updated_at: new Date() };
+
+    const { error: updateUserError } = await supabase
+      .from("user")
+      .update(updateUser)
+      .eq("user_id", userId);
+
+    if (updateUserError) {
+      console.error("Error updating user table:", updateUserError);
+      return res.status(500).json({ error: updateUserError.message });
+    }
+
+    const { error: updateSkillsError } = await supabase
+      .from("tasker")
+      .update(updateSkills)
+      .eq("user_id", userId);
+
+    if (updateSkillsError) {
+      console.error("Error updating tasker table:", updateSkillsError);
+      return res.status(500).json({ error: updateSkillsError.message });
+    }
+
+    // Update tasker documents if PDF is uploaded
+    const { data: existingDocument } = await supabase
+      .from("tasker_documents")
+      .select("tasker_id")
+      .eq("tasker_id", userId)
+      .maybeSingle();
+
+    if (existingDocument) {
+      const { error: pdfUpdateError } = await supabase
+        .from("tasker_documents")
+        .update({
+          tesda_document_link: pdfUrl,
+          valid: false,
+          updated_at: new Date()
+        })
+        .eq("tasker_id", userId);
+
+      if (pdfUpdateError) {
+        console.error("Error updating tasker_documents table:", pdfUpdateError);
+        return res.status(500).json({ error: pdfUpdateError.message });
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from("tasker_documents")
+        .insert({
+          tasker_id: userId,
+          tesda_document_link: pdfUrl,
+          valid: false,
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+
+      if (insertError) {
+        console.error("Error inserting into tasker_documents table:", insertError);
+        return res.status(500).json({ error: insertError.message });
+      }
+    }
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      pdfUrl,
+    });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
+  }
+}
+
+
 // This is for the tasker profile update with both profile and PDF image
 // Tasker profile update with profile image & PDF document
-static async updateTaskerWithFile(req: Request, res: Response): Promise<any> {
+
+
+static async updateTaskerWithFileandImage(req: Request, res: Response): Promise<any> {
   try {
     const userId = Number(req.params.id);
     const {
@@ -478,15 +611,44 @@ static async updateTaskerWithFile(req: Request, res: Response): Promise<any> {
     let pdfUrl: string | null = null;
     let profileImageUrl: string | null = null;
 
-    if (files?.file?.[0]) {
+    if (files && files.file && files.file.length > 0) {
       const pdfFile = files.file[0];
+      const fileName = `users/pdf_${userId}_${Date.now()}_${pdfFile.originalname}.pdf`;
 
-      pdfUrl = await UserAccountController.uploadFile(pdfFile, `users/pdf_${userId}.pdf`);
+      console.log("Uploading PDF File:", fileName);
+      
+      const { error } = await supabase.storage
+        .from("crud_bucket")
+        .upload(fileName, new Blob([pdfFile.buffer]), {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (error) {
+        return res.status(500).json({ error: `Error uploading PDF: ${error.message}` });
+      }
+
+      pdfUrl = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
     }
 
-    if (files?.image?.[0]) {
-      const imageFile = files.image[0];
-      profileImageUrl = await UserAccountController.uploadFile(imageFile, `users/profile_${userId}`);
+    if (files && files.image && files.image.length > 0) {
+      const profileImageFile = files.image[0];
+      const fileName = `users/profile_${userId}_${Date.now()}_${profileImageFile.originalname}`;
+
+      console.log("Uploading Profile Image:", fileName);
+      
+      const { error } = await supabase.storage
+        .from("crud_bucket")
+        .upload(fileName, new Blob([profileImageFile.buffer]), {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (error) {
+        return res.status(500).json({ error: `Error uploading profile image: ${error.message}` });
+      }
+
+      profileImageUrl = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
     }
 
     console.log("Profile Image URL:", profileImageUrl);
@@ -521,14 +683,13 @@ static async updateTaskerWithFile(req: Request, res: Response): Promise<any> {
     }
 
     // Update tasker documents if PDF is uploaded
-
-    const existingDocument = await supabase
+    const { data: existingDocument } = await supabase
       .from("tasker_documents")
       .select("tasker_id")
       .eq("tasker_id", userId)
       .maybeSingle();
 
-    if (existingDocument.data) {
+    if (existingDocument) {
       const { error: pdfUpdateError } = await supabase
         .from("tasker_documents")
         .update({
@@ -543,13 +704,14 @@ static async updateTaskerWithFile(req: Request, res: Response): Promise<any> {
         return res.status(500).json({ error: pdfUpdateError.message });
       }
     } else {
-      const { data, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from("tasker_documents")
         .insert({
           tasker_id: userId,
           tesda_document_link: pdfUrl,
           valid: false,
-          created_at: new Date()
+          created_at: new Date(),
+          updated_at: new Date()
         });
 
       if (insertError) {
@@ -563,31 +725,135 @@ static async updateTaskerWithFile(req: Request, res: Response): Promise<any> {
       profileImageUrl,
       pdfUrl,
     });
-
   } catch (error) {
     console.error("Unexpected error:", error);
     return res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
   }
 }
 
-static async uploadFile(file: Express.Multer.File, path: string): Promise<string | null> {
-  if (!file) return null;
 
-  const { data, error } = await supabase.storage
-    .from("crud_bucket") // Replace with your correct bucket name
-    .upload(path, file.buffer, {
-      contentType: file.mimetype, // Set correct MIME type
-      upsert: true, // Overwrite if file exists
+static async updateTaskerWithProfileImage(req: Request, res: Response): Promise<any> {
+  try {
+    const userId = Number(req.params.id);
+    const {
+      first_name, middle_name, last_name, email, user_role, contact, gender, birthdate,
+      specialization_id, bio, skills, wage_per_hour, pay_period
+    } = req.body;
+
+    console.log("Received Data:", req.body);
+
+    // Ensure email uniqueness check
+    const { data: existingUser, error: findError } = await supabase
+      .from("user")
+      .select("email, user_id")
+      .eq("email", email)
+      .neq("user_id", userId)
+      .maybeSingle();
+
+    if (findError) {
+      console.error("Error checking email existence:", findError);
+      return res.status(500).json({ error: findError.message });
+    }
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+    // File upload handling
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    let profileImageUrl: string | null = null;
+
+    if (files?.image?.[0]) {
+      const imageFile = files.image[0];
+      const fileName = `users/profile_${userId}_${Date.now()}_${imageFile.originalname}`;
+
+      console.log("Uploading Profile Image:", fileName);
+
+      const { error } = await supabase.storage
+        .from("crud_bucket")
+        .upload(fileName, new Blob([imageFile.buffer]), {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (error) {
+        return res.status(500).json({ error: `Error uploading profile image: ${error.message}` });
+      }
+
+      profileImageUrl = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
+    }
+
+    console.log("Profile Image URL:", profileImageUrl);
+
+    // Update user details
+    const updateUser = {
+      first_name, middle_name, last_name, email, user_role, contact,
+      gender, birthdate, image_link: profileImageUrl
+    };
+
+    const updateSkills = { specialization_id, bio, skills, wage_per_hour, pay_period, updated_at: new Date() };
+
+    const { error: updateUserError } = await supabase
+      .from("user")
+      .update(updateUser)
+      .eq("user_id", userId);
+
+    if (updateUserError) {
+      console.error("Error updating user table:", updateUserError);
+      return res.status(500).json({ error: updateUserError.message });
+    }
+
+    const { error: updateSkillsError } = await supabase
+      .from("tasker")
+      .update(updateSkills)
+      .eq("user_id", userId);
+
+    if (updateSkillsError) {
+      console.error("Error updating tasker table:", updateSkillsError);
+      return res.status(500).json({ error: updateSkillsError.message });
+    }
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      profileImageUrl,
     });
-
-  if (error) {
-    console.error("Error uploading file:", error);
-    return null;
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
   }
-
-  // Generate a public URL
-  return `https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/crud_bucket/${path}`;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // updating client with both profile and ID images
   static async updateUserWithImages(req: Request, res: Response): Promise<any> {
