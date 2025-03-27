@@ -9,6 +9,8 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 
 class UserAccountController {
+
+
   static async registerUser(req: Request, res: Response): Promise<any> {
     try {
       const {
@@ -326,12 +328,17 @@ class UserAccountController {
 
       if (userData.user_role === "Client") {
         const clientData = await UserAccount.showClient(userID);
-        console.log("Your role is: " + clientData);
         res.status(200).json({ user: userData, client: clientData });
+
+        console.log("Client Data: " + clientData);
       } else if (userData.user_role === "Tasker") {
         const taskerData = await UserAccount.showTasker(userID);
+
         console.log("Tasker Data: " + taskerData);
         res.status(200).json({ user: userData, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
+
+       // res.status(200).json({ user: userData, tasker: taskerData });
+
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Unknown error")
@@ -443,6 +450,151 @@ class UserAccountController {
     }
 }
 
+
+// This is for the tasker profile update with both profile and PDF image
+// Tasker profile update with profile image & PDF document
+static async updateTaskerWithFile(req: Request, res: Response): Promise<any> {
+  try {
+    const userId = Number(req.params.id);
+    const {
+      first_name, middle_name, last_name, email, user_role, contact, gender, birthdate,
+      specialization_id, bio, skills, wage_per_hour, pay_period
+    } = req.body;
+
+    console.log("Received Data:", req.body);
+
+    // Ensure email uniqueness check
+    const { data: existingUser, error: findError } = await supabase
+      .from("user")
+      .select("email, user_id")
+      .eq("email", email)
+      .neq("user_id", userId)
+      .maybeSingle();
+
+    if (findError) {
+      console.error("Error checking email existence:", findError);
+      return res.status(500).json({ error: findError.message });
+    }
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+    // File upload handling
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    let pdfUrl: string | null = null;
+    let profileImageUrl: string | null = null;
+
+    if (files?.file?.[0]) {
+      const pdfFile = files.file[0];
+
+      pdfUrl = await UserAccountController.uploadFile(pdfFile, `users/pdf_${userId}.pdf`);
+    }
+
+    if (files?.image?.[0]) {
+      const imageFile = files.image[0];
+      profileImageUrl = await UserAccountController.uploadFile(imageFile, `users/profile_${userId}`);
+    }
+
+    console.log("Profile Image URL:", profileImageUrl);
+    console.log("PDF Document URL:", pdfUrl);
+
+    // Update user details
+    const updateUser = {
+      first_name, middle_name, last_name, email, user_role, contact,
+      gender, birthdate, image_link: profileImageUrl
+    };
+
+    const updateSkills = { specialization_id, bio, skills, wage_per_hour, pay_period, updated_at: new Date() };
+
+    const { error: updateUserError } = await supabase
+      .from("user")
+      .update(updateUser)
+      .eq("user_id", userId);
+
+    if (updateUserError) {
+      console.error("Error updating user table:", updateUserError);
+      return res.status(500).json({ error: updateUserError.message });
+    }
+
+    const { error: updateSkillsError } = await supabase
+      .from("tasker")
+      .update(updateSkills)
+      .eq("user_id", userId);
+
+    if (updateSkillsError) {
+      console.error("Error updating tasker table:", updateSkillsError);
+      return res.status(500).json({ error: updateSkillsError.message });
+    }
+
+    // Update tasker documents if PDF is uploaded
+
+    const existingDocument = await supabase
+      .from("tasker_documents")
+      .select("tasker_id")
+      .eq("tasker_id", userId)
+      .maybeSingle();
+
+    if (existingDocument.data) {
+      const { error: pdfUpdateError } = await supabase
+        .from("tasker_documents")
+        .update({
+          tesda_document_link: pdfUrl,
+          valid: false,
+          updated_at: new Date()
+        })
+        .eq("tasker_id", userId);
+
+      if (pdfUpdateError) {
+        console.error("Error updating tasker_documents table:", pdfUpdateError);
+        return res.status(500).json({ error: pdfUpdateError.message });
+      }
+    } else {
+      const { data, error: insertError } = await supabase
+        .from("tasker_documents")
+        .insert({
+          tasker_id: userId,
+          tesda_document_link: pdfUrl,
+          valid: false,
+          created_at: new Date()
+        });
+
+      if (insertError) {
+        console.error("Error inserting into tasker_documents table:", insertError);
+        return res.status(500).json({ error: insertError.message });
+      }
+    }
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      profileImageUrl,
+      pdfUrl,
+    });
+
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
+  }
+}
+
+static async uploadFile(file: Express.Multer.File, path: string): Promise<string | null> {
+  if (!file) return null;
+
+  const { data, error } = await supabase.storage
+    .from("crud_bucket") // Replace with your correct bucket name
+    .upload(path, file.buffer, {
+      contentType: file.mimetype, // Set correct MIME type
+      upsert: true, // Overwrite if file exists
+    });
+
+  if (error) {
+    console.error("Error uploading file:", error);
+    return null;
+  }
+
+  // Generate a public URL
+  return `https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/crud_bucket/${path}`;
+}
 
 // updating client with both profile and ID images
   static async updateUserWithImages(req: Request, res: Response): Promise<any> {

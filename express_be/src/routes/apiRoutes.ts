@@ -133,6 +133,19 @@ router.put(
   UserAccountController.updateUserWithImages
 );
 
+// updating tasker with both profile and PDF images
+router.put(
+  "/update-tasker-with-file-profile/:id",
+  upload.fields([
+    { name: "file", maxCount: 1 },
+    { name: "image", maxCount: 1 }
+  ]),
+  UserAccountController.updateTaskerWithFile
+);
+
+
+
+
 // updating client with profile image only
 router.put(
   "/update-user-with-profile-image/:id",
