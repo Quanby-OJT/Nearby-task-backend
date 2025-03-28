@@ -237,6 +237,42 @@ class ReportModel {
   
     return data;
   }
+
+  async getReportHistory(userId: number): Promise<Report[]> {
+    try {
+      const { data: reports, error: reportError } = await supabase
+        .from("report")
+        .select("report_id, created_at, reported_by, reported_whom, reason, status")
+        .or(`reported_by.eq.${userId},reported_whom.eq.${userId}`); // Fetch reports where user is either reporter or reported
+  
+      if (reportError) {
+        console.error("Supabase error fetching report history:", reportError);
+        throw new Error(reportError.message);
+      }
+  
+      if (!reports || reports.length === 0) {
+        return [];
+      }
+  
+      const formattedReports: Report[] = reports.map((report) => ({
+        report_id: report.report_id,
+        created_at: report.created_at
+          ? new Date(report.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
+          : undefined, // Explicitly use undefined instead of null
+        reported_by: report.reported_by,
+        reported_whom: report.reported_whom,
+        reason: report.reason,
+        status: report.status,
+      }));
+  
+      console.log("Fetched report history:", formattedReports);
+      return formattedReports;
+    } catch (err) {
+      console.error("Unexpected error in getReportHistory:", err);
+      throw err;
+    }
+  }
+
 }
 
 const reportModel = new ReportModel();
