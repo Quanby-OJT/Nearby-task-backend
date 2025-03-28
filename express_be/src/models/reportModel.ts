@@ -240,4 +240,4 @@ class ReportModel {
 }
 
 const reportModel = new ReportModel();
-export default reportModel;
+export default reportModel; 
