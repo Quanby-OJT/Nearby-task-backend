@@ -158,6 +158,7 @@ class ReportModel {
         ...new Set([
           ...reports.map((report) => report.reported_by),
           ...reports.map((report) => report.reported_whom),
+          ...reports.map((report) => report.action_by),
         ]),
       ].filter((id) => id !== null && id !== undefined);
   
@@ -189,6 +190,14 @@ class ReportModel {
           last_name: "Unknown",
           user_role: "Unknown",
         },
+        actionBy: userMap.get(report.action_by) || {
+          user_id: report.action_by,
+          first_name: "Unknown",
+          middle_name: "Unknown",
+          last_name: "Unknown",
+          user_role: "Unknown",
+        }
+
       }));
       // Convert Date in Created_at Updated_at to a more readable way
       const formattedData = combinedData.map((report) => ({
