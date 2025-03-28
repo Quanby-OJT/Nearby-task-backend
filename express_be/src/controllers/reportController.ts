@@ -11,6 +11,7 @@ const upload = multer({
 }).array("images[]", 5);
 
 class ReportController {
+ 
   // Client and Tasker 
   static async createReport(req: Request, res: Response): Promise<void> {
     try {
@@ -100,6 +101,10 @@ class ReportController {
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
+  }
+
+  static getReportHistory() {
+  
   }
 
   static uploadReportImages(req: Request, res: Response, next: Function) {
