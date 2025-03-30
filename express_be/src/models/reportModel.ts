@@ -115,7 +115,7 @@ class ReportModel {
    */
   async getReportHistory(userId: number): Promise<ReportHistory[]> {
     try {
-      // Step 1: Fetch reports for the user
+      // Fetch reports for the user
       const { data: reports, error: reportError } = await supabase
         .from("report")
         .select(`
@@ -140,7 +140,7 @@ class ReportModel {
 
       console.log("Raw reports from Supabase:", JSON.stringify(reports, null, 2));
 
-      // Step 2: Extract user IDs for reported_by and reported_whom
+      // Extract user IDs for reported_by and reported_whom
       const userIds = [
         ...new Set([
           ...reports.map((report) => report.reported_by),
@@ -148,7 +148,7 @@ class ReportModel {
         ]),
       ].filter((id) => id !== null && id !== undefined);
 
-      // Step 3: Fetch user details for these IDs
+      // Fetch user details for these IDs
       const { data: users, error: userError } = await supabase
         .from("user")
         .select("user_id, first_name, middle_name, last_name")
@@ -159,7 +159,7 @@ class ReportModel {
         throw new Error(userError.message);
       }
 
-      // Step 4: Create a map of user IDs to user details
+      // Create a map of user IDs to user details
       const userMap = new Map<number, UserData>(
         users.map((user) => [
           user.user_id,
@@ -172,7 +172,7 @@ class ReportModel {
         ])
       );
 
-      // Step 5: Map reports to ReportHistory format
+      // Map reports to ReportHistory format
       const formattedReports: ReportHistory[] = reports.map((report) => {
         const reporter = report.reported_by ? userMap.get(report.reported_by) : null;
         const violator = report.reported_whom ? userMap.get(report.reported_whom) : null;
