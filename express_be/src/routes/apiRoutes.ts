@@ -140,8 +140,34 @@ router.put(
     { name: "file", maxCount: 1 },
     { name: "image", maxCount: 1 }
   ]),
-  UserAccountController.updateTaskerWithFile
+  UserAccountController.updateTaskerWithFileandImage
 );
+
+
+// updating tasker with PDF only
+router.put(
+  "/update-tasker-with-pdf/:id",
+  upload.fields([
+    { name: "file", maxCount: 1 }
+  ]),
+  UserAccountController.updateTaskerWithPDF
+);
+
+
+// updating tasker with only profile image and user details
+router.put(
+  "/update-tasker-with-image-profile/:id",
+  upload.fields([
+    { name: "image", maxCount: 1 }
+  ]),
+  UserAccountController.updateTaskerWithProfileImage
+);
+
+
+
+
+
+
 
 
 

@@ -131,6 +131,70 @@ class TaskController {
     }
   }
 
+
+  static async getTaskforTasker(req: Request, res: Response): Promise<void> {
+    try {
+      const taskerId = req.params.taskerId || req.query.tasker_id;
+
+      if (!taskerId) {
+        res.status(400).json({ 
+          success: false, 
+          error: "Tasker ID is required" 
+        });
+        return;
+      }
+
+      // Query task_taken table with join to get task details
+      // Using task_id as the identifier since 'id' doesn't exist
+      const { data, error } = await supabase
+        .from("task_taken")
+        .select(`
+          task_id,
+          task_status,
+          created_at,
+          client_id,
+          tasker_id,
+          task:post_task(
+            task_id,
+            task_title,
+            task_description,
+            duration,
+            proposed_price,
+            urgent,
+            location,
+            specialization,
+            status
+          ),
+          client:clients(
+            client_id,
+            user_id,
+            client_address
+          )
+        `)
+        .eq("tasker_id", taskerId);
+
+      if (error) {
+        console.error("Error fetching tasks for tasker:", error);
+        res.status(500).json({ 
+          success: false,
+          error: error.message || "Failed to fetch tasks for this tasker" 
+        });
+        return;
+      }
+
+      res.status(200).json({ 
+        success: true,
+        tasks: data 
+      });
+    } catch (error) {
+      console.error("Error in getTaskforTasker:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
+    }
+  }
+
   static async assignTask(req: Request, res: Response): Promise<void> {
     const { tasker_id, task_id, client_id } = req.body;
 
@@ -138,7 +202,7 @@ class TaskController {
       tasker_id,
       task_id,
       client_id,
-      task_status: "In Negotiation",
+      task_status: "Pending",
     });
 
     if (error) {
@@ -331,14 +395,15 @@ class TaskController {
   static async getDocumentLink(req: Request, res: Response): Promise<any> {
     try {
 
-      const documentId = parseInt(req.params.id);
+      const taskerId = parseInt(req.params.id);
+      console.log("This is the tasker id: ", taskerId);
       const { data, error } = await supabase
         .from("tasker_documents")
         .select("tesda_document_link")
-        .eq("id", documentId)
+        .eq("tasker_id", taskerId)
         .single();
 
-        console.log("This is the document link: ", documentId, data);
+      console.log("This is the document link: ", taskerId, data);
       res.status(200).json({ data: data?.tesda_document_link, error });
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Error Unknown.")
@@ -362,7 +427,7 @@ class TaskController {
         social_media_links,
       } = req.body;
   
-      console.log("Request body:", req.body);
+      console.log("Request body from another tasker:", req.body);
 
       const { data: specializations, error: specialization_error } = await supabase
         .from("tasker_specialization")
@@ -454,6 +519,7 @@ class TaskController {
     }
   }
 
+  // tasker without email and profile image and file
   static async updateTaskerProfileNoImages(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.params.id;
@@ -473,22 +539,10 @@ class TaskController {
         pay_period
       } = req.body;
 
-      console.log("Request body:", req.body);
+      console.log("Request body from tasker:", req.body);
+
       console.log("User ID:", userId);
 
-
-      // Get specialization ID
-      // const { data: specializationData, error: specializationError } = await supabase
-      //   .from("tasker_specialization")
-      //   .select("spec_id")
-      //   .eq("specialization", specialization)
-      //   .single();
-
-      // if (specializationError) {
-      //   throw new Error("Specialization Error: " + specializationError.message);
-      // }
-
-      // Update user account information
       const { data: userData, error: userError } = await supabase
         .from("user")
         .update({
@@ -522,6 +576,8 @@ class TaskController {
       }
 
       // Update tasker information
+
+      console.log("Tasker Specialization:", specialization);
       const { data: updatedTaskerData, error: taskerUpdateError } = await supabase
         .from("tasker")
         .update({
@@ -552,7 +608,7 @@ class TaskController {
       });
     }
   }
-}
+} 
 
 
 export default TaskController;
