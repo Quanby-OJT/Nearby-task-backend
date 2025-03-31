@@ -11,6 +11,8 @@ const upload = multer({
 }).array("images[]", 5);
 
 class ReportController {
+ 
+  // Client and Tasker 
   static async createReport(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received report data:", req.body);
@@ -101,6 +103,31 @@ class ReportController {
     }
   }
 
+  static async getReportHistory(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = parseInt(req.query.userId as string, 10); // Expect userId as a query parameter
+      if (isNaN(userId)) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid user ID",
+        });
+        return;
+      }
+  
+      const reports = await reportModel.getReportHistory(userId);
+      res.status(200).json({
+        success: true,
+        reports: reports,
+      });
+    } catch (error) {
+      console.error("Error fetching report history:", error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
   static uploadReportImages(req: Request, res: Response, next: Function) {
     upload(req, res, (err) => {
       if (err) {
@@ -142,6 +169,77 @@ class ReportController {
       res.status(500).json({
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  // Moderator and Admin
+  static async getAllReports(req: Request, res: Response) {
+    try {
+      const reports = await reportModel.getAllReports();
+      console.log("Fetched Data: ", reports);
+      res.status(200).json({
+        success: true,
+        reports: reports,
+      });
+    } catch (error) {
+      console.error("Failed to getch reports: ", error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown Error Occurred",
+      });
+    }
+  }
+
+  static async updateReportStatus(req: Request, res: Response) {
+    console.log("Data Header Received From Report Service: ", req.headers);
+    console.log("Data Body Received From Report Service: ", req.body);
+  
+    try {
+      const reportId = parseInt(req.params.reportId, 10);
+      const { status, moderatorId } = req.body;
+      const actionBy = moderatorId?.actionBy;
+  
+      // Validate reportId
+      if (isNaN(reportId)) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid report ID",
+        });
+        return;
+      }
+  
+      // Validate status
+      if (typeof status !== "boolean") {
+        res.status(400).json({
+          success: false,
+          message: "Status must be a boolean",
+        });
+        return;
+      }
+  
+      // Validate actionBy
+      if (typeof actionBy !== "number") {
+        res.status(400).json({
+          success: false,
+          message: "actionBy must be a number",
+        });
+        return;
+      }
+  
+      // Update the report with status and actionBy
+      const updatedReport = await reportModel.updateReportStatus(reportId, status, actionBy);
+  
+      res.status(200).json({
+        success: true,
+        message: "Report status updated successfully",
+        report: updatedReport,
+      });
+    } catch (error) {
+      console.error("Failed to update report status: ", error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown Error Occurred",
       });
     }
   }
