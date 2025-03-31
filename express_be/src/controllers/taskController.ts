@@ -340,17 +340,41 @@ class TaskController {
   }
   static async updateTaskStatusforTasker(req: Request, res: Response): Promise<void> {
     try {
-      const { task_taken_id, status } = req.body;
-      const { data, error } = await supabase
-        .from("task_taken")
-        .update({ task_status: status })
-        .eq("task_id", task_taken_id);
+      const taskTakenId = parseInt(req.params.requestId);
+      const { task_status, reason_for_rejection_or_cancellation } = req.body;
 
-      if (error) {
-        console.error("Error while updating Task Status", error.message, error.stack);
-        res.status(500).json({ error: "An Error Occurred while updating the task status." });
-      } else {
-        res.status(200).json({ message: "Task status updated successfully", task: data });
+      console.log("Data::", task_status, reason_for_rejection_or_cancellation);
+
+      if (isNaN(taskTakenId)) {
+        res.status(400).json({ success: false, error: "Invalid task taken ID" });
+        return;
+      }
+
+      if(task_status == "Rejected" || task_status == "Cancelled"){
+        const { data, error } = await supabase
+          .from("task_taken")
+          .update({ task_status, reason_for_rejection_or_cancellation })
+          .eq("task_taken_id", taskTakenId);
+
+        if (error) {
+          console.error("Error while updating Task Status", error.message, error.stack);
+          res.status(500).json({ error: "An Error Occurred while updating the task status." });
+        } else {
+          res.status(200).json({ message: "Task status updated successfully", task: data });
+        }
+        return
+      }else{
+        const { data, error } = await supabase
+          .from("task_taken")
+          .update({ task_status })
+          .eq("task_taken_id", taskTakenId);
+
+        if (error) {
+          console.error("Error while updating Task Status", error.message, error.stack);
+          res.status(500).json({ error: "An Error Occurred while updating the task status." });
+        } else {
+          res.status(200).json({ message: "Task status updated successfully", task: data });
+        }
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Error Unknown.")
@@ -512,7 +536,6 @@ class TaskController {
           console.error("Escrow API Error: ", escrowData);
           res.status(500).json({ error: "An error occured while processing your transaction. Please Try Again Later." });
           return
-          return;
         }
 
         const escrowTransactionId = escrowData.id
