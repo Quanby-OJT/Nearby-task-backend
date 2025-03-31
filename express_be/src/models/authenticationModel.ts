@@ -50,7 +50,7 @@ class Auth {
       // Update user status
       const { error: updateError } = await supabase
         .from("user")
-        .update({ status: true })
+        .update({ status: true, verification_token: null, emailVerified: true, acc_status: "Active" })
         .eq("user_id", user_id);
 
       if (updateError) {

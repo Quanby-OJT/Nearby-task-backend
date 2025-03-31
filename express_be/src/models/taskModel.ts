@@ -38,7 +38,7 @@ class TaskModel {
     const { data: existingClient, error: clientError } = await supabase
       .from("clients")
       .select("client_id")
-      .eq("client_id", client_id)
+      .eq("user_id", client_id)
       .single();
 
     if (clientError && clientError.code !== "PGRST116") {
@@ -46,33 +46,17 @@ class TaskModel {
       throw new Error(clientError.message);
     }
 
-    // Step 2: If the client doesn't exist, insert a new client
     if (!existingClient) {
-      const newClient = {
-        client_id: client_id,
-        user_id: user_id || client_id,
-        preferences: "Default preferences",
-        client_address: location || "Unknown address",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error: insertClientError } = await supabase
-        .from("clients")
-        .insert([newClient]);
-
-      if (insertClientError) {
-        console.error("Error inserting new client:", insertClientError);
-        throw new Error(insertClientError.message);
-      }
-
-      console.log(`Inserted new client with client_id: ${client_id}`);
+      console.error("Client not found for user_id:", client_id);
+      throw new Error("Client not found for user_id");
     }
+
+    console.log("Client ID:", existingClient.client_id);
 
     // Step 3: Insert the task
     const { data, error } = await supabase.from("post_task").insert([
       {
-        client_id,
+        client_id: existingClient.client_id,
         task_title: job_title,
         task_description: description,
         duration: duration,
