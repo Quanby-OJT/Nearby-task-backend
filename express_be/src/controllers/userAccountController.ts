@@ -103,6 +103,7 @@ class UserAccountController {
         .from("clients")
         .insert([
           {
+            client_id: newUser.user_id,
             user_id: newUser.user_id,
             preferences: '',
             client_address: '',
@@ -326,12 +327,12 @@ class UserAccountController {
 
       const userData = await UserAccount.showUser(userID);
 
-      if (userData.user_role === "Client") {
+      if (userData.user_role.toLowerCase() === "client") {
         const clientData = await UserAccount.showClient(userID);
         res.status(200).json({ user: userData, client: clientData });
 
         console.log("Client Data: " + clientData);
-      } else if (userData.user_role === "Tasker") {
+      } else if (userData.user_role.toLowerCase() === "tasker") {
         const taskerData = await UserAccount.showTasker(userID);
 
         console.log("Tasker Data: " + taskerData);
@@ -344,7 +345,7 @@ class UserAccountController {
       console.error(error instanceof Error ? error.message : "Unknown error")
       console.error(error instanceof Error ? error.stack : "Unknown error") 
       res.status(500).json({
-        error: "An Error Occured while Retrieving Your Information. Please try again.",
+        error: error instanceof Error ? error.message : "An Error Occured while Retrieving Your Information. Please try again.",
       });
     }
   }

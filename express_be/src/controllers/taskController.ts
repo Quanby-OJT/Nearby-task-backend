@@ -112,7 +112,7 @@ class TaskController {
   static async getTaskforClient(req: Request, res: Response): Promise<void> {
     try {
       const clientId = req.params.clientId;
-      console.log(clientId);
+      console.log("Client ID:", clientId);
       const { data, error } = await supabase
         .from("post_task")
         .select()
@@ -240,6 +240,8 @@ class TaskController {
       const { data, error } = await supabase
         .from("tasker_specialization")
         .select("specialization").order("spec_id", { ascending: true });
+
+      console.log("Data retrieved:", data);
 
       if (error) {
         console.error(error.message);
@@ -399,12 +401,12 @@ class TaskController {
       console.log("This is the tasker id: ", taskerId);
       const { data, error } = await supabase
         .from("tasker_documents")
-        .select("tesda_document_link")
+        .select("*")
         .eq("tasker_id", taskerId)
         .single();
 
       console.log("This is the document link: ", taskerId, data);
-      res.status(200).json({ data: data?.tesda_document_link, error });
+      res.status(200).json({ data: data, error });
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Error Unknown.")
       res.status(500).json({ data: null, error: error instanceof Error ? error.message : "Error Unknown." });
