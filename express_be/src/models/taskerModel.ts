@@ -9,10 +9,7 @@ class TaskerModel {
 
   static async createTasker(
     tasker: {
-      gender: Text;
-      contact_number: Text;
       address: Text;
-      birthdate: Text;
       profile_picture: string;
       user_id: number;
       bio: Text;
@@ -49,10 +46,7 @@ class TaskerModel {
   static async update(
     tasker: {
       tasker_id: number;
-      gender: Text;
-      contact_number: Text;
       address: Text;  
-      birthdate: Text;
       profile_picture: string;
       bio: Text;
       skills: string;
@@ -104,10 +98,7 @@ class TaskerModel {
     const { data: taskerData, error: taskerError } = await supabase
       .from("tasker")
       .update({
-        gender: tasker.gender,
-        contact_number: tasker.contact_number,
         address: tasker.address,
-        birthdate: tasker.birthdate,
         profile_picture: tasker.profile_picture,
         bio: tasker.bio,
         skills: tasker.skills,

@@ -9,10 +9,7 @@ class TaskerController {
     try {
       console.log("Request body:", req.body);
       const {
-        gender,
-        contact_number,
         address,
-        birth_date: birthdate,
         user_id,
         bio,
         specialization,
@@ -87,10 +84,7 @@ class TaskerController {
 
       // Create tasker profile
       await TaskerModel.createTasker({
-        gender,
-        contact_number,
         address,
-        birthdate,
         profile_picture: profilePicUrl,
         user_id,
         bio,
@@ -224,7 +218,7 @@ class TaskerController {
   
       await TaskerModel.update(
         {
-          tasker_id, gender, contact_number, address, birthdate: birth_date, profile_picture,
+          tasker_id, address, profile_picture,
           bio, skills, availability, wage_per_hour, social_media_links: jsonedSocMed,
         },
         { specialization, tesda_documents_link: tesda_document_link },

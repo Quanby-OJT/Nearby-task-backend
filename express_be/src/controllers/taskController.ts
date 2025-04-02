@@ -496,10 +496,7 @@ class TaskController {
   
       // Create tasker profile
       await TaskerModel.createTasker({
-        gender,
-        contact_number,
         address,
-        birthdate,
         profile_picture: profilePicUrl,
         user_id,
         bio,
