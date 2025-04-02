@@ -1,11 +1,6 @@
 import { supabase } from "../config/configuration";
 
 class UserAccount {
-  /**
-   * This section can only be accessed by the Admin Only, all users can only create and edit their user information.
-   * @param userData
-   * @returns
-   */
   static async create(userData: {
     first_name: string;
     middle_name: string;
@@ -18,52 +13,50 @@ class UserAccount {
     acc_status: string;
     user_role: string;
     verification_token: string;
-
   }) {
     const { data, error } = await supabase.from("user").insert([userData]);
-    console.log(data, error)
+    console.log(data, error);
 
     if (error) throw new Error(error.message);
     return data;
   }
 
-  static async getUser(email: string){
-    console.log(email)
+  static async getUser(email: string) {
+    console.log(email);
     const { data, error } = await supabase
-    .from("user")
-    .select("verification_token")
-    .eq("email", email)
-    .single();
-    console.log(data, error)
+      .from("user")
+      .select("verification_token")
+      .eq("email", email)
+      .single();
+    console.log(data, error);
 
-    if(error) throw new Error(error.message)
+    if (error) throw new Error(error.message);
     return data;
   }
 
-  static async resetEmailToken(email: string)
-  {
+  static async resetEmailToken(email: string) {
     const { data, error } = await supabase
-    .from("user")
-    .update({
-      verification_token: null,
-      emailVerified: true,
-    })
-    .eq("email", email)
-    .select("user_id")
-    .single();
-    console.log(data, error)
+      .from("user")
+      .update({
+        verification_token: null,
+        emailVerified: true,
+      })
+      .eq("email", email)
+      .select("user_id")
+      .single();
+    console.log(data, error);
 
-    if(error) throw new Error(error.message)
+    if (error) throw new Error(error.message);
     return data;
   }
 
-  static async uploadImageLink(user_id: string, image_link: string){
+  static async uploadImageLink(user_id: string, image_link: string) {
     const { data, error } = await supabase
-    .from("user")
-    .update({ image_link: image_link })
-    .eq("user_id", user_id)
+      .from("user")
+      .update({ image_link: image_link })
+      .eq("user_id", user_id);
 
-    if(error) throw new Error("User Error: " + error.message);
+    if (error) throw new Error("User Error: " + error.message);
 
     return data;
   }
@@ -72,7 +65,7 @@ class UserAccount {
     const { data, error } = await supabase
       .from("user")
       .select(
-        "first_name, middle_name, last_name, image_link, email, birthdate, user_role, gender, contact"
+        "first_name, middle_name, last_name, image_link, email, birthdate, user_role, gender, contact, acc_status"
       )
       .eq("user_id", user_id)
       .single();
@@ -81,7 +74,6 @@ class UserAccount {
 
     return data;
   }
-
 
   static async getUserDocs(user_id: string) {
     const { data, error } = await supabase
@@ -96,43 +88,46 @@ class UserAccount {
   }
 
   static async showClient(user_id: string) {
-    const { data, error } = await supabase
+    const { data: client, error: clientError } = await supabase
       .from("clients")
       .select("preferences, client_address")
       .eq("user_id", user_id)
-      .single();
-    console.log(data, error);
+      .maybeSingle();
+    console.log(client, clientError);
 
-    if (error) throw new Error("Clientele Error: " + error.message);
+    if (clientError) {
+      console.error("Client Query Error:", clientError);
+      throw new Error("Clientele Error: " + clientError.message);
+    }
 
-    return data;
+    return client;
   }
 
   static async showTasker(user_id: string) {
     const { data: tasker, error: taskerError } = await supabase
-    .from("tasker")
-    .select(
-      "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period, birthdate, contact_number, profile_picture"
-    )
-    .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
-    .single();
+      .from("tasker")
+      .select(
+        "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period, profile_picture"
+      )
+      .eq("tasker_id", user_id)
+      .maybeSingle();
     console.log(tasker, taskerError);
 
-    if (taskerError) throw new Error("Tasker Error: " + taskerError.message);
+    if (taskerError) {
+      console.error("Tasker Query Error:", taskerError);
+      throw new Error("Tasker Error: " + taskerError.message);
+    }
 
     const { data: taskerDocument, error: taskerDocumentError } = await supabase
-    .from("tasker_documents")
-    .select(
-      "tesda_document_link"
-    )
-    .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
+      .from("tasker_documents")
+      .select("tesda_document_link")
+      .eq("tasker_id", user_id);
     console.log(tasker, taskerError, taskerDocument, taskerDocumentError);
 
-    if (taskerDocumentError) throw new Error("Tasker Error: " + taskerDocumentError.message);
+    if (taskerDocumentError) throw new Error("Tasker Document Error: " + taskerDocumentError.message);
 
-    return {tasker, taskerDocument};
+    return { tasker, taskerDocument };
   }
-
 }
 
 export { UserAccount };

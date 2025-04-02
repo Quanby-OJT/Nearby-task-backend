@@ -84,7 +84,7 @@ router.get("/check-session", (req, res) => {
 router.post("/logout", AuthenticationController.logout);
 
 router.use(isAuthenticated);
-
+router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/displayTask/:id", TaskController.getTaskById);
