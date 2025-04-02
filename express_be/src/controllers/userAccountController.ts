@@ -52,32 +52,32 @@ class UserAccountController {
       // Insert user into Supabase database
       
 
-      // Send verification email
-      const transporter = nodemailer.createTransport({
-        // Configure your email service here
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        }
-      });
+      // // Send verification email
+      // const transporter = nodemailer.createTransport({
+      //   // Configure your email service here
+      //   service: 'gmail',
+      //   auth: {
+      //     user: process.env.EMAIL_USER,
+      //     pass: process.env.EMAIL_PASS
+      //   }
+      // });
 
-      const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
-      console.log(verificationLink);
+      // const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
+      // console.log(verificationLink);
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'Verify your email for NearbyTask',
-        html: `
-          <h1>Welcome to NearbyTask!</h1>
-          <p>Please click the link below to verify your email address:</p>
-          <a href="${verificationLink}">Verify Email</a>
-          <p>If you didn't create an account, please ignore this email.</p>
-        `
+      // await transporter.sendMail({
+      //   from: process.env.EMAIL_USER,
+      //   to: email,
+      //   subject: 'Verify your email for NearbyTask',
+      //   html: `
+      //     <h1>Welcome to NearbyTask!</h1>
+      //     <p>Please click the link below to verify your email address:</p>
+      //     <a href="${verificationLink}">Verify Email</a>
+      //     <p>If you didn't create an account, please ignore this email.</p>
+      //   `
 
 
-      });
+      // });
       
       const { data: newUser, error: insertError } = await supabase
         .from("user")
