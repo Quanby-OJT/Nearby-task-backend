@@ -95,7 +95,7 @@ router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 router.get("/messages/:task_taken_id", ConversationController.getMessages);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
-router.post("/deposit-escrow-payment", TaskController.depositTaskPayment);
+router.post("/deposit-escrow-payment", TaskController.createTaskPayment);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);

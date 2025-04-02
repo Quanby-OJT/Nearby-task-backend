@@ -429,7 +429,7 @@ class TaskController {
    * 
    * -Ces
    */
-    static async depositTaskPayment(req: Request, res: Response): Promise<void> {
+    static async createTaskPayment(req: Request, res: Response): Promise<void> {
       try {
           console.log("Transaction Data: ", req.body);
           const { task_taken_id, amount, status } = req.body;
@@ -442,6 +442,13 @@ class TaskController {
               contract_price: amountInUSD,
               payment_date: new Date().toISOString()
           });
+
+          if(PaymentInformation.error){
+              console.error("Error while processing your payment: ", PaymentInformation.error);
+              res.status(500).json({ error: "An Error Occurred while processing your payment." });
+              return
+          }
+          console.log("Payment Information: ", PaymentInformation);
   
           res.status(200).json({
               message: "Escrow transaction initiated",
@@ -456,19 +463,16 @@ class TaskController {
 
   static async updateTransactionStatus(req: Request, res: Response): Promise<void> {
     try {
-      const { task_taken_id, status } = req.body;
+      const { task_taken_id, status, cancellation_reason } = req.body;
 
-
-      const { data, error } = await supabase
-        .from("escrow_payment_logs")
-        .update({ status })
-        .eq("task_taken_id", task_taken_id);
-
-      if (error) {
-        console.error("Error while updating Task Status", error.message, error.stack);
-        res.status(500).json({ error: "An Error Occurred while updating the task status." });
-      } else {
-        res.status(200).json({ message: "Task status updated successfully", task: data });
+      if(status == 'cancel'){
+        await EscrowPayment.cancelTransaction(task_taken_id, cancellation_reason);
+        res.status(200).json({ message: "You had cancelled your transaction."});
+      }else if(status == 'complete'){
+        await EscrowPayment.completeTransaction(task_taken_id);
+        res.status(200).json({ message: "You had completed your transaction."});
+      }else{
+        res.status(400).json({ message: "Invalid status provided."});
       }
     }
     catch (error) {
