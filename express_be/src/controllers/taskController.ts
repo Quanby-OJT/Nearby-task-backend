@@ -79,7 +79,7 @@ class TaskController {
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
       const tasks = await taskModel.getAllTasks();
-      console.log("Retrieved tasks:", tasks);
+      //console.log("Retrieved tasks:", tasks);
       res.status(200).json({ tasks });
     } catch (error) {
       res.status(500).json({

@@ -12,6 +12,7 @@ import auth from "../controllers/authAngularController";
 import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
 import profileController from "../controllers/profileController";
+import ScheduleController from "../controllers/scheduleController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -96,6 +97,9 @@ router.get("/messages/:task_taken_id", ConversationController.getMessages);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
 router.post("/deposit-escrow-payment", TaskController.createTaskPayment);
+router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
+router.get("/get-tasker-schedule/:tasker_id", ScheduleController.displaySchedules);
+router.post("/reschedule-task", ScheduleController.rescheduleTask);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
