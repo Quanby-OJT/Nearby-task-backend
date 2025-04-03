@@ -47,13 +47,14 @@ class EscrowPayment {
             parties: [
                 {
                     role: "buyer",
-                    customer: clientEmail, 
-                    email: clientEmail,
+                    customer: taskerEmail, 
+                    email: taskerEmail,
                 },
                 {
                     role: "seller",
-                    customer: taskerEmail,
-                    email: taskerEmail,
+                    customer: clientEmail,
+                    email: clientEmail,
+                    initiator: true,
                 },
             ],
             items: [{
@@ -61,7 +62,14 @@ class EscrowPayment {
                 description: `Deposit for ${taskTitle}`,
                 type: "milestone", 
                 quantity: 1,
-                amount: paymentInfo.contract_price,
+                inspection_period: 2592000,
+                schedule: [
+                    {
+                        amount: paymentInfo.contract_price,
+                        payer_customer: clientEmail,
+                        beneficiary_customer: taskerEmail,
+                    },
+                ],
             }],
             currency: "usd",
             description: "Initial Deposit for Task Assignment",
@@ -105,7 +113,7 @@ class EscrowPayment {
           const paymentUrl = escrowData.checkout_url;
           paymentInfo.escrow_transaction_id = escrowTransactionId;
 
-        const { data, error } = await supabase.from("escrow_payment").insert([paymentInfo]);
+        const { data, error } = await supabase.from("escrow_payment_logs").insert([paymentInfo]);
         if (error) throw new Error(error.message);
 
         return {data, paymentUrl, escrowTransactionId};
