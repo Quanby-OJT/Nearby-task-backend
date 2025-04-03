@@ -7,6 +7,7 @@ import { Auth } from "../models/authenticationModel";
 import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
+import { group } from "console";
 
 class UserAccountController {
   
@@ -99,7 +100,8 @@ class UserAccountController {
       }
 
       // inserting null value in clients table
-      const { error: errorInsert } = await supabase
+      if(user_role === "Client") {
+        const { error: errorInsert } = await supabase
         .from("clients")
         .insert([
           {
@@ -115,6 +117,22 @@ class UserAccountController {
       if(errorInsert) {
         throw new Error(errorInsert.message);
       }
+    } else if(user_role === "Tasker") {
+      const { error: errorInsert } = await supabase
+        .from("tasker")
+        .insert([
+          {
+            tasker_id: newUser.user_id,
+            user_id: newUser.user_id,
+          },
+        ]);
+
+        console.log("New user ID: " + newUser.user_id);
+
+      if(errorInsert) {
+        throw new Error(errorInsert.message);
+      }
+    }
     
 
       res.status(201).json({

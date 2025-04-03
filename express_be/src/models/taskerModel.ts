@@ -1,16 +1,8 @@
 import { supabase } from "../config/configuration";
 
 class TaskerModel {
-  /**
-   * Profile Creation for Tasker
-   * @param tasker - {bio: Text, specialization: Text, skills: Text, availability: boolean, wage_per_hour: number, tesda_documents_link: Text, social_media_links: Text}
-   * @returns
-   */
-
   static async createTasker(
     tasker: {
-      address: Text;
-      profile_picture: string;
       user_id: number;
       bio: Text;
       specialization_id: number;
@@ -18,7 +10,8 @@ class TaskerModel {
       availability: boolean;
       wage_per_hour: number;
       tesda_documents_id: number;
-      social_media_links: string[];
+      social_media_links: JSON;
+      address: JSON;
     }) {
     const { data, error } = await supabase.from("tasker").insert([tasker]);
     console.log(data, error);
@@ -46,8 +39,7 @@ class TaskerModel {
   static async update(
     tasker: {
       tasker_id: number;
-      address: Text;  
-      profile_picture: string;
+      address: JSON;
       bio: Text;
       skills: string;
       availability: boolean;
@@ -99,7 +91,6 @@ class TaskerModel {
       .from("tasker")
       .update({
         address: tasker.address,
-        profile_picture: tasker.profile_picture,
         bio: tasker.bio,
         skills: tasker.skills,
         availability: tasker.availability,

@@ -112,7 +112,7 @@ class UserAccount {
     const { data: tasker, error: taskerError } = await supabase
     .from("tasker")
     .select(
-      "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period, profile_picture"
+      "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
     )
     .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
     .single();
