@@ -288,6 +288,7 @@ class UserAccountController {
         contact,
         gender,
         birthdate,
+        acc_status,
       } = req.body;
       const imageFile = req.file;
 
@@ -335,7 +336,8 @@ class UserAccountController {
         user_role,
         contact,
         gender,
-        birthdate
+        birthdate,
+        acc_status
       };
 
       if (imageUrl) {
@@ -894,6 +896,7 @@ class UserAccountController {
         contact,
         gender,
         birthdate,
+        acc_status, 
       } = req.body;
 
       const { data: existingUser, error: findError } = await supabase
@@ -947,6 +950,7 @@ class UserAccountController {
         contact,
         gender,
         birthdate,
+        acc_status, // Added acc_status to the updateData object
       };
 
       console.log("Update Data:", updateData);
@@ -972,7 +976,7 @@ class UserAccountController {
         profileImage: profileImageUrl || null,
       });
     } catch (error: any) {
-      console.error("Error in updateUserWithImages:", error);
+      console.error("Error in updateUserWithProfileImage:", error);
       return res.status(500).json({ error: error.message || "An error occurred while updating user" });
     }
   }

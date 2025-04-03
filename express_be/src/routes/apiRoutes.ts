@@ -103,7 +103,7 @@ router.get("/specializations", TaskController.getAllSpecializations);
 router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
-// router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
+router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
 
 //User CRUD
 router.put(
