@@ -493,11 +493,10 @@ class TaskController {
       if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
 
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
-  
+  // add here profile picture update   profile_picture: profilePicUrl,
       // Create tasker profile
       await TaskerModel.createTasker({
-        address,
-        profile_picture: profilePicUrl,
+        address,   
         user_id,
         bio,
         specialization_id: specializations.spec_id,
