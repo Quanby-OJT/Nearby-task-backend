@@ -84,7 +84,21 @@ class UserAccount {
 
 
   static async getUserDocs(user_id: string) {
-    const { data, error } = await supabase
+
+    const {data:userexists, error: userError} = await supabase
+    .from("user")
+    .select("*")
+    .eq("user_id", user_id)
+    .single();
+
+    if (userError) throw new Error(userError.message);
+
+    if (!userexists) {
+      throw new Error("User not found");
+    }
+
+    if (userexists.user_role == "Client") {
+      const { data, error } = await supabase
       .from("client_documents")
       .select("*")
       .eq("user_id", user_id)
@@ -93,6 +107,17 @@ class UserAccount {
     if (error) throw new Error(error.message);
 
     return data;
+    } else if (userexists.user_role == "Tasker") {
+      const { data, error } = await supabase
+      .from("tasker_documents")
+      .select("*")
+      .eq("tasker_id", user_id)
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    return data;
+    }
   }
 
   static async showClient(user_id: string) {
