@@ -126,6 +126,15 @@ router.put(
   profileController.TaskerController.updateTasker
 );
 
+router.put(
+  "/update-tasker-login-with-file/:id",
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "documents", maxCount: 1 },
+  ]),
+  profileController.TaskerController.updateTaskerLogin
+);
+
 router.post("/logout", AuthenticationController.logout);
 
 // updating client with both profile and ID images
