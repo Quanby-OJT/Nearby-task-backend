@@ -7,10 +7,15 @@ const upload = multer({ storage: memoryStorage() });
 
 const router = Router();
 
-// Protect the route with authentication middleware
+
 router.use(isAuthenticated);
 
-// Route for adding an authority user (Admin/Moderator)
 router.post("/authorityAdd", upload.single("image"), AuthorityAccountController.addAuthorityUser);
+
+router.put("/updateAuthorityUser/:id", upload.single("image"), AuthorityAccountController.updateAuthorityUser);
+
+router.get("/getAuthorityUserData/:id", AuthorityAccountController.getUserData);
+
+router.get("/getAuthorityUserDocuments/:id", AuthorityAccountController.getUserDocs);
 
 export default router;
