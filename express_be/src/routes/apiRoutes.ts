@@ -12,6 +12,7 @@ import auth from "../controllers/authAngularController";
 import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
 import profileController from "../controllers/profileController";
+import ScheduleController from "../controllers/scheduleController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -81,8 +82,6 @@ router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
 });
 
-router.post("/logout", AuthenticationController.logout);
-
 router.use(isAuthenticated);
 
 router.post("/addTask", TaskController.createTask);
@@ -91,11 +90,16 @@ router.get("/displayTask/:id", TaskController.getTaskById);
 //router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
+router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
 router.post("/send-message", ConversationController.sendMessage);
 router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 router.get("/messages/:task_taken_id", ConversationController.getMessages);
-router.post("/update-status-tasker", TaskController.updateTaskStatusforTasker);
+router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
+router.post("/deposit-escrow-payment", TaskController.createTaskPayment);
+router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
+router.get("/get-tasker-schedule/:tasker_id", ScheduleController.displaySchedules);
+router.post("/reschedule-task", ScheduleController.rescheduleTask);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
@@ -104,6 +108,7 @@ router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
+router.post("/logout", AuthenticationController.logout);
 
 //User CRUD
 router.put(

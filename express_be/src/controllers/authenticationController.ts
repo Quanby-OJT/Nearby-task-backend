@@ -26,6 +26,14 @@ class AuthenticationController {
         return;
       }
 
+      if (verifyLogin.acc_status === "Ban") {
+        res.status(401).json({
+          error:
+            "You are banned for using this application. Please contact our team to appeal to your ban.",
+        });
+        return;
+      }
+
       const isPasswordValid = await bcrypt.compare(
         password,
         verifyLogin.hashed_password
@@ -56,7 +64,7 @@ class AuthenticationController {
       console.error(error);
       res.status(500).json({
         error:
-          "An error occurred while logging in. If the issue persists, contact the Administrator.",
+          "An error occurred while logging in. If the issue persists, contact our team to resolve your issue.",
       });
     }
   }

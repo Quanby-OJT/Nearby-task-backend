@@ -347,17 +347,21 @@ class UserAccountController {
 
       if (userData.user_role.toLowerCase() === "client") {
         const clientData = await UserAccount.showClient(userID);
+        if(!clientData) {
+          res.status(404).json({ error: "Please Verify Your Account First." });
+          return
+        }
         res.status(200).json({ user: userData, client: clientData });
 
         console.log("Client Data: " + clientData);
       } else if (userData.user_role.toLowerCase() === "tasker") {
         const taskerData = await UserAccount.showTasker(userID);
 
-        console.log("Tasker Data: " + taskerData);
+        if(!taskerData) {
+          res.status(404).json({ error: "Please Verify Your Account First." });
+          return
+        }
         res.status(200).json({ user: userData, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
-
-       // res.status(200).json({ user: userData, tasker: taskerData });
-
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Unknown error")
