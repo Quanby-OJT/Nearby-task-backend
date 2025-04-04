@@ -54,12 +54,13 @@ class EscrowPayment {
                     role: "buyer",
                     customer: clientEmail, 
                     email: clientEmail,
+
+                    initiator: true,
                 },
                 {
                     role: "seller",
                     customer: taskerEmail,
                     email: taskerEmail,
-                    initiator: true,
                 },
             ],
             items: [{
@@ -114,8 +115,10 @@ class EscrowPayment {
               }
           }
   
-          const escrowTransactionId = escrowData.id;
-          const paymentUrl = escrowData.parties[0].next_step;
+            const escrowTransactionId = escrowData.id;
+            const sellerParty = escrowData.parties.find((party: any) => party.role === "seller" && party.next_step);
+            const paymentUrl = sellerParty ? sellerParty.next_step : undefined;
+
           paymentInfo.escrow_transaction_id = escrowTransactionId;
 
         const { error } = await supabase.from("escrow_payment_logs").insert([paymentInfo]);
