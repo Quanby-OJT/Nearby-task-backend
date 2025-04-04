@@ -14,6 +14,11 @@ interface EscrowResponse {
     message?: string;
     id: string;
     checkout_url: string;
+    parties: {
+        next_step: string;
+        customer: string;
+        email: string;
+    }[]; // Adjust this type based on the actual structure of the response
     error?: any; // For detailed error capture
 }
 
@@ -47,13 +52,13 @@ class EscrowPayment {
             parties: [
                 {
                     role: "buyer",
-                    customer: taskerEmail, 
-                    email: taskerEmail,
+                    customer: clientEmail, 
+                    email: clientEmail,
                 },
                 {
                     role: "seller",
-                    customer: clientEmail,
-                    email: clientEmail,
+                    customer: taskerEmail,
+                    email: taskerEmail,
                     initiator: true,
                 },
             ],
@@ -110,13 +115,13 @@ class EscrowPayment {
           }
   
           const escrowTransactionId = escrowData.id;
-          const paymentUrl = escrowData.checkout_url;
+          const paymentUrl = escrowData.parties[0].next_step;
           paymentInfo.escrow_transaction_id = escrowTransactionId;
 
-        const { data, error } = await supabase.from("escrow_payment_logs").insert([paymentInfo]);
+        const { error } = await supabase.from("escrow_payment_logs").insert([paymentInfo]);
         if (error) throw new Error(error.message);
 
-        return {data, paymentUrl, escrowTransactionId};
+        return {paymentUrl, escrowTransactionId};
     }
 
     //For payment methods
