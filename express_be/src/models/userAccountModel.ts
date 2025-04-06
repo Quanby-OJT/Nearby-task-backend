@@ -76,7 +76,21 @@ class UserAccount {
   }
 
   static async getUserDocs(user_id: string) {
-    const { data, error } = await supabase
+
+    const {data:userexists, error: userError} = await supabase
+    .from("user")
+    .select("*")
+    .eq("user_id", user_id)
+    .single();
+
+    if (userError) throw new Error(userError.message);
+
+    if (!userexists) {
+      throw new Error("User not found");
+    }
+
+    if (userexists.user_role == "Client") {
+      const { data, error } = await supabase
       .from("client_documents")
       .select("*")
       .eq("user_id", user_id)
@@ -85,6 +99,17 @@ class UserAccount {
     if (error) throw new Error(error.message);
 
     return data;
+    } else if (userexists.user_role == "Tasker") {
+      const { data, error } = await supabase
+      .from("tasker_documents")
+      .select("*")
+      .eq("tasker_id", user_id)
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    return data;
+    }
   }
 
   static async showClient(user_id: string) {
@@ -105,12 +130,12 @@ class UserAccount {
 
   static async showTasker(user_id: string) {
     const { data: tasker, error: taskerError } = await supabase
-      .from("tasker")
-      .select(
-        "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
-      ) // Removed profile_picture
-      .eq("tasker_id", user_id)
-      .maybeSingle();
+    .from("tasker")
+    .select(
+      "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
+    )
+    .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
+    .single();
     console.log(tasker, taskerError);
 
     if (taskerError) {
