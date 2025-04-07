@@ -1,4 +1,5 @@
 import { supabase } from "../config/configuration"
+import ConversationModel from "../models/conversartionModel"
 import { Request, Response } from "express"
 
 class ConversationController {
@@ -111,6 +112,26 @@ class ConversationController {
 
         res.status(200).json({data: data})
     }
-}
 
-export default ConversationController
+    static async getUserConversation(req: Request, res: Response): Promise<void>{
+        try {
+            const conversation = await ConversationModel.getUserConversation();
+            console.log("The Record Fetch From Conversation History Are:", conversation);            
+            if(!conversation || conversation.length === 0){
+                console.log("No conversations found");
+                res.status(404).json({error: "No conversations found"});
+                return;
+            }
+            res.status(200).json({data: conversation});
+        }
+        catch (error){
+            if (error instanceof Error){
+                res.status(500).json({ error: error.message });
+            }
+            else {
+                res.status(500).json({ error: "Unknown Error Occured" });
+            }
+        }
+    }
+}
+export default ConversationController;

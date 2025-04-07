@@ -6,8 +6,10 @@ import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
 import fetch from "node-fetch";
 import { User } from "@supabase/supabase-js";
-require("dotenv").config();
+import dotenv from 'dotenv';
 import EscrowPayment from "../models/paymentModel";
+
+dotenv.config();
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
