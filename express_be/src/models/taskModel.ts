@@ -132,6 +132,23 @@ class TaskModel {
     return data;
   }
 
+  async getAssignedTask(task_taken_id: number){
+    const { data, error } = await supabase.from("task_taken").
+      select(`
+        task_taken_id, 
+        tasker!tasker_id (user!user_id (first_name, middle_name, last_name, email), bio, tasker_specialization!specialization_id(specialization), skills, address, availability, wage_per_hour, pay_period, social_media_links),
+        post_task!task_id (*),
+        task_status,
+        reason_for_rejection_or_cancellation
+        `
+      ).
+      eq("task_taken_id", task_taken_id).
+      single();
+      console.log(data, error);
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
   async deleteTask(taskId: number) {
     const { error } = await supabase
       .from("post_task")
