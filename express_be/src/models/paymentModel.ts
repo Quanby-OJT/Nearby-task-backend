@@ -25,106 +25,115 @@ interface EscrowResponse {
 class EscrowPayment {
     static async createPayment(paymentInfo: Payment) {
  
-          interface UserEmailResponse {
-                clients: { user: { email: string } };
-                tasker: { user: { email: string } };
-                post_task: { task_title: string };
-          }
-  
-          const { data: userEmailResponse, error: emailError } = await supabase
-              .from("task_taken")
-              .select("clients (user(email)), tasker (user(email)), post_task (task_title)")
-              .eq("task_taken_id", paymentInfo.task_taken_id)
-              .single() as { data: UserEmailResponse | null, error: any };
-          
-          console.log("User Email Response:", userEmailResponse);
-          if (emailError || !userEmailResponse) throw new Error("Failed to fetch user emails");
-  
-          const taskerEmail = userEmailResponse.tasker.user.email;
-          const clientEmail = userEmailResponse.clients.user.email;
-          const taskTitle = userEmailResponse.post_task.task_title;
-  
-          const authString = `${process.env.ESCROW_EMAIL}:${process.env.ESCROW_API}`;
-          console.log("Auth String:", authString);
-          const authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
-  
-          const escrowPayload = {
-            parties: [
-                {
-                    role: "buyer",
-                    customer: clientEmail, 
-                    email: clientEmail,
+        interface UserEmailResponse {
+            clients: { user: { email: string } };
+            tasker: { user: { email: string } };
+            post_task: { task_title: string };
+        }
 
-                    initiator: true,
-                },
+        const { data: userEmailResponse, error: emailError } = await supabase
+            .from("task_taken")
+            .select("clients (user(email)), tasker (user(email)), post_task (task_title)")
+            .eq("task_taken_id", paymentInfo.task_taken_id)
+            .single() as { data: UserEmailResponse | null, error: any };
+        
+        console.log("User Email Response:", userEmailResponse);
+        if (emailError || !userEmailResponse) throw new Error("Failed to fetch user emails");
+
+        const taskerEmail = userEmailResponse.tasker.user.email;
+        const clientEmail = userEmailResponse.clients.user.email;
+        const taskTitle = userEmailResponse.post_task.task_title;
+
+        const authString = `${process.env.ESCROW_EMAIL}:${process.env.ESCROW_API}`;
+        console.log("Auth String:", authString);
+        const authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+
+        const escrowPayload = {
+        parties: [
+            {
+                role: "buyer",
+                customer: clientEmail, 
+                email: clientEmail,
+
+                initiator: true,
+            },
+            {
+                role: "seller",
+                customer: taskerEmail,
+                email: taskerEmail,
+            },
+        ],
+        items: [{
+            title: "Task Assignment Deposit",
+            description: `Deposit for ${taskTitle}`,
+            type: "milestone", 
+            quantity: 1,
+            inspection_period: 2592000,
+            schedule: [
                 {
-                    role: "seller",
-                    customer: taskerEmail,
-                    email: taskerEmail,
+                    amount: paymentInfo.contract_price,
+                    payer_customer: clientEmail,
+                    beneficiary_customer: taskerEmail,
                 },
             ],
-            items: [{
-                title: "Task Assignment Deposit",
-                description: `Deposit for ${taskTitle}`,
-                type: "milestone", 
-                quantity: 1,
-                inspection_period: 2592000,
-                schedule: [
-                    {
-                        amount: paymentInfo.contract_price,
-                        payer_customer: clientEmail,
-                        beneficiary_customer: taskerEmail,
-                    },
-                ],
-            }],
-            currency: "usd",
-            description: "Initial Deposit for Task Assignment",
-            return_url: `${process.env.URL}/escrow/callback`,
-        };
-  
-          console.log("Escrow Payload:", JSON.stringify(escrowPayload, null, 2));
-  
-          const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/transaction`, {
-              method: "POST",
-              headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": authHeader,
-              },
-              body: JSON.stringify(escrowPayload),
-          });
-  
+        }],
+        currency: "usd",
+        description: "Initial Deposit for Task Assignment",
+        return_url: `${process.env.URL}/escrow/callback`,
+    };
 
-          console.log(escrowResponse)
-          const escrowData = await escrowResponse.json() as EscrowResponse;
-          console.log("Escrow Response Status:", escrowResponse.status);
-          console.log("Escrow Response Body:", JSON.stringify(escrowData, null, 2));
-  
-          if (!escrowResponse.ok) {
-              console.error("Escrow API Error:", JSON.stringify(escrowData.error, null, 2));
-              if (escrowResponse.status === 401) {
-                  return { error: "Unauthorized: Invalid Escrow credentials" };
-              } else if (escrowResponse.status === 422) {
-                  return {
-                      error: "Invalid transaction data",
-                      details: escrowData.error,
-                  };
-              } else if(escrowResponse.status === 500) {
-                  return {
-                      error: `Escrow API failed: ${escrowData.message || escrowResponse.statusText}`,
-                  };
-              }
-          }
-  
-            const escrowTransactionId = escrowData.id;
-            const sellerParty = escrowData.parties.find((party: any) => party.role === "seller" && party.next_step);
-            const paymentUrl = sellerParty ? sellerParty.next_step : undefined;
+        console.log("Escrow Payload:", JSON.stringify(escrowPayload, null, 2));
 
-          paymentInfo.escrow_transaction_id = escrowTransactionId;
+        const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/transaction`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": authHeader,
+            },
+            body: JSON.stringify(escrowPayload),
+        });
 
-        const { error } = await supabase.from("escrow_payment_logs").insert([paymentInfo]);
+
+        console.log(escrowResponse)
+        const escrowData = await escrowResponse.json() as EscrowResponse;
+        console.log("Escrow Response Status:", escrowResponse.status);
+        console.log("Escrow Response Body:", JSON.stringify(escrowData, null, 2));
+
+        if (!escrowResponse.ok) {
+            console.error("Escrow API Error:", JSON.stringify(escrowData.error, null, 2));
+            if (escrowResponse.status === 401) {
+                return { error: "Unauthorized: Invalid Escrow credentials" };
+            } else if (escrowResponse.status === 422) {
+                return {
+                    error: "Invalid transaction data",
+                    details: escrowData.error,
+                };
+            } else if(escrowResponse.status === 500) {
+                return {
+                    error: `Escrow API failed: ${escrowData.message || escrowResponse.statusText}`,
+                };
+            }
+        }
+
+        const escrowTransactionId = escrowData.id;
+        const sellerParty = escrowData.parties.find((party: any) => party.role === "seller" && party.next_step);
+        const paymentUrl = sellerParty ? sellerParty.next_step : undefined;
+
+        paymentInfo.escrow_transaction_id = escrowTransactionId;
+
+    const { error } = await supabase.from("escrow_payment_logs").insert([paymentInfo]);
+    if (error) throw new Error(error.message);
+
+    return {paymentUrl, escrowTransactionId};
+
+    //return {paymentUrl: "url", escrowTransactionId: 1000000}
+    }
+
+    static async fetchTransactionId(taskTakenId: number) {
+        const {data, error} = await supabase.from("escrow_payment_logs").select("escrow_transaction_id").eq("task_taken_id", taskTakenId).single()
         if (error) throw new Error(error.message);
-
-        return {paymentUrl, escrowTransactionId};
+        if (!data) throw new Error("No transaction found for this task taken ID");
+        return data.escrow_transaction_id;
     }
 
     //For payment methods

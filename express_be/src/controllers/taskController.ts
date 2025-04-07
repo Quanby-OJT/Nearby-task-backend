@@ -352,8 +352,15 @@ class TaskController {
         return;
       }
 
+      const transactionId = await EscrowPayment.fetchTransactionId(taskTakenId);
+
       if(task_status == "Rejected" || task_status == "Cancelled"){
-        const { data, error } = await supabase
+        if(task_status == "Cancelled"){
+          await EscrowPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
+          res.status(200).json({ message: "You had cancelled your task."});
+        }
+
+        const { error } = await supabase
           .from("task_taken")
           .update({ task_status, reason_for_rejection_or_cancellation })
           .eq("task_taken_id", taskTakenId);
@@ -362,7 +369,7 @@ class TaskController {
           console.error("Error while updating Task Status", error.message, error.stack);
           res.status(500).json({ error: "An Error Occurred while updating the task status." });
         } else {
-          res.status(200).json({ message: "Task status updated successfully", task: data });
+          res.status(200).json({ message: "Task status updated successfully"});
         }
         return
       }else{
@@ -445,11 +452,11 @@ class TaskController {
               payment_date: new Date().toISOString()
           });
 
-          if(PaymentInformation.error){
-              console.error("Error while processing your payment: ", PaymentInformation.error);
-              res.status(500).json({ error: "An Error Occurred while processing your payment." });
-              return
-          }
+          // if(PaymentInformation.error){
+          //     console.error("Error while processing your payment: ", PaymentInformation.error);
+          //     res.status(500).json({ error: "An Error Occurred while processing your payment." });
+          //     return
+          // }
           console.log("Payment Information: ", PaymentInformation);
   
           res.status(200).json({

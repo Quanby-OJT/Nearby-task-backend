@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { group } from "console";
+import { authHeader } from "../config/configuration";
 
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
@@ -84,6 +85,23 @@ class UserAccountController {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+
+      //Creating new customer at Escrow
+      const escrowPayload = {
+        email: email,
+        first_name: first_name,
+        middle_name: middle_name,
+        last_name: last_name,
+        birthday: birthday,
+      }
+      const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/customer`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+        },
+        body: JSON.stringify(escrowPayload),
+      })
 
       // Insert user into Supabase database
       const { data: newUser, error: insertError } = await supabase
