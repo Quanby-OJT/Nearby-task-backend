@@ -13,7 +13,7 @@ import userlogRoutes from "./routes/userlogRoutes";
 import clientRooutes from "./routes/clientRoutes"; 
 import reportRoutes from "./routes/reportRoutes";
 import cookieParser from "cookie-parser";
-
+import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 dotenv.config();
 const app: Application = express();
 
@@ -59,7 +59,7 @@ app.use("/connect", likeRoutes);
 app.use("/connect", userlogRoutes);
 app.use("/connect", clientRooutes);
 app.use("/connect", reportRoutes);
-
+app.use("/connect", authorityAccountRoutes);
 // Start server
 const PORT = port || 5000;
 app.listen(PORT, () => {

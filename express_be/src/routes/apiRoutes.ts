@@ -83,7 +83,7 @@ router.get("/check-session", (req, res) => {
 });
 
 router.use(isAuthenticated);
-
+router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/displayTask/:id", TaskController.getTaskById);
@@ -107,8 +107,7 @@ router.get("/specializations", TaskController.getAllSpecializations);
 router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
-// router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
-router.post("/logout", AuthenticationController.logout);
+router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
 
 //User CRUD
 router.put(
