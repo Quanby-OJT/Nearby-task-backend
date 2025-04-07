@@ -67,9 +67,9 @@ class AuthorityAccountController {
         contact,
         gender,
         image_link: imageUrl,
-        acc_status: acc_status || "Active", // Default to Active if not provided
-        emailVerified: true, // No email verification needed
-        verification_token: null, // No token since no verification
+        acc_status: acc_status || "Review", 
+        emailVerified: true, 
+        verification_token: null, 
       };
 
       // Hash the password if provided
