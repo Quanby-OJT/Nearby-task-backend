@@ -83,12 +83,12 @@ class PayMongoPayment {
             send_email_receipt: true,
             show_description: true,
             show_line_items: true,
-            description: `NearByTask Partial Payment`,
+            description: `NearByTask Initial Deposit`,
             line_items: [
               {
                 currency: "PHP",
                 amount: paymentInfo.contract_price * 100, // Convert to centavos
-                name: `Partial Payment for Task: ${taskTitle}`,
+                name: `Escrow Initial Deposit for: ${taskTitle}`,
                 quantity: 1,
               },
             ],
