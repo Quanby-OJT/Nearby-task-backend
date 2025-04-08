@@ -1,196 +1,215 @@
 import e from "express";
-import { supabase, authHeader } from "../config/configuration";
+import { supabase } from "../config/configuration";
 
 interface Payment {
-    payment_history_id?: number;
-    task_taken_id?: number;
-    escrow_transaction_id?: string;
-    status: string;
-    contract_price: number;
-    payment_date: string;
+  payment_history_id?: number;
+  task_taken_id?: number;
+  transaction_id?: string;
+  status: string;
+  contract_price: number;
+  payment_date: string;
 }
 
-interface EscrowResponse {
-    message?: string;
+// Updated to match PayMongo's checkout_sessions response structure
+interface PayMongoResponse {
+  data: {
     id: string;
-    checkout_url: string;
-    parties: {
-        next_step: string;
-        customer: string;
-        email: string;
-    }[]; // Adjust this type based on the actual structure of the response
-    error?: any; // For detailed error capture
+    type: string;
+    attributes: {
+      billing: object;
+      checkout_url: string;
+      client_key: string;
+      description: string;
+      line_items: Array<object>;
+      payment_method_types: string[];
+      status: string;
+      send_email_receipt: boolean;
+      show_description: boolean;
+      show_line_items: boolean;
+      created_at: number;
+      updated_at: number;
+    };
+  };
+  errors?: Array<{ detail: string }>; // For error cases
 }
 
-class EscrowPayment {
-    static async createPayment(paymentInfo: Payment) {
- 
-        interface UserEmailResponse {
-            clients: { user: { email: string } };
-            tasker: { user: { email: string } };
-            post_task: { task_title: string };
-        }
+class PayMongoPayment {
+  static async checkoutPayment(paymentInfo: Payment) {
+    interface UserEmailResponse {
+      clients: { user: { email: string } };
+      tasker: { user: { email: string } };
+      post_task: { task_title: string };
+    }
 
-        const { data: userEmailResponse, error: emailError } = await supabase
-            .from("task_taken")
-            .select("clients (user(email)), tasker (user(email)), post_task (task_title)")
-            .eq("task_taken_id", paymentInfo.task_taken_id)
-            .single() as { data: UserEmailResponse | null, error: any };
-        
-        console.log("User Email Response:", userEmailResponse);
-        if (emailError || !userEmailResponse) throw new Error("Failed to fetch user emails");
+    // Fetch user and task data from Supabase
+    const { data: userEmailResponse, error: emailError } = await supabase
+      .from("task_taken")
+      .select("clients (user(email)), tasker (user(email)), post_task (task_title)")
+      .eq("task_taken_id", paymentInfo.task_taken_id)
+      .single() as { data: UserEmailResponse | null; error: any };
 
-        const taskerEmail = userEmailResponse.tasker.user.email;
-        const clientEmail = userEmailResponse.clients.user.email;
-        const taskTitle = userEmailResponse.post_task.task_title;
+    if (emailError || !userEmailResponse) throw new Error("Failed to fetch user emails");
+    console.log("User Email Response:", userEmailResponse);
 
-        const authString = `${process.env.ESCROW_EMAIL}:${process.env.ESCROW_API}`;
-        console.log("Auth String:", authString);
-        const authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+    const taskTitle = userEmailResponse.post_task.task_title;
 
-        const escrowPayload = {
-        parties: [
-            {
-                role: "buyer",
-                customer: clientEmail, 
-                email: clientEmail,
+    // PayMongo auth (only secret key needed, not duplicated)
+    const authString = `${process.env.PAYMONGO_SECRET_KEY}:`;
+    const authHeader = `Basic ${Buffer.from(authString).toString("base64")}`;
 
-                initiator: true,
+    // PayMongo checkout session payload
+    const options = {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+      },
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            billing: {
+              address: {
+                line1: "4th Floor, Landco Business Park",
+                city: "Legazpi",
+                postal_code: "4500",
+                country: "PH",
+                state: "Albay",
+              },
+              name: "NearByTask",
+              email: "nearbytask@gmail.com",
+              phone: "09221776654",
             },
-            {
-                role: "seller",
-                customer: taskerEmail,
-                email: taskerEmail,
-            },
-        ],
-        items: [{
-            title: "Task Assignment Deposit",
-            description: `Deposit for ${taskTitle}`,
-            type: "milestone", 
-            quantity: 1,
-            inspection_period: 2592000,
-            schedule: [
-                {
-                    amount: paymentInfo.contract_price,
-                    payer_customer: clientEmail,
-                    beneficiary_customer: taskerEmail,
-                },
+            send_email_receipt: true,
+            show_description: true,
+            show_line_items: true,
+            description: `NearByTask Partial Payment`,
+            line_items: [
+              {
+                currency: "PHP",
+                amount: paymentInfo.contract_price * 100, // Convert to centavos
+                name: `Partial Payment for Task: ${taskTitle}`,
+                quantity: 1,
+              },
             ],
-        }],
-        currency: "usd",
-        description: "Initial Deposit for Task Assignment",
-        return_url: `${process.env.URL}/escrow/callback`,
+            payment_method_types: ["qrph"], // QRPH only for now
+          },
+        },
+      }),
     };
 
-        console.log("Escrow Payload:", JSON.stringify(escrowPayload, null, 2));
+    // Create PayMongo checkout session
+    const paymongoResponse = await fetch(`${process.env.PAYMONGO_URL}/checkout_sessions`, options);
+    if (!paymongoResponse.ok) {
+      const errorData = await paymongoResponse.json();
+      console.error("PayMongo API Error:", errorData);
+      if (paymongoResponse.status === 401) {
+        throw new Error("Unauthorized: Invalid PayMongo credentials");
+      } else if (paymongoResponse.status === 422) {
+        throw new Error(`Invalid payment data: ${JSON.stringify(errorData.errors)}`);
+      } else {
+        throw new Error(`PayMongo API failed: ${paymongoResponse.statusText}`);
+      }
+    }
 
-        const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/transaction`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": authHeader,
-            },
-            body: JSON.stringify(escrowPayload),
-        });
+    const paymongoData = await paymongoResponse.json() as PayMongoResponse;
+    console.log("PayMongo Response:", paymongoData);
 
+    // Assign transaction_id and payment_date *after* successful response
+    paymentInfo.transaction_id = paymongoData.data.id;
+    paymentInfo.payment_date = new Date().toISOString();
 
-        console.log(escrowResponse)
-        const escrowData = await escrowResponse.json() as EscrowResponse;
-        console.log("Escrow Response Status:", escrowResponse.status);
-        console.log("Escrow Response Body:", JSON.stringify(escrowData, null, 2));
+    console.log("Updated Payment Info:", paymentInfo);
 
-        if (!escrowResponse.ok) {
-            console.error("Escrow API Error:", JSON.stringify(escrowData.error, null, 2));
-            if (escrowResponse.status === 401) {
-                return { error: "Unauthorized: Invalid Escrow credentials" };
-            } else if (escrowResponse.status === 422) {
-                return {
-                    error: "Invalid transaction data",
-                    details: escrowData.error,
-                };
-            } else if(escrowResponse.status === 500) {
-                return {
-                    error: `Escrow API failed: ${escrowData.message || escrowResponse.statusText}`,
-                };
-            }
-        }
+    // Insert into Supabase
+    const { error: insertError } = await supabase.from("payment_logs").insert([paymentInfo]);
+    if (insertError) {
+      console.error("Supabase Insert Error:", insertError);
+      throw new Error(`Failed to log payment: ${insertError.message}`);
+    }
 
-        const escrowTransactionId = escrowData.id;
-        const sellerParty = escrowData.parties.find((party: any) => party.role === "seller" && party.next_step);
-        const paymentUrl = sellerParty ? sellerParty.next_step : undefined;
+    return {
+      paymentUrl: paymongoData.data.attributes.checkout_url,
+      transactionId: paymongoData.data.id,
+    };
+  }
 
-        paymentInfo.escrow_transaction_id = escrowTransactionId;
+  static async fetchTransactionId(taskTakenId: number) {
+    const { data, error } = await supabase
+      .from("payment_logs")
+      .select("transaction_id")
+      .eq("task_taken_id", taskTakenId)
+      .single();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("No transaction found for this task taken ID");
+    return data.transaction_id;
+  }
 
-    const { error } = await supabase.from("escrow_payment_logs").insert([paymentInfo]);
+  static async fetchPaymentMethods(transactionId: string) {
+    const response = await fetch(`${process.env.PAYMONGO_API_URL}/checkout_sessions/${transactionId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString("base64")}`,
+      },
+    });
+    if (!response.ok) {
+      console.error("Error fetching checkout session:", response.statusText);
+      throw new Error(`Failed to fetch payment methods: ${response.statusText}`);
+    }
+    const data = await response.json();
+    console.log("Checkout Session Response:", data);
+    return data.data.attributes.payment_method_types; // Returns supported payment methods
+  }
+
+  static async cancelTransaction(transactionId: string, cancellationReason: string) {
+    // PayMongo doesn’t support direct cancellation of checkout sessions; refund if paid
+    const response = await fetch(`${process.env.PAYMONGO_API_URL}/checkout_sessions/${transactionId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString("base64")}`,
+      },
+    });
+    const sessionData = await response.json();
+
+    if (sessionData.data.attributes.status === "paid") {
+      const refundPayload = {
+        data: {
+          attributes: {
+            amount: sessionData.data.attributes.line_items[0].amount,
+            reason: cancellationReason,
+            payment_id: sessionData.data.attributes.payments[0]?.id, // Requires payment to be completed
+          },
+        },
+      };
+      const refundResponse = await fetch(`${process.env.PAYMONGO_API_URL}/refunds`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString("base64")}`,
+        },
+        body: JSON.stringify(refundPayload),
+      });
+      if (!refundResponse.ok) throw new Error(`Refund failed: ${refundResponse.statusText}`);
+    }
+
+    const { error } = await supabase
+      .from("payment_logs")
+      .update({ status: "cancelled" })
+      .eq("transaction_id", transactionId);
     if (error) throw new Error(error.message);
 
-    return {paymentUrl, escrowTransactionId};
+    return { message: "Transaction cancelled or refunded" };
+  }
 
-    //return {paymentUrl: "url", escrowTransactionId: 1000000}
-    }
-
-    static async fetchTransactionId(taskTakenId: number) {
-        const {data, error} = await supabase.from("escrow_payment_logs").select("escrow_transaction_id").eq("task_taken_id", taskTakenId).single()
-        if (error) throw new Error(error.message);
-        if (!data) throw new Error("No transaction found for this task taken ID");
-        return data.escrow_transaction_id;
-    }
-
-    //For payment methods
-    static async fetchPaymentMethods(escrowTransactionId: string) {
-        const response = await fetch(`${process.env.ESCROW_API_URL}/transaction/${escrowTransactionId}/payment_methods`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": authHeader,
-            },
-        });
-
-        return response.json();
-    }
-
-    static async getPaymentMethods(escrowTransactionId: string) {
-        const response = await fetch(`${process.env.ESCROW_API_URL}/transaction/${escrowTransactionId}/payment_methods`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": authHeader,
-            },
-        });
-        if (!response.ok) {
-            throw new Error(`Failed to fetch payment methods: ${response.statusText}`);
-        }
-        return response.json();
-    }
-
-    static async cancelTransaction(escrow_transaction_id: string, cancellationReason: string){
-        const response = await fetch(`${process.env.ESCROW_API_URL}/transaction/${escrow_transaction_id}`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": authHeader,
-            },
-            body: JSON.stringify({
-                action: "cancel",
-                cancel_information: {
-                    cancellation_reason: cancellationReason
-                }
-            })
-        })
-
-        if (!response.ok) {
-            throw new Error(`Failed to cancel transaction: ${response.statusText}`);
-        }
-        const escrowData = await response.json() as EscrowResponse;
-
-        const {data, error} = await supabase.from("escrow_payment_logs").update({status: "cancelled"}).eq("escrow_transaction_id", escrow_transaction_id)
-        if (error) throw new Error(error.message);
-        return data;
-    }
-
-    static async completeTransaction(escow_transaction_id: string){
-        return "Hi"
-    }
+  static async completeTransaction(transactionId: string) {
+    // Placeholder: Mark as completed in Supabase once payment is confirmed
+    const { error } = await supabase
+      .from("payment_logs")
+      .update({ status: "completed" })
+      .eq("transaction_id", transactionId);
+    if (error) throw new Error(error.message);
+    return { message: "Transaction marked as completed" };
+  }
 }
 
-export default EscrowPayment;
+export default PayMongoPayment;

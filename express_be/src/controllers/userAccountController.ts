@@ -74,9 +74,9 @@ class UserAccountController {
         first_name,
         middle_name,
         last_name,
-        birthday,
+        birthdate: birthday,
         email,
-        password: hashedPassword,
+        hashed_password: hashedPassword,
         acc_status: acc_status || "Pending", // Default to "Pending" if not provided
         user_role,
         verification_token: verificationToken,

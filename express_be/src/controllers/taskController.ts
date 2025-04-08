@@ -7,7 +7,7 @@ import { UserAccount } from "../models/userAccountModel";
 import fetch from "node-fetch";
 import { User } from "@supabase/supabase-js";
 require("dotenv").config();
-import EscrowPayment from "../models/paymentModel";
+import PayMongoPayment from "../models/paymentModel";
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -352,11 +352,11 @@ class TaskController {
         return;
       }
 
-      const transactionId = await EscrowPayment.fetchTransactionId(taskTakenId);
+      const transactionId = await PayMongoPayment.fetchTransactionId(taskTakenId);
 
       if(task_status == "Rejected" || task_status == "Cancelled"){
         if(task_status == "Cancelled"){
-          await EscrowPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
+          await PayMongoPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
           res.status(200).json({ message: "You had cancelled your task."});
         }
 
@@ -411,18 +411,18 @@ class TaskController {
     }
   }
 
-  static async converttoUSD(amount: number): Promise<number> {
-    interface ExchangeRateResponse {
-      conversion_result: number;
-  }
+  // static async converttoUSD(amount: number): Promise<number> {
+  //   interface ExchangeRateResponse {
+  //     conversion_result: number;
+  // }
 
-    const response = await fetch(`${process.env.EXCHANGE_RATE_API}/pair/PHP/USD/${amount}`);
-    const data = await response.json() as ExchangeRateResponse;
-    const amountInUSD = data.conversion_result;
-    console.log(`Amount converted from PHP ${amount} to USD ${amountInUSD}`);
+  //   const response = await fetch(`${process.env.EXCHANGE_RATE_API}/pair/PHP/USD/${amount}`);
+  //   const data = await response.json() as ExchangeRateResponse;
+  //   const amountInUSD = data.conversion_result;
+  //   console.log(`Amount converted from PHP ${amount} to USD ${amountInUSD}`);
 
-    return amountInUSD;
-  }
+  //   return amountInUSD;
+  // }
 
     /**
    * The contarct price set by the client will be sent first to Escrow and will be released to the Tasker once the task is completed.
@@ -443,12 +443,12 @@ class TaskController {
           console.log("Transaction Data: ", req.body);
           const { task_taken_id, amount, status } = req.body;
 
-          const amountInUSD = await TaskController.converttoUSD(amount);
+          //const amountInUSD = await TaskController.converttoUSD(amount);
 
-          const PaymentInformation = await EscrowPayment.createPayment({
+          const PaymentInformation = await PayMongoPayment.checkoutPayment({
               task_taken_id,
               status: status,
-              contract_price: amountInUSD,
+              contract_price: amount,
               payment_date: new Date().toISOString()
           });
 
@@ -462,7 +462,7 @@ class TaskController {
           res.status(200).json({
               message: "Escrow transaction initiated",
               payment_url: PaymentInformation.paymentUrl,
-              escrow: PaymentInformation.escrowTransactionId,
+              escrow: PaymentInformation.transactionId,
           });
       } catch (error) {
           console.error("Error in depositTaskPayment:", error instanceof Error ? error.message : error);
@@ -475,10 +475,10 @@ class TaskController {
       const { task_taken_id, status, cancellation_reason } = req.body;
 
       if(status == 'cancel'){
-        await EscrowPayment.cancelTransaction(task_taken_id, cancellation_reason);
+        await PayMongoPayment.cancelTransaction(task_taken_id, cancellation_reason);
         res.status(200).json({ message: "You had cancelled your transaction."});
       }else if(status == 'complete'){
-        await EscrowPayment.completeTransaction(task_taken_id);
+        await PayMongoPayment.completeTransaction(task_taken_id);
         res.status(200).json({ message: "You had completed your transaction."});
       }else{
         res.status(400).json({ message: "Invalid status provided."});
