@@ -7,13 +7,45 @@ class ConversationModel {
       const { data, error } = await supabase
         .from("conversation_history")
         .select(`
-          *,
+          convo_id,
+          created_at,
+          conversation,
+          reported,
+          user_id,
           user!user_id (
             first_name,
             middle_name,
             last_name,
             email,
-            user_role
+            user_role,
+            status
+          ),
+          task_taken_id,
+          task_taken!task_taken_id (
+            client_id,
+            clients!client_id (
+              user_id,
+              user!user_id (
+                first_name,
+                middle_name,
+                last_name,
+                email,
+                user_role,
+                status
+              )
+            ),
+            tasker_id,
+            tasker!tasker_id (
+              user_id,
+              user!user_id (
+                first_name,
+                middle_name,
+                last_name,
+                email,
+                user_role,
+                status
+              )
+            )
           )
         `)
         .order('convo_id', { ascending: true });
@@ -23,7 +55,7 @@ class ConversationModel {
         throw error;
       }
 
-      console.log("Raw data from Supabase:", data);
+      console.log("Data from Supabase:", data);
 
       if (!data || data.length === 0) {
         console.log("No data found in conversation_history");
@@ -32,8 +64,7 @@ class ConversationModel {
 
       const formattedData = data.map((conversation: any) => ({
         ...conversation,
-        logged_in: conversation.logged_in ? new Date(conversation.logged_in).toLocaleString("en-US", { timeZone: "Asia/Manila" }) : null,
-        logged_out: conversation.logged_out ? new Date(conversation.logged_out).toLocaleString("en-US", { timeZone: "Asia/Manila" }) : null,
+        created_at: conversation.created_at ? new Date(conversation.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" }) : null
       }));
 
       console.log("Formatted data:", formattedData);
