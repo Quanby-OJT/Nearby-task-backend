@@ -449,21 +449,23 @@ class TaskController {
               task_taken_id,
               status: status,
               contract_price: amount,
-              payment_date: new Date().toISOString()
+              deposit_date: new Date().toISOString(),
+              release_start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
           });
 
-          // if(PaymentInformation.error){
-          //     console.error("Error while processing your payment: ", PaymentInformation.error);
-          //     res.status(500).json({ error: "An Error Occurred while processing your payment." });
-          //     return
-          // }
           console.log("Payment Information: ", PaymentInformation);
   
           res.status(200).json({
-              message: "Escrow transaction initiated",
+              success: true,
               payment_url: PaymentInformation.paymentUrl,
-              escrow: PaymentInformation.transactionId,
+              transaction_id: PaymentInformation.transactionId,
           });
+
+        //   res.status(200).json({
+        //     success: true,
+        //     payment_url: "url",
+        //     transaction_id: 200000,
+        // });
       } catch (error) {
           console.error("Error in depositTaskPayment:", error instanceof Error ? error.message : error);
           res.status(500).json({ error: "Internal Server Error" });

@@ -7,7 +7,8 @@ interface Payment {
   transaction_id?: string;
   status: string;
   contract_price: number;
-  payment_date: string;
+  deposit_date: string;
+  release_start_date: string;
 }
 
 // Updated to match PayMongo's checkout_sessions response structure
@@ -36,22 +37,29 @@ interface PayMongoResponse {
 class PayMongoPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
-      clients: { user: { email: string } };
-      tasker: { user: { email: string } };
+      clients: { 
+        user: { 
+          first_name: string, 
+          middle_name: string, 
+          last_name: string 
+          email: string,
+          contact: string
+        } };
       post_task: { task_title: string };
     }
 
     // Fetch user and task data from Supabase
     const { data: userEmailResponse, error: emailError } = await supabase
       .from("task_taken")
-      .select("clients (user(email)), tasker (user(email)), post_task (task_title)")
+      .select("clients (user(first_name, middle_name, last_name, email, contact)), post_task (task_title)")
       .eq("task_taken_id", paymentInfo.task_taken_id)
       .single() as { data: UserEmailResponse | null; error: any };
 
-    if (emailError || !userEmailResponse) throw new Error("Failed to fetch user emails");
+    if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
     console.log("User Email Response:", userEmailResponse);
 
     const taskTitle = userEmailResponse.post_task.task_title;
+    const clientName = `${userEmailResponse.clients.user.first_name} ${userEmailResponse.clients.user.middle_name} ${userEmailResponse.clients.user.last_name}`;
 
     // PayMongo auth (only secret key needed, not duplicated)
     const authString = `${process.env.PAYMONGO_SECRET_KEY}:`;
@@ -76,13 +84,14 @@ class PayMongoPayment {
                 country: "PH",
                 state: "Albay",
               },
-              name: "NearByTask",
-              email: "nearbytask@gmail.com",
-              phone: "09221776654",
+              name: clientName,
+              email: userEmailResponse.clients.user.email,
+              phone: userEmailResponse.clients.user.contact,
             },
             send_email_receipt: true,
             show_description: true,
             show_line_items: true,
+            payment_method_types: ["gcash", "paymaya", "qrph"], // Add more payment methods as needed
             description: `NearByTask Initial Deposit`,
             line_items: [
               {
@@ -92,7 +101,6 @@ class PayMongoPayment {
                 quantity: 1,
               },
             ],
-            payment_method_types: ["qrph"], // QRPH only for now
           },
         },
       }),
@@ -117,7 +125,6 @@ class PayMongoPayment {
 
     // Assign transaction_id and payment_date *after* successful response
     paymentInfo.transaction_id = paymongoData.data.id;
-    paymentInfo.payment_date = new Date().toISOString();
 
     console.log("Updated Payment Info:", paymentInfo);
 
