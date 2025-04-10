@@ -199,8 +199,54 @@ class TaskController {
     }
   }
 
+  static async fetchIsApplied(req: Request, res: Response): Promise<void> {
+    const { task_id, tasker_id, client_id } = req.query;
+
+    const taskId = parseInt(task_id as string, 10);
+    const taskerId = parseInt(tasker_id as string, 10);
+    const clientId = parseInt(client_id as string, 10);
+
+    if (!taskId || !taskerId || !clientId) {
+      res.status(400).json({ error: "Missing required query parameters" });
+      return;
+    }
+    try {
+      const { data: task, error } = await supabase
+        .from("task_taken")
+        .select("*")
+        .eq("task_id", taskId)
+        .eq("tasker_id", taskerId)
+        .eq("client_id", clientId)
+        .single();
+
+      if (error) {
+        // No record found
+        res.status(200).json({ message: "False", task: null });
+        return;
+      }
+
+      if (task) {
+        res.status(200).json({ message: "True", task });
+        return;
+      }
+
+      res.status(200).json({ message: "False", task: null });
+    } catch (err) {
+      console.error("Error fetching task:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
   static async assignTask(req: Request, res: Response): Promise<void> {
     const { tasker_id, task_id, client_id } = req.body;
+
+
+    const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
+
+    if (task) {
+      res.status(400).json({ error: "Task already assigned" });
+      return;
+    }
 
     const { data, error } = await supabase.from("task_taken").insert({
       tasker_id,
