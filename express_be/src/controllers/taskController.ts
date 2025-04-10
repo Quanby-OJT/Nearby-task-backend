@@ -8,6 +8,10 @@ import fetch from "node-fetch";
 import { User } from "@supabase/supabase-js";
 require("dotenv").config();
 import PayMongoPayment from "../models/paymentModel";
+import ClientModel from "./clientController";
+import { WebSocketServer } from "ws";
+
+const ws = new WebSocketServer({ port: 8080 });
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -411,19 +415,6 @@ class TaskController {
     }
   }
 
-  // static async converttoUSD(amount: number): Promise<number> {
-  //   interface ExchangeRateResponse {
-  //     conversion_result: number;
-  // }
-
-  //   const response = await fetch(`${process.env.EXCHANGE_RATE_API}/pair/PHP/USD/${amount}`);
-  //   const data = await response.json() as ExchangeRateResponse;
-  //   const amountInUSD = data.conversion_result;
-  //   console.log(`Amount converted from PHP ${amount} to USD ${amountInUSD}`);
-
-  //   return amountInUSD;
-  // }
-
     /**
    * The contarct price set by the client will be sent first to Escrow and will be released to the Tasker once the task is completed.
    * 
@@ -438,39 +429,31 @@ class TaskController {
    * 
    * -Ces
    */
-    static async createTaskPayment(req: Request, res: Response): Promise<void> {
+    static async depositEscrowAmount(req: Request, res: Response): Promise<void> {
       try {
           console.log("Transaction Data: ", req.body);
-          const { task_taken_id, amount, status } = req.body;
+          const { client_id, amount, status } = req.body;
 
           //const amountInUSD = await TaskController.converttoUSD(amount);
 
           const PaymentInformation = await PayMongoPayment.checkoutPayment({
-              task_taken_id,
-              status: status,
-              contract_price: amount,
+              client_id,
+              amount,
               deposit_date: new Date().toISOString(),
-              release_start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
           });
 
-          console.log("Payment Information: ", PaymentInformation);
-          const taskId: number = PaymentInformation.task_id;
-          const taskStatus: string = "Already Taken";
-          const taskTakenStatus = status;
+          // console.log("Payment Information: ", PaymentInformation);
+          // const taskId: number = PaymentInformation.task_id;
+          // const taskStatus: string = "Already Taken";
+          // const taskTakenStatus = status;
 
-          await taskModel.updateTaskStatus(taskId, taskStatus, taskTakenStatus);
+          await ClientModel.updateClient(client_id, {amount: amount})
   
           res.status(200).json({
               success: true,
               payment_url: PaymentInformation.paymentUrl,
               transaction_id: PaymentInformation.transactionId,
           });
-
-        //   res.status(200).json({
-        //     success: true,
-        //     payment_url: "url",
-        //     transaction_id: 200000,
-        // });
       } catch (error) {
           console.error("Error in depositTaskPayment:", error instanceof Error ? error.message : error);
           res.status(500).json({ error: "Internal Server Error" });
@@ -580,6 +563,68 @@ class TaskController {
       console.error(error instanceof Error ? error.message : "Error Unknown.")
       res.status(500).json({ error: "Internal Server error", });
     }
+  }
+
+  static async handlePayMongoWebhook(req: Request, res: Response): Promise<void> {
+    try{
+      const event = req.body.data.attributes
+
+      if(event.type === "payment.paid") {
+        const payment = event.data.attributes;
+        const transactionId = payment.checkout_session_id;
+        const amount = payment.amount; // Convert to PHP
+        const tokens = amount;
+
+        const {data: paymentLog, error: loggingError} = await supabase.from("payment_logs")
+          .select("client_id")
+          .eq("transaction_id", transactionId)
+          .single();
+        if(loggingError) throw new Error(loggingError.message);
+
+        const { error: tokenError} = await supabase.
+          from("clients")
+          .update({amount: tokens})
+          .eq("client_id", paymentLog.client_id);
+        if(tokenError) throw new Error(tokenError.message);
+      }
+
+      res.status(200).json({ message: "Webhook received successfully" })
+    }catch(error){
+      console.error("Webhook Error:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+
+  static async getTokenBalance(req: Request, res: Response): Promise<void> {
+    try {
+      const clientId = parseInt(req.params.clientId); // Assume authenticated client ID
+      if (isNaN(clientId)) {
+        res.status(400).json({ success: false, error: "Invalid client ID" });
+        return;
+      }
+  
+      const { data, error } = await supabase
+        .from("clients")
+        .select("amount")
+        .eq("client_id", clientId)
+        .single();
+      if (error || !data) {
+        throw new Error("Client not found");
+      }
+  
+      res.status(200).json({ success: true, tokens: data.amount });
+    } catch (error) {
+      console.error("Error fetching token balance:", error);
+      res.status(500).json({ success: false, error: "Failed to fetch tokens" });
+    }
+  }
+
+  static notifyClient(clientId: number, amount: number) {
+    ws.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ clientId, amount }));
+      }
+    });
   }
 
   static async getDocumentLink(req: Request, res: Response): Promise<any> {

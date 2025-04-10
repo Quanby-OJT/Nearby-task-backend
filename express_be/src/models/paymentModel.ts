@@ -1,14 +1,12 @@
-import e from "express";
+import {Request, Response} from "express";
 import { supabase } from "../config/configuration";
 
 interface Payment {
   payment_history_id?: number;
-  task_taken_id?: number;
+  client_id: number;
   transaction_id?: string;
-  status: string;
-  contract_price: number;
+  amount: number;
   deposit_date: string;
-  release_start_date: string;
 }
 
 // Updated to match PayMongo's checkout_sessions response structure
@@ -23,7 +21,7 @@ interface PayMongoResponse {
       description: string;
       line_items: Array<object>;
       payment_method_types: string[];
-      status: string;
+      status: string; 
       send_email_receipt: boolean;
       show_description: boolean;
       show_line_items: boolean;
@@ -37,32 +35,26 @@ interface PayMongoResponse {
 class PayMongoPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
-      clients: { 
-        user: { 
-          first_name: string, 
-          middle_name: string, 
-          last_name: string 
-          email: string,
-          contact: string
-        } };
-      post_task: { 
-        task_title: string 
-        task_id: number
-      };
+      user: { 
+        first_name: string, 
+        middle_name: string, 
+        last_name: string 
+        email: string,
+        contact: string
+      }
     }
 
     // Fetch user and task data from Supabase
     const { data: userEmailResponse, error: emailError } = await supabase
-      .from("task_taken")
-      .select("clients (user(first_name, middle_name, last_name, email, contact)), post_task (task_title, task_id)")
-      .eq("task_taken_id", paymentInfo.task_taken_id)
+      .from("clients")
+      .select("user(first_name, middle_name, last_name, email, contact)")
+      .eq("client_id", paymentInfo.client_id)
       .single() as { data: UserEmailResponse | null; error: any };
 
     if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
     console.log("User Email Response:", userEmailResponse);
 
-    const taskTitle = userEmailResponse.post_task.task_title;
-    const clientName = `${userEmailResponse.clients.user.first_name} ${userEmailResponse.clients.user.middle_name} ${userEmailResponse.clients.user.last_name}`;
+    const clientName = `${userEmailResponse.user.first_name} ${userEmailResponse.user.middle_name} ${userEmailResponse.user.last_name}`;
 
     // PayMongo auth (only secret key needed, not duplicated)
     const authString = `${process.env.PAYMONGO_SECRET_KEY}:`;
@@ -88,19 +80,20 @@ class PayMongoPayment {
                 state: "Albay",
               },
               name: clientName,
-              email: userEmailResponse.clients.user.email,
-              phone: userEmailResponse.clients.user.contact,
+              email: userEmailResponse.user.email,
+              phone: userEmailResponse.user.contact,
             },
             send_email_receipt: true,
             show_description: true,
             show_line_items: true,
             payment_method_types: ["gcash", "paymaya", "qrph"], // Add more payment methods as needed
-            description: `NearByTask Initial Deposit`,
+            description: `NearByTask Escrow Deposit`,
             line_items: [
               {
                 currency: "PHP",
-                amount: paymentInfo.contract_price * 100, // Convert to centavos
-                name: `Escrow Initial Deposit for: ${taskTitle}`,
+                amount: paymentInfo.amount * 100, 
+                name: `NearByTask Escrow Tokens for ${clientName}`,
+                description: `This is a deposit for the task assigned to you`,
                 quantity: 1,
               },
             ],
@@ -138,10 +131,11 @@ class PayMongoPayment {
       throw new Error(`Failed to log payment: ${insertError.message}`);
     }
 
+
+
     return {
       paymentUrl: paymongoData.data.attributes.checkout_url,
       transactionId: paymongoData.data.id,
-      task_id: userEmailResponse.post_task.task_id,
     };
   }
 
