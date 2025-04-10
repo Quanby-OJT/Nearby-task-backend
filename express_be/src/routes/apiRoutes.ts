@@ -12,6 +12,7 @@ import auth from "../controllers/authAngularController";
 import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
 import profileController from "../controllers/profileController";
+import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 
 const upload = multer({storage: memoryStorage()})
@@ -90,6 +91,7 @@ router.get("/displayTask/:id", TaskController.getTaskById);
 //router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
+router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
 router.post("/send-message", ConversationController.sendMessage);
 router.get("/all-messages/:user_id", ConversationController.getAllMessages);
@@ -110,6 +112,13 @@ router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
 router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
+
+// Notifications for request 
+router.get("/notifications-tasker-request/:userId", NotificationController.getTaskerRequest);
+router.get("/notifications-tasker-confirmed/:userId", NotificationController.getConfirmedRequests);
+router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOngoingRequests);
+router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
+router.put("/acceptRequest/:taskTakenId", NotificationController.acceptRequest);
 
 //User CRUD
 router.put(

@@ -7,6 +7,8 @@ class ConversationController {
         const {task_taken_id, user_id, conversation} = req.body
         console.log(req.body)
 
+        console.log("Sending Message for Task Taken ID of: ", task_taken_id)
+
         const {data, error} = await supabase.from("conversation_history").insert({
             task_taken_id, 
             user_id, 
@@ -60,7 +62,7 @@ class ConversationController {
                     )
                 )
             `)
-            .eq("tasker_id", user_id);
+            .eq("tasker_id", user_id)
                 
             console.log(data, error)
     
