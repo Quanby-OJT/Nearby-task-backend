@@ -12,7 +12,7 @@ import auth from "../controllers/authAngularController";
 import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
 import profileController from "../controllers/profileController";
-
+import NotificationController from "../controllers/notificationController";
 const upload = multer({storage: memoryStorage()})
 
 const router = Router();
@@ -105,6 +105,13 @@ router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
 // router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.updateUser)
+
+// Notifications for request 
+router.get("/notifications-tasker-request/:userId", NotificationController.getTaskerRequest);
+router.get("/notifications-tasker-confirmed/:userId", NotificationController.getConfirmedRequests);
+router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOngoingRequests);
+router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
+router.put("/acceptRequest/:taskTakenId", NotificationController.acceptRequest);
 
 //User CRUD
 router.put(
