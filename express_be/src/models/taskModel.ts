@@ -186,6 +186,23 @@ class TaskModel {
     
     return { success: true, message: "Task updated successfully", task: data };
   }
+
+  async updateTaskStatus(taskId: number, status: string, taskTakenStatus: string) {
+    const { error: taskError } = await supabase
+      .from("post_task")
+      .update({ status })
+      .eq("task_id", taskId)
+
+    const { error: taskTakenError } = await supabase
+      .from("task_taken")
+      .update({ task_status: taskTakenStatus })
+      .eq("task_id", taskId)
+
+    if (taskError || taskTakenError) {
+      const errorMessage = `${taskError?.message || ''}${taskTakenError?.message || ''}`.trim();
+      throw new Error(errorMessage);
+    }
+  }
 }
 
 const taskModel = new TaskModel();

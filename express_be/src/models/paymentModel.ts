@@ -45,13 +45,16 @@ class PayMongoPayment {
           email: string,
           contact: string
         } };
-      post_task: { task_title: string };
+      post_task: { 
+        task_title: string 
+        task_id: number
+      };
     }
 
     // Fetch user and task data from Supabase
     const { data: userEmailResponse, error: emailError } = await supabase
       .from("task_taken")
-      .select("clients (user(first_name, middle_name, last_name, email, contact)), post_task (task_title)")
+      .select("clients (user(first_name, middle_name, last_name, email, contact)), post_task (task_title, task_id)")
       .eq("task_taken_id", paymentInfo.task_taken_id)
       .single() as { data: UserEmailResponse | null; error: any };
 
@@ -138,6 +141,7 @@ class PayMongoPayment {
     return {
       paymentUrl: paymongoData.data.attributes.checkout_url,
       transactionId: paymongoData.data.id,
+      task_id: userEmailResponse.post_task.task_id,
     };
   }
 

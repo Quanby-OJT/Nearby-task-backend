@@ -454,6 +454,11 @@ class TaskController {
           });
 
           console.log("Payment Information: ", PaymentInformation);
+          const taskId: number = PaymentInformation.task_id;
+          const taskStatus: string = "Already Taken";
+          const taskTakenStatus = status;
+
+          await taskModel.updateTaskStatus(taskId, taskStatus, taskTakenStatus);
   
           res.status(200).json({
               success: true,
