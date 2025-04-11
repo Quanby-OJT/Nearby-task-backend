@@ -14,6 +14,7 @@ import multer, { memoryStorage } from "multer";
 import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
+import TaskerFeedbackController from "../controllers/taskerFeedbackController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -104,6 +105,8 @@ router.get("/get-tasker-schedule/:tasker_id", ScheduleController.displaySchedule
 router.post("/reschedule-task", ScheduleController.rescheduleTask);
 router.put("/webhook/paymongo", TaskController.handlePayMongoWebhook);
 router.get("/get-token-balance/:clientId", TaskController.getTokenBalance);
+router.post("give-tasker-feedback", TaskerFeedbackController.createNewFeedback);
+router.get("/get-tasker-feedback/:tasker_id", TaskerFeedbackController.getTaskerFeedback);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
