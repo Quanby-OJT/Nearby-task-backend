@@ -49,6 +49,14 @@ class ClientModel {
     return data;
   }
 
+  static async addCredits(clientId: number, amount: number) {
+
+    const { data, error } = await supabase
+      .rpc('increment_client_credits', { addl_credits: amount, id: clientId,  });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
   static async archiveCLient(clientId: number) {
     const { data, error } = await supabase
       .from("clients")

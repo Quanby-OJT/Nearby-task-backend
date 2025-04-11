@@ -493,7 +493,7 @@ class TaskController {
           // const taskStatus: string = "Already Taken";
           // const taskTakenStatus = status;
 
-          await ClientModel.updateClient(client_id, {amount: amount})
+          await ClientModel.addCredits(client_id, amount)
   
           res.status(200).json({
               success: true,
@@ -614,6 +614,7 @@ class TaskController {
   static async handlePayMongoWebhook(req: Request, res: Response): Promise<void> {
     try{
       const event = req.body.data.attributes
+      console.log("Received webhook event:", event);
 
       if(event.type === "payment.paid") {
         const payment = event.data.attributes;
@@ -627,11 +628,27 @@ class TaskController {
           .single();
         if(loggingError) throw new Error(loggingError.message);
 
-        const { error: tokenError} = await supabase.
-          from("clients")
-          .update({amount: tokens})
+        const { data: clientData, error: fetchError } = await supabase
+          .from("clients")
+          .select("amount")
+          .eq("client_id", paymentLog.client_id)
+          .single();
+
+        if (fetchError || !clientData) {
+          throw new Error("Error fetching client data: " + (fetchError?.message || "Client not found"));
+        }
+
+        const updatedAmount = clientData.amount + tokens;
+
+
+        const { error: tokenError } = await supabase
+          .from("clients")
+          .update({ amount: updatedAmount })
           .eq("client_id", paymentLog.client_id);
-        if(tokenError) throw new Error(tokenError.message);
+
+        if (tokenError) {
+          throw new Error("Error updating client amount: " + tokenError.message);
+        }
       }
 
       res.status(200).json({ message: "Webhook received successfully" })
