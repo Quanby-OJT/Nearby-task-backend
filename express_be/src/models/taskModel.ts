@@ -110,7 +110,7 @@ class TaskModel {
   async getTaskById(jobPostId: number) {
     const { data, error } = await supabase
       .from("post_task")
-      .select("*")
+      .select("*, clients:client_id (user:user_id (user_id, first_name, middle_name, last_name), preferences, client_address)")
       .eq("task_id", jobPostId)
       .single();
 
@@ -129,6 +129,23 @@ class TaskModel {
       throw new Error(error.message);
     }
     
+    return data;
+  }
+
+  async getAssignedTask(task_taken_id: number){
+    const { data, error } = await supabase.from("task_taken").
+      select(`
+        task_taken_id, 
+        tasker!tasker_id (user!user_id (first_name, middle_name, last_name, email), bio, tasker_specialization!specialization_id(specialization), skills, address, availability, wage_per_hour, pay_period, social_media_links),
+        post_task!task_id (*),
+        task_status,
+        reason_for_rejection_or_cancellation
+        `
+      ).
+      eq("task_taken_id", task_taken_id).
+      single();
+      console.log(data, error);
+    if (error) throw new Error(error.message);
     return data;
   }
 
@@ -168,6 +185,23 @@ class TaskModel {
     }
     
     return { success: true, message: "Task updated successfully", task: data };
+  }
+
+  async updateTaskStatus(taskId: number, status: string, taskTakenStatus: string) {
+    const { error: taskError } = await supabase
+      .from("post_task")
+      .update({ status })
+      .eq("task_id", taskId)
+
+    const { error: taskTakenError } = await supabase
+      .from("task_taken")
+      .update({ task_status: taskTakenStatus })
+      .eq("task_id", taskId)
+
+    if (taskError || taskTakenError) {
+      const errorMessage = `${taskError?.message || ''}${taskTakenError?.message || ''}`.trim();
+      throw new Error(errorMessage);
+    }
   }
 }
 

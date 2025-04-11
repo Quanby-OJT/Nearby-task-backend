@@ -87,10 +87,9 @@ class Auth {
   static async authenticateLogin(email: string) {
     const { data, error } = await supabase
       .from("user")
-      .select("user_id, email, hashed_password")
+      .select("user_id, email, hashed_password, acc_status")
       .eq("email", email)
       .in("user_role", ["Tasker", "Client"])
-      .in("acc_status", ["Active", "Pending", "Review"])
       .single();
 
     if (error) {
