@@ -3,105 +3,142 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 
 class NotificationController {
- static async getTaskerRequest(req: Request, res: Response): Promise<any> {
-  try {
-    const userID = req.params.userId;
-    console.log("Client ID:", userID);
 
-    if (!userID) {
-      res.status(400).json({ error: "Client ID is required." });
-      return;
-    }
+  static async getTaskerRequest(req: Request, res: Response): Promise<any> {
+    try {
+      const userID = req.params.userId;
+      console.log("User ID:", userID);
+  
+      if (!userID) {
+        res.status(400).json({ error: "User ID is required." });
+        return;
+      }
+  
+      // Fetch user data to determine role
+      const { data: userData, error: userError } = await supabase
+        .from("user")
+        .select("user_id, user_role")
+        .eq("user_id", userID)
+        .maybeSingle();
+  
+      if (userError) {
+        console.error("User fetch error:", userError.message);
+        res.status(500).json({ error: "An error occurred while fetching user data." });
+        return;
+      }
+  
+      if (!userData) {
+        res.status(404).json({ error: "User not found." });
+        return;
+      }
 
-    const { data: tasks, error: tasksError } = await supabase
-      .from("task_taken")
-      .select("*")
-      .eq("client_id", userID).eq("task_status", "Pending");
-
-    if (tasksError) {
-      console.error(tasksError.message);
-      res.status(500).json({ error: "An Error Occurred while fetching notifications." });
-      return;
-    }
-
-    if (!tasks || tasks.length === 0) {
-      res.status(200).json({ message: "No notifications found", data: [] });
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("task_taken")
-      .select("*")
-      .eq("client_id", userID).eq("task_status", "Pending");
-
-    if (error) {
-      console.error(error.message);
-      res.status(500).json({ error: "An Error Occurred while fetching notifications." });
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      res.status(200).json({ message: "No notifications found", data: [] });
-      return;
-    }
-
-    const formattedData = await Promise.all(
-      data.map(async (task) => {
-        // Fetch task title and description from post_task (expecting at most one row)
-
-        console.log("Task Data:", task);
-        console.log("Task ID:", task.task_id);
-        const { data: titleData, error: titleError } = await supabase
-          .from("post_task")
-          .select("task_title")
-          .eq("task_id", task.task_id)
-          .maybeSingle();
-
-
-        // Fetch user data from prawn user table (expecting at most one row)
-        const { data: userData, error: userError } = await supabase
-          .from("user")
-          .select("first_name, last_name, middle_name")
-          .eq("user_id", task.tasker_id)
-          .maybeSingle(); // Changed from .single() to handle no rows
-
-        if (userError) {
-          console.error(
-            "User fetch error for task",
-            task.task_taken_id,
-            userError.message
-          );
+      const fetchRequest = async (
+        userID: string,
+        column: "client_id" | "tasker_id",
+        visitColumn: "visit_client" | "visit_tasker",
+        otherUserColumn: "client_id" | "tasker_id"
+      ) => {
+        const { data: tasks, error: tasksError } = await supabase
+          .from("task_taken")
+          .select("*")
+          .eq(column, userID)
+          .eq(visitColumn, false);
+      
+        if (tasksError) {
+          console.error(`Task fetch error for ${column}:`, tasksError.message);
+          throw new Error("An error occurred while fetching notifications.");
         }
+      
+        if (!tasks || tasks.length === 0) {
+          return [];
+        }
+      
+        // Format tasks
+        const formattedData = await Promise.all(
+          tasks.map(async (task) => {
+            // Fetch task title from post_task
+            const { data: titleData, error: titleError } = await supabase
+              .from("post_task")
+              .select("task_title")
+              .eq("task_id", task.task_id)
+              .maybeSingle();
+      
+            if (titleError) {
+              console.error(
+                `Task title fetch error for task ${task.task_taken_id}:`,
+                titleError.message
+              );
+            }
+      
+            // Fetch user data for the other party (tasker or client)
+            const { data: userData, error: userError } = await supabase
+              .from("user")
+              .select("first_name, last_name, middle_name")
+              .eq("user_id", task[otherUserColumn])
+              .maybeSingle();
+      
+            if (userError) {
+              console.error(
+                `User fetch error for task ${task.task_taken_id}:`,
+                userError.message
+              );
+            }
+      
+            // Format the name of the other party
+            const otherUserName =
+              userData?.first_name && userData?.last_name
+                ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name}`.trim()
+                : column === "client_id"
+                ? "Unknown Tasker"
+                : "Unknown Client";
+      
+            return {
+              id: task.task_taken_id,
+              title: titleData?.task_title || "Untitled Task",
+              status: task.task_status || "Pending",
+              date: task.created_at || new Date().toISOString().split("T")[0],
+              remarks: task.remark || "No description provided",
+              name: otherUserName,
+              role: column === "client_id" ? "client" : "tasker",
+            };
+          })
+        );
+      
+        console.log(`Fetched and formatted data for ${column}:`, formattedData);
+        return formattedData;
+      };
 
-        // Format the data for this task
-        return {
-          id: task.task_taken_id,
-          title: titleData?.task_title || "Untitled Task",
-          status: task.task_status || "Pending",
-          date: task.created_at || new Date().toISOString().split("T")[0],
-          remarks: task.remark || "No description provided",
-          clientName:
-            userData?.first_name && userData?.last_name
-              ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name}`.trim()
-              : "Unknown Client",
-        };
-      })
-    );
 
-    console.log("Fetched and formatted data:", formattedData);
-
-    res.status(200).json({
-      message: "Successfully fetched notifications",
-      data: formattedData,
-    });
-  } catch (error) {
-    console.error("Unexpected error:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
+       // Fetch notifications based on role
+       let formattedData: any[] = [];
+       if (userData.user_role === "Client") {
+         formattedData = await fetchRequest(userID, "client_id", "visit_client", "tasker_id");
+       } else if (userData.user_role === "Tasker") {
+         formattedData = await fetchRequest(userID, "tasker_id", "visit_tasker", "client_id");
+       } else {
+         res.status(400).json({ error: "Invalid user role." });
+         return;
+       }
+  
+      // Return response
+      res.status(200).json({
+        message: formattedData.length
+          ? "Successfully fetched notifications"
+          : "No notifications found",
+        data: formattedData,
+      });
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   }
- } 
 
+  
+  
+
+  
  static async getOngoingRequests(req: Request, res: Response): Promise<any> {
   try {
     const userID = req.params.userId;
@@ -480,21 +517,45 @@ console.log("Fetched request:", data);
  }
 
 
+
+
  static async acceptRequest(req: Request, res: Response): Promise<void> {
   const taskTakenId = req.params.taskTakenId;
   const { value } = req.body;
+  const { role } = req.body;
+  console.log("Role:", req.body);
+
+
+  console.log("Task Taken ID:", taskTakenId);
+  console.log("Value:", value);
+  console.log("Role:", role);
+
 
   if (!taskTakenId) {
     res.status(400).json({ error: "Task Taken ID is required." });
     return;
   }
 
+  let visit_client = false;
+  let visit_tasker = false;
+
+  
+  if (role == "Client") {
+    visit_client = true;
+    visit_tasker = false;
+  } else {
+    visit_client = false;
+    visit_tasker = true;
+  }
+
   switch (value) {
     case 'Accept':
       const { error: acceptError } = await supabase
         .from("task_taken")
-        .update({ task_status: "Confirmed" })
+        .update({ task_status: "Confirmed", visit_client: visit_client, visit_tasker: visit_tasker })
         .eq("task_taken_id", taskTakenId);
+
+        console.log("Accept request value: $value");
 
       if (acceptError) {
         console.error(acceptError.message);
@@ -505,8 +566,10 @@ console.log("Fetched request:", data);
     case 'Start':
       const { error: startError } = await supabase
         .from("task_taken")
-        .update({ task_status: "Ongoing" })
+        .update({ task_status: "Ongoing", visit_client: visit_client, visit_tasker: visit_tasker })
         .eq("task_taken_id", taskTakenId);
+
+      console.log("Start request value: $value");
 
       if (startError) {
         console.error(startError.message);
@@ -514,11 +577,28 @@ console.log("Fetched request:", data);
         return;
       }
       break;
+
+      case 'Reject':
+        const { error: rejectError } = await supabase
+          .from("task_taken")
+          .update({ task_status: "Rejected", visit_client: visit_client, visit_tasker: visit_tasker })
+          .eq("task_taken_id", taskTakenId);
+
+          console.log("Reject request value: $value");
+  
+        if (rejectError) {
+          console.error(rejectError.message);
+          res.status(500).json({ success: false, error: "An Error Occurred while rejecting the request." });
+          return;
+        }
+        break;
       case 'Finish':
         const { error: finishError } = await supabase
           .from("task_taken")
-          .update({ task_status: "Completed" })
+          .update({ task_status: "Completed", visit_client: visit_client, visit_tasker: visit_tasker })
           .eq("task_taken_id", taskTakenId);
+
+          console.log("Finish request value: $value");
   
         if (finishError) {
           console.error(finishError.message);
@@ -527,11 +607,35 @@ console.log("Fetched request:", data);
         }
         break;
     default:
+
+
       res.status(400).json({ error: "Invalid value. Use 'Accept', 'Start', or 'Finish'" });
       return;
   }
 
   res.status(200).json({ success: true, message: "Request accepted successfully." });
+}
+
+static async  updateNotification(req: Request, res: Response): Promise<void> {
+  const taskTakenId = req.params.taskTakenId;
+
+  if (!taskTakenId) {
+    res.status(400).json({ error: "Task Taken ID is required." });
+    return;
+  }
+
+  const { error } = await supabase
+    .from("task_taken")
+    .update({ visit_client: true, visit_tasker: true })
+    .eq("task_taken_id", taskTakenId);
+
+  if (error) {
+    console.error(error.message);
+    res.status(500).json({ error: "An Error Occurred while updating the notification." });
+    return;
+  }
+
+  res.status(200).json({ success: true, message: "Notification updated successfully." });
 }
 }
 

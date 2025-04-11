@@ -238,8 +238,21 @@ class TaskController {
   }
 
   static async assignTask(req: Request, res: Response): Promise<void> {
-    const { tasker_id, task_id, client_id } = req.body;
+    const { tasker_id, task_id, client_id, role } = req.body;
 
+    console.log("Role: ${role}");
+
+    let visit_client = false;
+    let visit_tasker = false;
+
+    
+    if (role == "Client") {
+      visit_client = true;
+      visit_tasker = false;
+    } else {
+      visit_client = false;
+      visit_tasker = true;
+    }
 
     const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
 
@@ -252,6 +265,8 @@ class TaskController {
       tasker_id,
       task_id,
       client_id,
+      visit_client,
+      visit_tasker,
       task_status: "Pending",
     });
 
