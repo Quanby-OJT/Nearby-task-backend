@@ -171,7 +171,7 @@ class UserAccountController {
       const { error: updateError } = await supabase
         .from("user")
         .update({ 
-          acc_status: "Active",
+          acc_status: "Review",
           verification_token: null,
           emailVerified: true
         })

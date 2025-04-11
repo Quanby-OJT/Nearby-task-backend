@@ -4,6 +4,7 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
+import { TaskAssignment } from "../models/taskAssignmentModel";
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -606,6 +607,35 @@ class TaskController {
       });
     }
   }
+
+  async checkTaskAssignment(req: Request, res: Response) {
+    try {
+        const { taskId, taskerId } = req.params;
+        
+        // Add your database query here to check if the task is assigned
+        const { data: assignment, error } = await supabase
+            .from('task_taken')
+            .select()
+            .eq('task_id', parseInt(taskId))
+            .eq('tasker_id', parseInt(taskerId))
+            .maybeSingle();
+
+        if (error) {
+            throw new Error('Error checking task assignment');
+        }
+
+        return res.status(200).json({
+            isAssigned: assignment !== null,
+            message: assignment ? "Task is assigned to this tasker" : "Task is not assigned to this tasker"
+        });
+    } catch (error) {
+        console.error("Error checking task assignment:", error);
+        return res.status(500).json({
+            error: "Failed to check task assignment",
+            isAssigned: false
+        });
+    }
+}
 } 
 
 
