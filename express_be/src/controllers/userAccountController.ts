@@ -94,14 +94,14 @@ class UserAccountController {
         last_name: last_name,
         birthday: birthday,
       }
-      const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/customer`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": authHeader,
-        },
-        body: JSON.stringify(escrowPayload),
-      })
+      // const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/customer`, {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     "Authorization": authHeader,
+      //   },
+      //   body: JSON.stringify(escrowPayload),
+      // })
 
       // Insert user into Supabase database
       const { data: newUser, error: insertError } = await supabase
