@@ -531,8 +531,8 @@ class TaskController {
         await PayMongoPayment.cancelTransaction(task_taken_id, cancellation_reason);
         res.status(200).json({ message: "You had cancelled your transaction."});
       }else if(status == 'complete'){
-        await PayMongoPayment.completeTransaction(task_taken_id);
-        res.status(200).json({ message: "You had completed your transaction."});
+        await PayMongoPayment.releasePayment('', task_taken_id);
+        res.status(200).json({ message: "Escrow Payment Released to Tasker."});
       }else{
         res.status(400).json({ message: "Invalid status provided."});
       }

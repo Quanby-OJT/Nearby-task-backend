@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { supabase } from "../config/configuration";
 import { error } from "console";
+import PayMongoPayment from "../models/paymentModel";
 
 class NotificationController {
 
@@ -661,6 +662,7 @@ console.log("Fetched request:", data);
 
   switch (value) {
     case 'Accept':
+      await PayMongoPayment.releasePayment('', parseInt(taskTakenId));
       const { error: acceptError } = await supabase
         .from("task_taken")
         .update({ task_status: "Confirmed", visit_client: visit_client, visit_tasker: visit_tasker })
@@ -720,7 +722,7 @@ console.log("Fetched request:", data);
     default:
 
 
-      res.status(400).json({ error: "Invalid value. Use 'Accept', 'Start', or 'Finish'" });
+      res.status(400).json({ success: false, error: "Invalid value. Use 'Accept', 'Start', or 'Finish'" });
       return;
   }
 
