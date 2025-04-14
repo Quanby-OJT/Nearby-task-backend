@@ -40,12 +40,20 @@ class ClientModel {
 
   static async updateClient(
     clientId: number,
-    clientInfo: { user_id: number; preferences: Text; client_address: Text }
+    clientInfo: { user_id?: number; preferences?: Text; client_address?: Text, amount?: number }
   ) {
     const { data, error } = await supabase
       .from("clients")
       .update(clientInfo)
-      .eq("id", clientId);
+      .eq("client_id", clientId);
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async addCredits(clientId: number, amount: number) {
+
+    const { data, error } = await supabase
+      .rpc('increment_client_credits', { addl_credits: amount, id: clientId,  });
     if (error) throw new Error(error.message);
     return data;
   }

@@ -53,6 +53,13 @@ class TaskModel {
 
     console.log("Client ID:", existingClient.client_id);
 
+    const { data: deductCredits, error: deductError } = await supabase.rpc('deduct_nearbytask_credits', { _client_id: existingClient.client_id, deduct_credits: contact_price });
+    if (deductError) {
+      console.error("Error deducting credits:", deductError);
+      throw new Error(deductError.message);
+    }
+    console.log("Credits deducted successfully:", deductCredits);
+
     // Step 3: Insert the task
     const { data, error } = await supabase.from("post_task").insert([
       {
