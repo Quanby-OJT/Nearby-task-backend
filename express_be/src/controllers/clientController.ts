@@ -21,6 +21,7 @@ class ClientModel {
         .from("user")
         .select("*")
         .eq("acc_status", "Active")
+        .eq("verified", true)
         .eq("user_role", "Tasker");
 
       console.log("fetch all tasker:" + data);

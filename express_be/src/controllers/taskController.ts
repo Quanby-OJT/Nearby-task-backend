@@ -4,10 +4,12 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
+import { TaskAssignment } from "../models/taskAssignmentModel";
 import fetch from "node-fetch";
 import { User } from "@supabase/supabase-js";
 require("dotenv").config();
 import PayMongoPayment from "../models/paymentModel";
+
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -238,7 +240,28 @@ class TaskController {
   }
 
   static async assignTask(req: Request, res: Response): Promise<void> {
-    const { tasker_id, task_id, client_id } = req.body;
+    const { tasker_id, task_id, client_id, role } = req.body;
+
+    console.log("Role: ${role}");
+
+    let visit_client = false;
+    let visit_tasker = false;
+
+    
+    if (role == "Client") {
+      visit_client = true;
+      visit_tasker = false;
+    } else {
+      visit_client = false;
+      visit_tasker = true;
+    }
+
+    const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
+
+    if (task) {
+      res.status(400).json({ error: "Task already assigned" });
+      return;
+    }
 
 
     const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
@@ -252,6 +275,8 @@ class TaskController {
       tasker_id,
       task_id,
       client_id,
+      visit_client,
+      visit_tasker,
       task_status: "Pending",
     });
 
@@ -834,6 +859,35 @@ class TaskController {
       });
     }
   }
+
+  async checkTaskAssignment(req: Request, res: Response) {
+    try {
+        const { taskId, taskerId } = req.params;
+        
+        // Add your database query here to check if the task is assigned
+        const { data: assignment, error } = await supabase
+            .from('task_taken')
+            .select()
+            .eq('task_id', parseInt(taskId))
+            .eq('tasker_id', parseInt(taskerId))
+            .maybeSingle();
+
+        if (error) {
+            throw new Error('Error checking task assignment');
+        }
+
+        return res.status(200).json({
+            isAssigned: assignment !== null,
+            message: assignment ? "Task is assigned to this tasker" : "Task is not assigned to this tasker"
+        });
+    } catch (error) {
+        console.error("Error checking task assignment:", error);
+        return res.status(500).json({
+            error: "Failed to check task assignment",
+            isAssigned: false
+        });
+    }
+}
 } 
 
 

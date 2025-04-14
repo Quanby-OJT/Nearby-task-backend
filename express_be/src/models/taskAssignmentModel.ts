@@ -1,6 +1,9 @@
 import {supabase} from "../config/configuration";
 
 class TaskAssignment{
+    static findOne(arg0: { where: { taskId: number; taskerId: number; }; }) {
+      throw new Error("Method not implemented.");
+    }
     static async assignTask(assignedTask: {tasker_id: number, client_id: number, task_id: number, task_status: string}){
         const {data, error} = await supabase.from("task_taken").insert([assignedTask])
 
