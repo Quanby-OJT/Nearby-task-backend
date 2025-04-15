@@ -15,6 +15,7 @@ import reportRoutes from "./routes/reportRoutes";
 import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import conversationRoutes from "./routes/conversationRoutes";
+import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 dotenv.config();
 const app: Application = express();
 
@@ -62,6 +63,7 @@ app.use("/connect", clientRooutes);
 app.use("/connect", reportRoutes);
 app.use("/connect", authorityAccountRoutes);
 app.use("/connect", conversationRoutes);
+app.use("/connect", reportANDanalysisRoute);
 // Start server
 const PORT = port || 5000;
 app.listen(PORT, () => {
