@@ -1,59 +1,44 @@
 import { supabase } from "../config/configuration";
 
-// Interface for task data
-interface TaskWithSpecialization {
-  created_at: string;
-  specialization: string;
-}
-
-// Interface for tasker data with specialization
-interface TaskerWithSpecialization {
-  created_at: string;
-  tasker_specialization: {
-    specialization: string;
-  } | null;
-}
-
 class ReportANDAnalysisModel {
-  async getAllspecialization(trendType: 'requested' | 'applied' = 'applied') {
+  async getAllspecialization(trendType: 'requested' | 'applied' = 'applied', month?: string) {
     // Fetch tasks posted from post_task for Total Requested
-    const { data: tasksPosted, error: tasksPostedError } = await supabase
+    const { data: tasksPosted } = await supabase
       .from("post_task")
-      .select("created_at, specialization")
-      .returns<TaskWithSpecialization[]>();
-
-    if (tasksPostedError) {
-      console.error("Supabase error fetching tasks posted:", tasksPostedError);
-      throw new Error(tasksPostedError.message);
-    }
-
-    if (!tasksPosted || tasksPosted.length === 0) {
-      console.log("No tasks posted found.");
-      return { rankedSpecializations: [], monthlyTrends: {} };
-    }
+      .select("created_at, specialization");
 
     // Fetch taskers with their specialization for Total Applied
-    const { data: taskers, error: taskersError } = await supabase
+    const { data: taskers } = await supabase
       .from("tasker")
-      .select("created_at, tasker_specialization!specialization_id(specialization)")
-      .returns<TaskerWithSpecialization[]>();
+      .select("created_at, tasker_specialization!specialization_id(specialization)");
 
-    if (taskersError) {
-      console.error("Supabase error fetching taskers:", taskersError);
-      throw new Error(taskersError.message);
-    }
-
-    // Map tasks posted for Total Requested
-    const taskPostedData = tasksPosted.map(task => ({
+    // Map tasks posted for Total Requested, default to empty array if null
+    const allTaskPostedData = (tasksPosted || []).map(task => ({
       specialization: task.specialization || 'Unknown',
       created_at: task.created_at
     }));
 
-    // Map taskers for Total Applied
-    const taskerData = taskers.map(tasker => ({
-      specialization: tasker.tasker_specialization?.specialization || 'Unknown',
+    // Map taskers for Total Applied, default to empty array if null
+    const allTaskerData = (taskers || []).map(tasker => ({
+      // Cast to unknown first, then to the correct type
+      specialization: (tasker.tasker_specialization as unknown as { specialization: string } | null)?.specialization || 'Unknown',
       created_at: tasker.created_at
     }));
+
+    // Filter data by month if specified, otherwise use all data
+    const taskPostedData = month
+      ? allTaskPostedData.filter(item => {
+          const itemMonth = new Date(item.created_at).toLocaleString("default", { month: "short" });
+          return itemMonth === month;
+        })
+      : allTaskPostedData;
+
+    const taskerData = month
+      ? allTaskerData.filter(item => {
+          const itemMonth = new Date(item.created_at).toLocaleString("default", { month: "short" });
+          return itemMonth === month;
+        })
+      : allTaskerData;
 
     // Count Total Requested (tasks posted) per specialization
     const requestedCount: { [key: string]: number } = {};
@@ -89,9 +74,9 @@ class ReportANDAnalysisModel {
       return a.specialization.localeCompare(b.specialization);
     });
 
-    // Group by month for trends (based on trendType)
+    // Group by month for trends (based on trendType, using all data for the graph)
     const monthlyTrends: { [key: string]: { [key: string]: number } } = {};
-    const dataToUse = trendType === 'requested' ? taskPostedData : taskerData;
+    const dataToUse = trendType === 'requested' ? allTaskPostedData : allTaskerData;
 
     dataToUse.forEach(item => {
       const spec = item.specialization;
@@ -100,7 +85,7 @@ class ReportANDAnalysisModel {
 
       if (!monthlyTrends[spec]) {
         monthlyTrends[spec] = {
-          Jan: 0, Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0, Jul: 0,
+          Jan: 0, Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0, Jul: 0, Aug: 0, Sep: 0, Oct: 0, Nov: 0, Dec: 0,
         };
       }
       if (monthlyTrends[spec][month] !== undefined) {

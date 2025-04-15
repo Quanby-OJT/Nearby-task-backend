@@ -3,21 +3,14 @@ import reportANDanalysisModel from "../models/reportANDanalysisModel";
 
 class ReportAnalysisController {
   static async getAllspecialization(req: Request, res: Response) {
-    try {
-      const trendType = req.query.trendType as 'requested' | 'applied' | undefined;
-      const { rankedSpecializations, monthlyTrends } = await reportANDanalysisModel.getAllspecialization(trendType);
-      res.status(200).json({
-        success: true,
-        rankedSpecializations,
-        monthlyTrends,
-      });
-    } catch (error) {
-      console.error("Failed to fetch specialization: ", error);
-      res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : "Unknown Error Occurred",
-      });
-    }
+    const trendType = req.query.trendType as 'requested' | 'applied' | undefined;
+    const month = req.query.month as string | undefined;
+    const { rankedSpecializations, monthlyTrends } = await reportANDanalysisModel.getAllspecialization(trendType, month);
+    res.status(200).json({
+      success: true,
+      rankedSpecializations,
+      monthlyTrends,
+    });
   }
 }
 
