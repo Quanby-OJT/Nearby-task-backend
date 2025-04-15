@@ -285,6 +285,7 @@ class NotificationController {
           .eq("task_id", task.task_id)
           .maybeSingle();
 
+
         if (titleError) {
           console.error(`Title fetch error for task ${task.task_taken_id}: ${titleError.message}`);
         }
@@ -394,6 +395,7 @@ class NotificationController {
 
       return Promise.all(tasks.map(async (task) => {
         // Fetch task title
+
         const { data: titleData, error: titleError } = await supabase
           .from("post_task")
           .select("task_title")
@@ -480,9 +482,6 @@ class NotificationController {
 }
 
 
-
- 
-
  static async getConfirmedRequests(req: Request, res: Response): Promise<void> {
   try {
     const userID = req.params.userId;
@@ -511,6 +510,7 @@ class NotificationController {
 
       return Promise.all(tasks.map(async (task) => {
         // Fetch task title
+
         const { data: titleData, error: titleError } = await supabase
           .from("post_task")
           .select("task_title")
@@ -629,19 +629,14 @@ console.log("Fetched request:", data);
  }
 
 
-
-
  static async acceptRequest(req: Request, res: Response): Promise<void> {
   const taskTakenId = req.params.taskTakenId;
   const { value } = req.body;
   const { role } = req.body;
   console.log("Role:", req.body);
-
-
   console.log("Task Taken ID:", taskTakenId);
   console.log("Value:", value);
   console.log("Role:", role);
-
 
   if (!taskTakenId) {
     res.status(400).json({ error: "Task Taken ID is required." });
