@@ -267,14 +267,6 @@ class TaskController {
       return;
     }
 
-
-    const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
-
-    if (task) {
-      res.status(400).json({ error: "Task already assigned" });
-      return;
-    }
-
     const { data, error } = await supabase.from("task_taken").insert({
       tasker_id,
       task_id,
