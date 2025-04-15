@@ -1,63 +1,99 @@
 import { supabase } from "../config/configuration";
 
-// Interface for the report data structure
-interface Report {
-  report_id?: number;
-  created_at?: string;
-  updated_at?: string;
-  reported_by?: number;
-  reported_whom?: number;
-  reason?: string;
-  status: boolean;
-  images?: string;
+// Interface for task data
+interface TaskWithSpecialization {
+  created_at: string;
+  specialization: string;
 }
 
-// Interface for tasker with specialization
+// Interface for tasker data with specialization
 interface TaskerWithSpecialization {
   created_at: string;
   tasker_specialization: {
     specialization: string;
-  };
+  } | null;
 }
 
 class ReportANDAnalysisModel {
-  async getAllspecialization() {
-    // Fetch taskers with their specialization and created_at
-    const { data: taskers, error } = await supabase
+  async getAllspecialization(trendType: 'requested' | 'applied' = 'applied') {
+    // Fetch tasks posted from post_task for Total Requested
+    const { data: tasksPosted, error: tasksPostedError } = await supabase
+      .from("post_task")
+      .select("created_at, specialization")
+      .returns<TaskWithSpecialization[]>();
+
+    if (tasksPostedError) {
+      console.error("Supabase error fetching tasks posted:", tasksPostedError);
+      throw new Error(tasksPostedError.message);
+    }
+
+    if (!tasksPosted || tasksPosted.length === 0) {
+      console.log("No tasks posted found.");
+      return { rankedSpecializations: [], monthlyTrends: {} };
+    }
+
+    // Fetch taskers with their specialization for Total Applied
+    const { data: taskers, error: taskersError } = await supabase
       .from("tasker")
       .select("created_at, tasker_specialization!specialization_id(specialization)")
       .returns<TaskerWithSpecialization[]>();
 
-    if (error) {
-      console.error("Supabase error fetching taskers:", error);
-      throw new Error(error.message);
+    if (taskersError) {
+      console.error("Supabase error fetching taskers:", taskersError);
+      throw new Error(taskersError.message);
     }
 
-    if (!taskers || taskers.length === 0) {
-      return { rankedSpecializations: [], monthlyTrends: {} };
-    }
+    // Map tasks posted for Total Requested
+    const taskPostedData = tasksPosted.map(task => ({
+      specialization: task.specialization || 'Unknown',
+      created_at: task.created_at
+    }));
 
-    // Map the data to a simpler structure with null safety
+    // Map taskers for Total Applied
     const taskerData = taskers.map(tasker => ({
       specialization: tasker.tasker_specialization?.specialization || 'Unknown',
       created_at: tasker.created_at
     }));
 
-    // Count occurrences of each specialization
-    const specializationCount: { [key: string]: number } = {};
-    taskerData.forEach(item => {
+    // Count Total Requested (tasks posted) per specialization
+    const requestedCount: { [key: string]: number } = {};
+    taskPostedData.forEach(item => {
       const spec = item.specialization;
-      specializationCount[spec] = (specializationCount[spec] || 0) + 1;
+      requestedCount[spec] = (requestedCount[spec] || 0) + 1;
     });
 
-    // Rank specializations by count (descending order)
-    const rankedSpecializations = Object.entries(specializationCount)
-      .map(([specialization, count]) => ({ specialization, count }))
-      .sort((a, b) => b.count - a.count);
-
-    // Group by month for trends (using created_at from tasker)
-    const monthlyTrends: { [key: string]: { [key: string]: number } } = {};
+    // Count Total Applied (taskers) per specialization
+    const appliedCount: { [key: string]: number } = {};
     taskerData.forEach(item => {
+      const spec = item.specialization;
+      appliedCount[spec] = (appliedCount[spec] || 0) + 1;
+    });
+
+    // Combine counts into rankedSpecializations
+    const specializationsSet = new Set([
+      ...Object.keys(requestedCount),
+      ...Object.keys(appliedCount)
+    ]);
+
+    const rankedSpecializations = Array.from(specializationsSet).map(spec => ({
+      specialization: spec,
+      total_requested: requestedCount[spec] || 0,
+      total_applied: appliedCount[spec] || 0
+    }));
+
+    // Sort by total_requested (descending), then by specialization name (ascending) for ties
+    rankedSpecializations.sort((a, b) => {
+      if (b.total_requested !== a.total_requested) {
+        return b.total_requested - a.total_requested;
+      }
+      return a.specialization.localeCompare(b.specialization);
+    });
+
+    // Group by month for trends (based on trendType)
+    const monthlyTrends: { [key: string]: { [key: string]: number } } = {};
+    const dataToUse = trendType === 'requested' ? taskPostedData : taskerData;
+
+    dataToUse.forEach(item => {
       const spec = item.specialization;
       const date = new Date(item.created_at);
       const month = date.toLocaleString("default", { month: "short" });
@@ -73,21 +109,6 @@ class ReportANDAnalysisModel {
     });
 
     return { rankedSpecializations, monthlyTrends };
-  }
-
-  async getAlltasker() {
-    const { data: tasker, error: taskerError } = await supabase
-      .from("tasker")
-      .select("*");
-
-    if (taskerError) {
-      console.error("Supabase error fetching reports:", taskerError);
-      throw new Error(taskerError.message);
-    }
-
-    if (!tasker || tasker.length === 0) {
-      return [];
-    }
   }
 }
 
