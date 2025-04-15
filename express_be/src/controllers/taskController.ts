@@ -677,22 +677,39 @@ class TaskController {
 
   static async getTokenBalance(req: Request, res: Response): Promise<void> {
     try {
-      const clientId = parseInt(req.params.clientId); // Assume authenticated client ID
-      if (isNaN(clientId)) {
+      const userId = parseInt(req.params.userId); // Assume authenticated client ID
+      if (isNaN(userId)) {
         res.status(400).json({ success: false, error: "Invalid client ID" });
         return;
       }
   
-      const { data, error } = await supabase
-        .from("clients")
-        .select("amount")
-        .eq("client_id", clientId)
+      const { data: userRole, error: userRoleError } = await supabase
+        .from("user")
+        .select("user_role")
+        .eq("user_id", userId)
         .single();
-      if (error || !data) {
-        throw new Error("Client not found");
+
+      
+      if (userRoleError || !userRole) {
+        throw new Error("User Does not exist from database.");
       }
-  
-      res.status(200).json({ success: true, tokens: data.amount });
+
+      switch (userRole.user_role) {
+        case "Tasker":
+          const { data: taskerTokens, error: taskerTokensError} = await supabase.from('tasker').select('amount').eq('user_id', userId).single();
+          if(taskerTokensError) throw new Error('Error fetching tasker tokens: ' + taskerTokensError.message);
+          console.log("Tasker Tokens: ", taskerTokens);
+          res.status(200).json({ success: true, tokens: taskerTokens.amount });
+          break;
+        case "Client":
+          const { data: clientTokens, error: clientTokensError} = await supabase.from('clients').select('amount').eq('user_id', userId).single();
+          if(clientTokensError) throw new Error('Error fetching tasker tokens: ' + clientTokensError.message);
+          console.log("Client Tokens: ", clientTokens);
+          res.status(200).json({ success: true, tokens: clientTokens.amount });
+          break;
+        default:
+          break;
+      }
     } catch (error) {
       console.error("Error fetching token balance:", error);
       res.status(500).json({ success: false, error: "Failed to fetch tokens" });

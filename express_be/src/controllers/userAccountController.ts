@@ -157,11 +157,11 @@ class UserAccountController {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
-      });
+      });*/
 
       const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
       console.log(verificationLink);
-
+      /*
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
