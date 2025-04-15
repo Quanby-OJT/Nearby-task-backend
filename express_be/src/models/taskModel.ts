@@ -97,6 +97,16 @@ class TaskModel {
     return data;
   }
 
+  async getTaskWithSpecialization(specialization: string) {
+    const { data, error } = await supabase
+      .from("post_task")
+      .select("*")
+      .eq("specialization", specialization);
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
   async getAllTasks() {
     const { data, error } = await supabase.from("post_task").select(`
       *,

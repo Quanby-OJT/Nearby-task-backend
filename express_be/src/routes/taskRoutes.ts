@@ -17,7 +17,7 @@ router.get("/task-taken/tasker/:taskerId", TaskController.getTaskforTasker);
 
 router.get("/getCreatedTaskByClient/:client_id", TaskController.getCreatedTaskByClient);
 
-router.post("/check-task-assignment/:taskId/:taskerId,  TaskController.checkTaskAssignment");
+router.post("/check-task-assignment/:taskId/:taskerId",TaskController.checkTaskAssignment);
 
 router.put("/updateTask/:id", TaskController.updateTask);
 

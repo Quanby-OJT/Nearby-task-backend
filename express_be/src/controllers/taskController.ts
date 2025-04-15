@@ -81,6 +81,17 @@ class TaskController {
     }
   }
 
+  static async getTaskWithSpecialization(req: Request, res: Response): Promise<void> {
+    try {
+      const tasks = await taskModel.getTaskWithSpecialization(req.query.specialization as string);
+      res.status(200).json({ tasks });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
@@ -145,6 +156,8 @@ class TaskController {
   static async getTaskforTasker(req: Request, res: Response): Promise<void> {
     try {
       const taskerId = req.params.taskerId || req.query.tasker_id;
+
+      console.log("Tasker ID:", taskerId);
 
       if (!taskerId) {
         res.status(400).json({
@@ -914,11 +927,10 @@ class TaskController {
     }
   }
 
-  async checkTaskAssignment(req: Request, res: Response) {
+  static async checkTaskAssignment(req: Request, res: Response): Promise<any> {
     try {
         const { taskId, taskerId } = req.params;
         
-        // Add your database query here to check if the task is assigned
         const { data: assignment, error } = await supabase
             .from('task_taken')
             .select()
