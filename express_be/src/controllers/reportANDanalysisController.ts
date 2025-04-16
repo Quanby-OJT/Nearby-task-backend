@@ -12,6 +12,15 @@ class ReportAnalysisController {
       monthlyTrends,
     });
   }
+
+  static async getTopDepositors(req: Request, res: Response) {
+    const { rankedDepositors, monthlyTrends } = await reportANDanalysisModel.getTopDepositors();
+    res.status(200).json({
+      success: true,
+      rankedDepositors,
+      monthlyTrends,
+    });
+  }
 }
 
 export default ReportAnalysisController;
