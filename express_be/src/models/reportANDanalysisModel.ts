@@ -27,6 +27,14 @@ class ReportANDAnalysisModel {
       } else {
         trends[key][month] = Math.max(trends[key][month], value); // Take the maximum
       }
+
+      // Ating Logs Check
+      console.log("--------------START------------------");
+      console.log("specialization: " + key);
+      console.log("month: " + month);
+      console.log("value: " + value);
+      console.log("aggregationType: " + aggregationType);
+      console.log("--------------END------------------");
     });
 
     return trends;
@@ -71,7 +79,7 @@ class ReportANDAnalysisModel {
         total_applied: appliedCount[spec] || 0
       }))
       .sort((a, b) => b.total_requested - a.total_requested || a.specialization.localeCompare(b.specialization));
-
+    
     // Calculate monthly trends (use sum for counting occurrences)
     const dataToUse = trendType === 'requested' ? allTaskPostedData : allTaskerData;
     const monthlyTrends = this.calculateMonthlyTrends(
@@ -81,7 +89,6 @@ class ReportANDAnalysisModel {
       item => new Date(item.created_at).toLocaleString("default", { month: "short" }),
       'sum' // Explicitly use sum for counting
     );
-
     return { rankedSpecializations, monthlyTrends };
   }
 
@@ -141,9 +148,8 @@ class ReportANDAnalysisModel {
         return user ? [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ') || "Unknown" : "Unknown";
       },
       log => new Date(log.created_at).toLocaleString("default", { month: "short" }),
-      'max' // Explicitly use max for highest deposit
+      'max'
     );
-
     return { rankedDepositors, monthlyTrends };
   }
 }
