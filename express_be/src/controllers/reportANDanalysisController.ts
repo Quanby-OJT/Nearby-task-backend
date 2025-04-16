@@ -29,6 +29,14 @@ class ReportAnalysisController {
       taskers,
     });
   }
+
+  static async getTopClient(req: Request, res: Response) {
+    const { clients } = await reportANDanalysisModel.getTopClient();
+    res.status(200).json({
+      success: true,
+      clients,
+    });
+  }
 }
 
 export default ReportAnalysisController;

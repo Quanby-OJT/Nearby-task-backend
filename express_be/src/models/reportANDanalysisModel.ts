@@ -204,6 +204,59 @@ class ReportANDAnalysisModel {
 
     return { taskers: rankedTaskers };
   }
+
+  async getTopClient() {
+    // Fetch clients with user details (including address and gender)
+    const { data: clients, error: clientError } = await supabase
+      .from("clients")
+      .select(`
+        client_id,
+        user_id,
+        client_address,
+        user!user_id (
+          first_name,
+          middle_name,
+          last_name,
+          gender
+        )
+      `);
+
+    if (clientError || !clients) {
+      console.error("Error fetching clients:", clientError);
+      return { clients: [] };
+    }
+
+    // Fetch task counts for each client from post_task
+    const { data: postTasks, error: postTaskError } = await supabase
+      .from("post_task")
+      .select("client_id");
+
+    if (postTaskError || !postTasks) {
+      console.error("Error fetching post_task:", postTaskError);
+      return { clients: [] };
+    }
+
+    // Count tasks per client
+    const taskCounts = postTasks.reduce((acc: { [key: string]: number }, task: any) => {
+      const clientId = task.client_id;
+      acc[clientId] = (acc[clientId] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Map clients with their task counts
+    const rankedClients = clients.map((client: any) => {
+      const user = client.user || {};
+      const fullName = [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ') || "Unknown";
+      return {
+        userName: fullName,
+        address: client.client_address || "Unknown",
+        taskCount: taskCounts[client.client_id] || 0,
+        gender: user.gender || "Unknown"
+      };
+    }).sort((a: any, b: any) => b.taskCount - a.taskCount);
+
+    return { clients: rankedClients };
+  }
 }
 
 const reportANDanalysisModel = new ReportANDAnalysisModel();
