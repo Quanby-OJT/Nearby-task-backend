@@ -6,16 +6,27 @@ interface Client { client_id: number; user_id: string; user: User | null; }
 interface PaymentLog { payment_history_id: number; amount: number; created_at: string; client_id: number; clients: Client | null; }
 
 class ReportANDAnalysisModel {
-  // Helper to calculate monthly trends
-  private calculateMonthlyTrends<T>(data: T[], getValue: (item: T) => number, getKey: (item: T) => string, getMonth: (item: T) => string) {
+  // Helper to calculate monthly trends (supports sum or max aggregation)
+  private calculateMonthlyTrends<T>(
+    data: T[],
+    getValue: (item: T) => number,
+    getKey: (item: T) => string,
+    getMonth: (item: T) => string,
+    aggregationType: 'sum' | 'max' = 'sum' // Default to sum for backward compatibility
+  ) {
     const trends: { [key: string]: { [month: string]: number } } = {};
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     data.forEach(item => {
       const key = getKey(item);
       const month = getMonth(item);
+      const value = getValue(item);
       if (!trends[key]) trends[key] = Object.fromEntries(months.map(m => [m, 0]));
-      trends[key][month] += getValue(item);
+      if (aggregationType === 'sum') {
+        trends[key][month] += value; // Sum the values
+      } else {
+        trends[key][month] = Math.max(trends[key][month], value); // Take the maximum
+      }
     });
 
     return trends;
@@ -61,13 +72,14 @@ class ReportANDAnalysisModel {
       }))
       .sort((a, b) => b.total_requested - a.total_requested || a.specialization.localeCompare(b.specialization));
 
-    // Calculate monthly trends
+    // Calculate monthly trends (use sum for counting occurrences)
     const dataToUse = trendType === 'requested' ? allTaskPostedData : allTaskerData;
     const monthlyTrends = this.calculateMonthlyTrends(
       dataToUse,
       () => 1,
       item => item.specialization,
-      item => new Date(item.created_at).toLocaleString("default", { month: "short" })
+      item => new Date(item.created_at).toLocaleString("default", { month: "short" }),
+      'sum' // Explicitly use sum for counting
     );
 
     return { rankedSpecializations, monthlyTrends };
@@ -120,7 +132,7 @@ class ReportANDAnalysisModel {
       )
       .sort((a, b) => b.amount - a.amount);
 
-    // Calculate monthly trends
+    // Calculate monthly trends (use max for highest deposit)
     const monthlyTrends = this.calculateMonthlyTrends(
       paymentLogs,
       log => log.amount,
@@ -128,7 +140,8 @@ class ReportANDAnalysisModel {
         const user = log.clients?.user;
         return user ? [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ') || "Unknown" : "Unknown";
       },
-      log => new Date(log.created_at).toLocaleString("default", { month: "short" })
+      log => new Date(log.created_at).toLocaleString("default", { month: "short" }),
+      'max' // Explicitly use max for highest deposit
     );
 
     return { rankedDepositors, monthlyTrends };
