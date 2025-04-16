@@ -21,6 +21,14 @@ class ReportAnalysisController {
       monthlyTrends,
     });
   }
+
+  static async getTopTasker(req: Request, res: Response) {
+    const { taskers } = await reportANDanalysisModel.getTopTasker();
+    res.status(200).json({
+      success: true,
+      taskers,
+    });
+  }
 }
 
 export default ReportAnalysisController;

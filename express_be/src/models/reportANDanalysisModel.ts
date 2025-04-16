@@ -152,6 +152,58 @@ class ReportANDAnalysisModel {
     );
     return { rankedDepositors, monthlyTrends };
   }
+
+  async getTopTasker() {
+    // Fetch taskers with user details and specialization
+    const { data: taskers, error: taskerError } = await supabase
+      .from("tasker")
+      .select(`
+        tasker_id,
+        specialization_id,
+        user_id,
+        user!user_id (
+          first_name,
+          middle_name,
+          last_name
+        ),
+        tasker_specialization!specialization_id (specialization)
+      `);
+
+    if (taskerError || !taskers) {
+      console.error("Error fetching taskers:", taskerError);
+      return { taskers: [] };
+    }
+
+    // Fetch task counts for each tasker from task_taken
+    const { data: taskTaken, error: taskTakenError } = await supabase
+      .from("task_taken")
+      .select("tasker_id");
+
+    if (taskTakenError || !taskTaken) {
+      console.error("Error fetching task_taken:", taskTakenError);
+      return { taskers: [] };
+    }
+
+    // Count tasks per tasker
+    const taskCounts = taskTaken.reduce((acc: { [key: string]: number }, task: any) => {
+      const taskerId = task.tasker_id;
+      acc[taskerId] = (acc[taskerId] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Map taskers with their task counts
+    const rankedTaskers = taskers.map((tasker: any) => {
+      const user = tasker.user || {};
+      const fullName = [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ') || "Unknown";
+      return {
+        userName: fullName,
+        specialization: tasker.tasker_specialization?.specialization || "Unknown",
+        taskCount: taskCounts[tasker.tasker_id] || 0
+      };
+    }).sort((a: any, b: any) => b.taskCount - a.taskCount);
+
+    return { taskers: rankedTaskers };
+  }
 }
 
 const reportANDanalysisModel = new ReportANDAnalysisModel();

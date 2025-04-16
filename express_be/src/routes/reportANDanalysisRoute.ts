@@ -5,5 +5,6 @@ const router = Router();
 
 router.get("/getReportAnalysisSpecialization", ReportAnalysisController.getAllspecialization);
 router.get("/getTopDepositors", ReportAnalysisController.getTopDepositors);
+router.get("/getTopTasker", ReportAnalysisController.getTopTasker);
 
 export default router;
