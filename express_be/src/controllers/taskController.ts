@@ -155,20 +155,21 @@ class TaskController {
 
   static async getTaskforTasker(req: Request, res: Response): Promise<void> {
     try {
-      const taskerId = req.params.taskerId || req.query.tasker_id;
-
-      console.log("Tasker ID:", taskerId);
-
-      if (!taskerId) {
+      const taskerId = req.params.taskerId;
+      const userId = req.query.userId as string;
+      const taskId = req.query.taskId as string;
+  
+      console.log("User ID:", userId, "Tasker ID:", taskerId, "Task ID:", taskId);
+  
+      if (!userId || !taskerId || !taskId) {
         res.status(400).json({
           success: false,
-          error: "Tasker ID is required"
+          error: "userId, taskerId, and taskId are required",
         });
         return;
       }
-
-      // Query task_taken table with join to get task details
-      // Using task_id as the identifier since 'id' doesn't exist
+  
+      // Rest of the query logic remains the same
       const { data, error } = await supabase
         .from("task_taken")
         .select(`
@@ -194,26 +195,28 @@ class TaskController {
             client_address
           )
         `)
-        .eq("tasker_id", taskerId);
-
+        .eq("tasker_id", taskerId)
+        .eq("task_id", taskId)
+        .eq("client_id", userId);
+  
       if (error) {
         console.error("Error fetching tasks for tasker:", error);
         res.status(500).json({
           success: false,
-          error: error.message || "Failed to fetch tasks for this tasker"
+          error: error.message || "Failed to fetch tasks for this tasker",
         });
         return;
       }
-
+  
       res.status(200).json({
         success: true,
-        tasks: data
+        tasks: data,
       });
     } catch (error) {
       console.error("Error in getTaskforTasker:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "An unexpected error occurred"
+        error: error instanceof Error ? error.message : "An unexpected error occurred",
       });
     }
   }
@@ -263,14 +266,17 @@ class TaskController {
 
     let visit_client = false;
     let visit_tasker = false;
+    let requested_from = "";
 
     
     if (role == "Client") {
       visit_client = true;
       visit_tasker = false;
+      requested_from = "Client";
     } else {
       visit_client = false;
       visit_tasker = true;
+      requested_from = "Tasker";
     }
 
     const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
@@ -287,6 +293,7 @@ class TaskController {
       visit_client,
       visit_tasker,
       task_status: "Pending",
+      requested_from
     });
 
     if (error) {

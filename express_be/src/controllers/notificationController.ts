@@ -134,6 +134,120 @@ class NotificationController {
       });
     }
   }
+  
+
+  static async getPendingRequests(req: Request, res: Response): Promise<any> {
+    try {
+      const userID = req.params.userId;
+      console.log("User ID:", userID);
+  
+      if (!userID) {
+        res.status(400).json({ error: "User ID is required" });
+        return;
+      }
+  
+      // Function to fetch and format tasks
+      const fetchTasks = async (column: 'client_id' | 'tasker_id') => {
+        const { data: tasks, error } = await supabase
+          .from("task_taken")
+          .select("*")
+          .eq(column, userID)
+          .eq("task_status", "Pending");
+  
+        if (error) {
+          throw new Error(`Error fetching ${column} tasks: ${error.message}`);
+        }
+  
+        if (!tasks?.length) {
+          return [];
+        }
+  
+        return Promise.all(tasks.map(async (task) => {
+          // Fetch task title
+          const { data: titleData, error: titleError } = await supabase
+            .from("post_task")
+            .select("task_title")
+            .eq("task_id", task.task_id)
+            .maybeSingle();
+  
+          if (titleError) {
+            console.error(`Title fetch error for task ${task.task_taken_id}: ${titleError.message}`);
+          }
+  
+          // Fetch user data
+         if(column === 'client_id') {
+            const { data: userData, error: userError } = await supabase
+              .from("user")
+              .select("first_name, last_name, middle_name")
+              .eq("user_id", task.tasker_id)
+              .maybeSingle();
+  
+            if (userError) {
+              console.error(`User fetch error for task`, task.task_taken_id, userError.message);
+            }
+  
+            return {
+              id: task.task_taken_id,
+              title: titleData?.task_title || "Untitled Task",
+              status: task.task_status || "Rejected",
+              date: task.created_at || new Date().toISOString().split("T")[0],
+              remarks: task.remark || "No description provided",
+              role: 'Tasker',
+              clientName: userData?.first_name && userData?.last_name
+                ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name}`.trim()
+                : "Unknown Client",
+            };
+          }
+  
+          else {
+            const { data: userData, error: userError } = await supabase
+              .from("user")
+              .select("first_name, last_name, middle_name")
+              .eq("user_id", task.client_id)
+              .maybeSingle();
+  
+            if (userError) {
+              console.error(`User fetch error for task`, task.task_taken_id, userError.message);
+            }
+  
+            return {
+              id: task.task_taken_id,
+              title: titleData?.task_title || "Untitled Task",
+              status: task.task_status || "Pending",
+            date: task.created_at || new Date().toISOString().split("T")[0],
+            remarks: task.remark || "No description provided",
+            role: 'Client',
+            clientName: userData?.first_name && userData?.last_name
+              ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name}`.trim()
+              : "Unknown Client",
+            };
+          }
+        }));
+      };
+  
+      // Try client_id first
+      let formattedData = await fetchTasks('client_id');
+  
+      // If no client tasks, try tasker_id
+      if (!formattedData.length) {
+        formattedData = await fetchTasks('tasker_id');
+      }
+  
+      // Return response
+      res.status(200).json({
+        message: formattedData.length 
+          ? "Successfully fetched notifications" 
+          : "No notifications found",
+        data: formattedData,
+      });
+  
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "An unexpected error occurred",
+      });
+    }
+   } 
 
   
   static async getRejectedRequests(req: Request, res: Response): Promise<any> {
@@ -189,7 +303,7 @@ class NotificationController {
             return {
               id: task.task_taken_id,
               title: titleData?.task_title || "Untitled Task",
-              status: task.task_status || "Pending",
+              status: task.task_status || "Rejected",
               date: task.created_at || new Date().toISOString().split("T")[0],
               remarks: task.remark || "No description provided",
               role: 'Tasker',
@@ -304,7 +418,7 @@ class NotificationController {
           return {
             id: task.task_taken_id,
             title: titleData?.task_title || "Untitled Task",
-            status: task.task_status || "Pending",
+            status: task.task_status || "Ongoing",
             date: task.created_at || new Date().toISOString().split("T")[0],
             remarks: task.remark || "No description provided",
             role: 'Tasker',
@@ -420,7 +534,7 @@ class NotificationController {
           return {
             id: task.task_taken_id,
             title: titleData?.task_title || "Untitled Task",
-            status: task.task_status || "Pending",
+            status: task.task_status || "Completed",
             date: task.created_at || new Date().toISOString().split("T")[0],
             remarks: task.remark || "No description provided",
             role: 'Tasker',
@@ -535,7 +649,7 @@ class NotificationController {
           return {
             id: task.task_taken_id,
             title: titleData?.task_title || "Untitled Task",
-            status: task.task_status || "Pending",
+            status: task.task_status || "Confirmed",
             date: task.created_at || new Date().toISOString().split("T")[0],
             remarks: task.remark || "No description provided",
             role: 'Tasker',
@@ -724,21 +838,55 @@ console.log("Fetched request:", data);
 
 static async  updateNotification(req: Request, res: Response): Promise<void> {
   const taskTakenId = req.params.taskTakenId;
+  const userId = req.query.userId;
+
+  console.log('Task Taken ID:', taskTakenId);
+  console.log('User ID:', userId);
 
   if (!taskTakenId) {
     res.status(400).json({ error: "Task Taken ID is required." });
     return;
   }
 
-  const { error } = await supabase
-    .from("task_taken")
-    .update({ visit_client: true, visit_tasker: true })
-    .eq("task_taken_id", taskTakenId);
+  if (!userId) {
+    res.status(400).json({ error: "User ID is required." });
+    return;
+  }
 
-  if (error) {
-    console.error(error.message);
+  const { data: userRole, error: taskError } = await supabase
+    .from("user")
+    .select("user_role")
+    .eq("user_id", userId)
+    .single();
+
+  if (taskError) {
+    console.error(`User fetch error for user ${userId}: ${taskError.message}`);
     res.status(500).json({ error: "An Error Occurred while updating the notification." });
     return;
+  }
+
+  if (userRole.user_role === "Client") {
+    const { error } = await supabase
+    .from("task_taken")
+    .update({ visit_client: true })
+    .eq("task_taken_id", taskTakenId);
+
+    if (error) {
+      console.error(error.message);
+      res.status(500).json({ error: "An Error Occurred while updating the notification." });
+      return;
+    }
+  } else {
+    const { error } = await supabase
+    .from("task_taken")
+    .update({ visit_tasker: true })
+    .eq("task_taken_id", taskTakenId);
+
+    if (error) {
+      console.error(error.message);
+      res.status(500).json({ error: "An Error Occurred while updating the notification." });
+      return;
+    }
   }
 
   res.status(200).json({ success: true, message: "Notification updated successfully." });
