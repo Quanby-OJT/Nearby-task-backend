@@ -159,7 +159,7 @@ class UserAccountController {
         },
       });*/
 
-      const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}&email=${email}`;
+      const verificationLink = `${process.env.URL}/verify?token=${verificationToken}&email=${email}`;
       console.log(verificationLink);
       /*
       await transporter.sendMail({

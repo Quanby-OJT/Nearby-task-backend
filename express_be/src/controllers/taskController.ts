@@ -497,18 +497,12 @@ class TaskController {
           console.log("Transaction Data: ", req.body);
           const { client_id, amount, status } = req.body;
 
-          //const amountInUSD = await TaskController.converttoUSD(amount);
-
           const PaymentInformation = await PayMongoPayment.checkoutPayment({
               client_id,
               amount,
               deposit_date: new Date().toISOString(),
+              payment_type: "Deposit Payment"
           });
-
-          // console.log("Payment Information: ", PaymentInformation);
-          // const taskId: number = PaymentInformation.task_id;
-          // const taskStatus: string = "Already Taken";
-          // const taskTakenStatus = status;
 
           await ClientModel.addCredits(client_id, amount)
   
@@ -523,25 +517,25 @@ class TaskController {
       }
   }
 
-  static async updateTransactionStatus(req: Request, res: Response): Promise<void> {
-    try {
-      const { task_taken_id, status, cancellation_reason } = req.body;
+  // static async updateTransactionStatus(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { task_taken_id, status, cancellation_reason } = req.body;
 
-      if(status == 'cancel'){
-        await PayMongoPayment.cancelTransaction(task_taken_id, cancellation_reason);
-        res.status(200).json({ message: "You had cancelled your transaction."});
-      }else if(status == 'complete'){
-        await PayMongoPayment.releasePayment('', task_taken_id);
-        res.status(200).json({ message: "Escrow Payment Released to Tasker."});
-      }else{
-        res.status(400).json({ message: "Invalid status provided."});
-      }
-    }
-    catch (error) {
-      console.error(error instanceof Error ? error.message : "Error Unknown.")
-      res.status(500).json({ error: "Internal Server error", });
-    }
-  }
+  //     if(status == 'cancel'){
+  //       await PayMongoPayment.cancelTransaction(task_taken_id, cancellation_reason);
+  //       res.status(200).json({ message: "You had cancelled your transaction."});
+  //     }else if(status == 'complete'){
+  //       await PayMongoPayment.releasePayment('', task_taken_id);
+  //       res.status(200).json({ message: "Escrow Payment Released to Tasker."});
+  //     }else{
+  //       res.status(400).json({ message: "Invalid status provided."});
+  //     }
+  //   }
+  //   catch (error) {
+  //     console.error(error instanceof Error ? error.message : "Error Unknown.")
+  //     res.status(500).json({ error: "Internal Server error", });
+  //   }
+  // }
 
   static async releasePayment(req: Request, res: Response): Promise<void> {
     try {
@@ -931,7 +925,7 @@ class TaskController {
     }
   }
 
-  async checkTaskAssignment(req: Request, res: Response) {
+  static async checkTaskAssignment(req: Request, res: Response): Promise<any> {
     try {
         const { taskId, taskerId } = req.params;
         

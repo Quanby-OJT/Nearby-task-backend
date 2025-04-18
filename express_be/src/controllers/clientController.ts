@@ -18,13 +18,16 @@ class ClientModel {
   static async getAllClients(req: Request, res: Response): Promise<any> {
     try {
       const { data, error } = await supabase
-        .from("user")
-        .select("*")
-        .eq("acc_status", "Active")
-        .eq("verified", true)
-        .eq("user_role", "Tasker");
+        .from("tasker")
+        .select(`
+          rating,
+          user(*)
+        `)
+        .eq("user.acc_status", "Active")
+        .eq("user.verified", true)
+        .eq("user.user_role", "Tasker");
 
-      console.log("fetch all tasker:" + data);
+      console.log(data, error);
 
       if (error) {
         return res.status(200).json({ error: error });
@@ -35,7 +38,13 @@ class ClientModel {
       }
 
       return res.status(200).json({ taskers: data });
-    } catch (error) {}
+    } catch (error) {
+      console.error("Error fetching taskers:", error);
+      return res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
   }
 
   static async updateClient(
@@ -53,7 +62,9 @@ class ClientModel {
   static async addCredits(clientId: number, amount: number) {
 
     const { data, error } = await supabase
-      .rpc('increment_client_credits', { addl_credits: amount, id: clientId,  });
+      .rpc('increment_client_credits', { addl_credits: amount, id: clientId});
+
+      console.log("add credits to client: " + data, error);
     if (error) throw new Error(error.message);
     return data;
   }
@@ -162,7 +173,7 @@ class ClientModel {
       const { client_id, tasker_id } = req.body;
 
       // Check for missing fields
-      if (!client_id || !tasker_id) {
+      if (client_id == 0 || tasker_id == 0) {
         res.status(400).json({ message: "Missing required fields" });
         return;
       }

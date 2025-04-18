@@ -4,6 +4,8 @@ import ClientModel from "../models/clientModel";
 import { supabase } from "../config/configuration";
 import { UserAccount } from "../models/userAccountModel";
 import FeedbackModel from "../models/feedbackModel";
+import taskModel from "../models/taskModel";
+import PayMongoPayment from "../models/paymentModel";
 
 class TaskerController {
   static async createTasker(req: Request, res: Response): Promise<any> {
@@ -466,7 +468,7 @@ class TaskerController {
         feedback,
         rating: parseInt(rating),
       });
-
+      
       res.status(200).json({ message: "Feedback posted successfully"});
     } catch (error) {
       console.error("Error in postClientFeedbacktoTasker:", error instanceof Error ? error.message : "Unknown error");
