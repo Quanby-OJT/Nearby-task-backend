@@ -625,7 +625,7 @@ class NotificationController {
   }
 
 
- static async acceptRequest(req: Request, res: Response): Promise<void> {
+ static async updateRequest(req: Request, res: Response): Promise<void> {
   const taskTakenId = req.params.taskTakenId;
   const { value, role, client_id } = req.body;
   console.log("Role:", req.body);
@@ -740,8 +740,8 @@ class NotificationController {
 
       const { error: updateAmountError } = await supabase
         .rpc('update_tasker_amount', {
-          amount: task?.post_task.proposed_price, 
-          tasker_id: task?.tasker.tasker_id,
+          addl_credits: task?.post_task.proposed_price, 
+          id: task?.tasker.tasker_id,
         });
 
       if (updateAmountError) {

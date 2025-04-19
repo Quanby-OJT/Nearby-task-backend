@@ -126,7 +126,7 @@ router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOn
 router.get("/notifications-tasker-reject/:userId", NotificationController.getRejectedRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
-router.put("/acceptRequest/:taskTakenId", NotificationController.acceptRequest);
+router.put("/update-request/:taskTakenId", NotificationController.updateRequest);
 router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
 
 //User CRUD
