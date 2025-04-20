@@ -9,16 +9,15 @@ import { clientValidation, taskerValidation } from "../validator/userValidator";
 import TaskController from "../controllers/taskController";
 import { isAuthenticated } from "../middleware/authenticationMiddleware";
 import auth from "../controllers/authAngularController";
-import ConversationController from "../controllers/conversartionController";
 import multer, { memoryStorage } from "multer";
 import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
+import ConversationController from "../controllers/conversartionController";
 
 const upload = multer({storage: memoryStorage()})
 
 const router = Router();
-
 
 /** Public Authentication Routes */
 router.post("/login-angular", auth.login);
@@ -45,8 +44,6 @@ router.post(
   handleValidationErrors, 
   UserAccountController.registerUser
 );
-
-
 
 router.post("/verify", UserAccountController.verifyEmail)
 // router.use(isAuthenticated);
@@ -93,9 +90,6 @@ router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient
 router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
-router.post("/send-message", ConversationController.sendMessage);
-router.get("/all-messages/:user_id", ConversationController.getAllMessages);
-router.get("/messages/:task_taken_id", ConversationController.getMessages);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
 router.post("/deposit-escrow-payment", TaskController.depositEscrowAmount);
@@ -106,7 +100,6 @@ router.put("/webhook/paymongo", TaskController.handlePayMongoWebhook);
 router.get("/get-token-balance/:clientId", TaskController.getTokenBalance);
 
 // Display all records
-
 router.get("/userDisplay", UserAccountController.getAllUsers);
 router.get("/specializations", TaskController.getAllSpecializations);
 router.delete("/deleteUser/:id", UserAccountController.deleteUser);
@@ -123,6 +116,14 @@ router.get("/notifications-tasker-finish/:userId", NotificationController.getFin
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
 router.put("/acceptRequest/:taskTakenId", NotificationController.acceptRequest);
 router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
+
+// Conversation
+router.get("/getUserConversation", ConversationController.getUserConversation); 
+router.post("/banUser/:id", ConversationController.banUser);
+router.post("/warnUser/:id", ConversationController.warnUser);
+router.post("/send-message", ConversationController.sendMessage);
+router.get("/all-messages/:user_id", ConversationController.getAllMessages);
+router.get("/messages/:task_taken_id", ConversationController.getMessages);
 
 //User CRUD
 router.put(
@@ -171,7 +172,6 @@ router.put(
   UserAccountController.updateTaskerWithFileandImage
 );
 
-
 // updating tasker with PDF only
 router.put(
   "/update-tasker-with-pdf/:id",
@@ -180,7 +180,6 @@ router.put(
   ]),
   UserAccountController.updateTaskerWithPDF
 );
-
 
 // updating tasker with only profile image and user details
 router.put(
@@ -191,15 +190,6 @@ router.put(
   UserAccountController.updateTaskerWithProfileImage
 );
 
-
-
-
-
-
-
-
-
-
 // updating client with profile image only
 router.put(
   "/update-user-with-profile-image/:id",
@@ -208,7 +198,6 @@ router.put(
   ]),
   UserAccountController.updateUserWithProfileImage
 );
-
 
 // updating client with ID image only
 router.put(

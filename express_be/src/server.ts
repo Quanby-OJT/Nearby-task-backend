@@ -14,7 +14,6 @@ import clientRooutes from "./routes/clientRoutes";
 import reportRoutes from "./routes/reportRoutes";
 import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
-import conversationRoutes from "./routes/conversationRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
 dotenv.config();
@@ -63,7 +62,6 @@ app.use("/connect", userlogRoutes);
 app.use("/connect", clientRooutes);
 app.use("/connect", reportRoutes);
 app.use("/connect", authorityAccountRoutes);
-app.use("/connect", conversationRoutes);
 app.use("/connect", reportANDanalysisRoute);
 app.use("/connect", paymentRoutes);
 // Start server
