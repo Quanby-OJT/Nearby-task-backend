@@ -328,12 +328,12 @@ class TaskController {
 
   static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     try {
-      console.log("Received request to get all specializations");
+      //console.log("Received request to get all specializations");
       const { data, error } = await supabase
         .from("tasker_specialization")
         .select("specialization").order("spec_id", { ascending: true });
 
-      console.log("Data retrieved:", data);
+      //console.log("Data retrieved:", data);
 
       if (error) {
         console.error(error.message);
