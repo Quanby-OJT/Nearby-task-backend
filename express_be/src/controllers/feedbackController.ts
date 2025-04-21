@@ -28,7 +28,18 @@ class FeedbackController {
     }
   }
 
-  
+  static async getFeedbackForTasker(req: Request, res: Response): Promise<void> {
+    try{
+        const tasker_id = parseInt(req.params.taskerId)
+
+        const taskers_feedback = await FeedbackModel.getFeedback(tasker_id)
+
+        res.status(200).json({tasker_feedback: taskers_feedback})
+    }catch(error){
+        console.error(error instanceof Error ? error.message : "Internal Server Error")
+        res.status(500).json({error: "An Error Occured while retrieving Tasker/s Feedback. Please Try Again"})
+    }
+  }
 }
 
 export default FeedbackController
