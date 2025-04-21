@@ -98,12 +98,18 @@ router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 router.get("/messages/:task_taken_id", ConversationController.getMessages);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
-router.post("/deposit-escrow-payment", TaskController.depositEscrowAmount);
+router.post("/rate-the-tasker", profileController.TaskerController.postClientFeedbacktoTasker);
+
 router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
 router.get("/get-tasker-schedule/:tasker_id", ScheduleController.displaySchedules);
 router.post("/reschedule-task", ScheduleController.rescheduleTask);
+
+router.get("/get-token-balance/:userId", TaskController.getTokenBalance);
+
+//Payment Routes
+router.post("/deposit-escrow-payment", TaskController.depositEscrowAmount);
 router.put("/webhook/paymongo", TaskController.handlePayMongoWebhook);
-router.get("/get-token-balance/:clientId", TaskController.getTokenBalance);
+router.put("/update-payment-status/:taskTakenId", TaskController.updateTask);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
@@ -120,7 +126,7 @@ router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOn
 router.get("/notifications-tasker-reject/:userId", NotificationController.getRejectedRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
-router.put("/acceptRequest/:taskTakenId", NotificationController.acceptRequest);
+router.put("/update-request/:taskTakenId", NotificationController.updateRequest);
 router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
 
 //User CRUD

@@ -58,6 +58,15 @@ class Auth {
         return { error: "Error updating user status" };
       }
 
+      const { error: otpResetError } = await supabase.from("two_fa_code")
+        .update({ two_fa_code: null, two_fa_code_expires_at: null })
+        .eq("user_id", user_id);
+        
+      if (otpResetError) {
+        console.error("Error resetting OTP:", otpResetError.message);
+        return { error: "Error resetting OTP" };
+      }
+
       const loggedIn = new Date().toISOString();
 
       const { error: errorInsert } = await supabase.from("user_logs").insert({

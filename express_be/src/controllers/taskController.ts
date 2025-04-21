@@ -328,12 +328,12 @@ class TaskController {
 
   static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     try {
-      console.log("Received request to get all specializations");
+      //console.log("Received request to get all specializations");
       const { data, error } = await supabase
         .from("tasker_specialization")
         .select("specialization").order("spec_id", { ascending: true });
 
-      console.log("Data retrieved:", data);
+      //console.log("Data retrieved:", data);
 
       if (error) {
         console.error(error.message);
@@ -497,18 +497,12 @@ class TaskController {
           console.log("Transaction Data: ", req.body);
           const { client_id, amount, status } = req.body;
 
-          //const amountInUSD = await TaskController.converttoUSD(amount);
-
           const PaymentInformation = await PayMongoPayment.checkoutPayment({
               client_id,
               amount,
               deposit_date: new Date().toISOString(),
+              payment_type: "Client Deposit"
           });
-
-          // console.log("Payment Information: ", PaymentInformation);
-          // const taskId: number = PaymentInformation.task_id;
-          // const taskStatus: string = "Already Taken";
-          // const taskTakenStatus = status;
 
           await ClientModel.addCredits(client_id, amount)
   
@@ -523,25 +517,25 @@ class TaskController {
       }
   }
 
-  static async updateTransactionStatus(req: Request, res: Response): Promise<void> {
-    try {
-      const { task_taken_id, status, cancellation_reason } = req.body;
+  // static async updateTransactionStatus(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { task_taken_id, status, cancellation_reason } = req.body;
 
-      if(status == 'cancel'){
-        await PayMongoPayment.cancelTransaction(task_taken_id, cancellation_reason);
-        res.status(200).json({ message: "You had cancelled your transaction."});
-      }else if(status == 'complete'){
-        await PayMongoPayment.completeTransaction(task_taken_id);
-        res.status(200).json({ message: "You had completed your transaction."});
-      }else{
-        res.status(400).json({ message: "Invalid status provided."});
-      }
-    }
-    catch (error) {
-      console.error(error instanceof Error ? error.message : "Error Unknown.")
-      res.status(500).json({ error: "Internal Server error", });
-    }
-  }
+  //     if(status == 'cancel'){
+  //       await PayMongoPayment.cancelTransaction(task_taken_id, cancellation_reason);
+  //       res.status(200).json({ message: "You had cancelled your transaction."});
+  //     }else if(status == 'complete'){
+  //       await PayMongoPayment.releasePayment('', task_taken_id);
+  //       res.status(200).json({ message: "Escrow Payment Released to Tasker."});
+  //     }else{
+  //       res.status(400).json({ message: "Invalid status provided."});
+  //     }
+  //   }
+  //   catch (error) {
+  //     console.error(error instanceof Error ? error.message : "Error Unknown.")
+  //     res.status(500).json({ error: "Internal Server error", });
+  //   }
+  // }
 
   static async releasePayment(req: Request, res: Response): Promise<void> {
     try {
@@ -677,22 +671,39 @@ class TaskController {
 
   static async getTokenBalance(req: Request, res: Response): Promise<void> {
     try {
-      const clientId = parseInt(req.params.clientId); // Assume authenticated client ID
-      if (isNaN(clientId)) {
+      const userId = parseInt(req.params.userId); // Assume authenticated client ID
+      if (isNaN(userId)) {
         res.status(400).json({ success: false, error: "Invalid client ID" });
         return;
       }
   
-      const { data, error } = await supabase
-        .from("clients")
-        .select("amount")
-        .eq("client_id", clientId)
+      const { data: userRole, error: userRoleError } = await supabase
+        .from("user")
+        .select("user_role")
+        .eq("user_id", userId)
         .single();
-      if (error || !data) {
-        throw new Error("Client not found");
+
+      
+      if (userRoleError || !userRole) {
+        throw new Error("User Does not exist from database.");
       }
-  
-      res.status(200).json({ success: true, tokens: data.amount });
+
+      switch (userRole.user_role) {
+        case "Tasker":
+          const { data: taskerTokens, error: taskerTokensError} = await supabase.from('tasker').select('amount').eq('user_id', userId).single();
+          if(taskerTokensError) throw new Error('Error fetching tasker tokens: ' + taskerTokensError.message);
+          console.log("Tasker Tokens: ", taskerTokens);
+          res.status(200).json({ success: true, tokens: taskerTokens.amount });
+          break;
+        case "Client":
+          const { data: clientTokens, error: clientTokensError} = await supabase.from('clients').select('amount').eq('user_id', userId).single();
+          if(clientTokensError) throw new Error('Error fetching tasker tokens: ' + clientTokensError.message);
+          console.log("Client Tokens: ", clientTokens);
+          res.status(200).json({ success: true, tokens: clientTokens.amount });
+          break;
+        default:
+          break;
+      }
     } catch (error) {
       console.error("Error fetching token balance:", error);
       res.status(500).json({ success: false, error: "Failed to fetch tokens" });
@@ -914,7 +925,7 @@ class TaskController {
     }
   }
 
-  async checkTaskAssignment(req: Request, res: Response) {
+  static async checkTaskAssignment(req: Request, res: Response): Promise<any> {
     try {
         const { taskId, taskerId } = req.params;
         
