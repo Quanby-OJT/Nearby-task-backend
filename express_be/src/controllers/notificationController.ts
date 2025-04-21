@@ -738,6 +738,8 @@ class NotificationController {
 
       console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
 
+      //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
+
       const { error: updateAmountError } = await supabase
         .rpc('update_tasker_amount', {
           addl_credits: task?.post_task.proposed_price, 

@@ -501,7 +501,7 @@ class TaskController {
               client_id,
               amount,
               deposit_date: new Date().toISOString(),
-              payment_type: "Deposit Payment"
+              payment_type: "Client Deposit"
           });
 
           await ClientModel.addCredits(client_id, amount)
