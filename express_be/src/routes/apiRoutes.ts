@@ -100,6 +100,7 @@ router.get("/messages/:task_taken_id", ConversationController.getMessages);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
 router.post("/rate-the-tasker", FeedbackController.postClientFeedbacktoTasker);
+router.get("/get-taskers-feedback/:taskerId", FeedbackController.getFeedbackForTasker);
 
 router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
 router.get("/get-tasker-schedule/:tasker_id", ScheduleController.displaySchedules);
