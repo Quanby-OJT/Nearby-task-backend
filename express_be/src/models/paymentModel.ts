@@ -3,10 +3,12 @@ import { supabase } from "../config/configuration";
 
 interface Payment {
   payment_history_id?: number;
-  client_id: number;
+  client_id?: number;
   transaction_id?: string;
   amount: number;
   deposit_date: string;
+  payment_type: string;
+  task_taken_id?: number;
 }
 
 // Updated to match PayMongo's checkout_sessions response structure
@@ -122,6 +124,7 @@ class PayMongoPayment {
     // Assign transaction_id and payment_date *after* successful response
     paymentInfo.transaction_id = paymongoData.data.id;
 
+
     console.log("Updated Payment Info:", paymentInfo);
 
     // Insert into Supabase
@@ -206,14 +209,16 @@ class PayMongoPayment {
     return { message: "Transaction cancelled or refunded" };
   }
 
-  static async completeTransaction(transactionId: string) {
+  static async releasePayment(paymentInfo: Payment) {
+    if (paymentInfo.amount <= 0) throw new Error("Invalid Amount to be released. Please Try Again.");
+    // TODO: Implement payment release logic for task completion using Xendit (fallback is aemi-auto release of payment.).
+
     // Placeholder: Mark as completed in Supabase once payment is confirmed
     const { error } = await supabase
-      .from("payment_logs")
-      .update({ status: "completed" })
-      .eq("transaction_id", transactionId);
+          .from("payment_logs")
+          .insert([paymentInfo])
+    console.log("Errors:", error);
     if (error) throw new Error(error.message);
-    return { message: "Transaction marked as completed" };
   }
 
   static async getPaymentLogsWithUser() {

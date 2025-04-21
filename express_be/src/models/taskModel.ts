@@ -210,6 +210,36 @@ class TaskModel {
       throw new Error(errorMessage);
     }
   }
+
+  async getTaskAmount(taskTakenId: number) {
+    interface TaskTakenResponse {
+      task_id: number;
+      post_task: {
+        client_id: number;
+        proposed_price: number;
+      };
+      tasker: {
+        tasker_id: number;
+      };
+    }
+    const { data, error } = await supabase
+      .from('task_taken')
+      .select(`
+        task_id,
+        post_task (
+          client_id,
+          proposed_price
+        ),
+        tasker (
+          tasker_id
+        )
+      `)
+      .eq('task_taken_id', taskTakenId)
+      .single() as { data: TaskTakenResponse | null; error: any };
+  
+    if (error) throw new Error(error.message);
+    return data;
+  }
 }
 
 const taskModel = new TaskModel();

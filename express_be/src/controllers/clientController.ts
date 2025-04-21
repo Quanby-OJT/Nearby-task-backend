@@ -15,27 +15,56 @@ class ClientModel {
     return data;
   }
 
-  static async getAllClients(req: Request, res: Response): Promise<any> {
+  static async getAllClients(req: Request, res: Response): Promise<void> {
+    console.log("Fetching all desired Taskers...");
     try {
       const { data, error } = await supabase
-        .from("user")
-        .select("*")
-        .eq("acc_status", "Active")
-        .eq("verified", true)
-        .eq("user_role", "Tasker");
-
-      console.log("fetch all tasker:" + data);
-
+        .from("tasker")
+        .select(`
+          *,
+          tasker_specialization (
+        specialization
+          ),
+          user!inner (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            image_link,
+            birthdate,
+            acc_status,
+            gender,
+            email,
+            contact,
+            verified,
+            user_role
+          )
+        `)
+        .not('user', 'is', null)
+        .eq('user.acc_status', 'Active')
+        .eq('user.verified', true)
+        .eq('user.user_role', 'Tasker')
+  
+      console.log("Taskers data:", data, "Error:", error);
+  
       if (error) {
-        return res.status(200).json({ error: error });
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
       }
-
+  
       if (!data || data.length === 0) {
-        return res.status(200).json({ error: "No active taskers found." });
+        res.status(200).json({ error: "No active taskers found." });
+        return;
       }
-
-      return res.status(200).json({ taskers: data });
-    } catch (error) {}
+  
+      res.status(200).json({ taskers: data });
+    } catch (error) {
+      console.error("Error fetching taskers:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
   }
 
   static async updateClient(
@@ -53,7 +82,9 @@ class ClientModel {
   static async addCredits(clientId: number, amount: number) {
 
     const { data, error } = await supabase
-      .rpc('increment_client_credits', { addl_credits: amount, id: clientId,  });
+      .rpc('increment_client_credits', { addl_credits: amount, id: clientId});
+
+      console.log("add credits to client: " + data, error);
     if (error) throw new Error(error.message);
     return data;
   }
@@ -68,16 +99,16 @@ class ClientModel {
   }
 
   // fetch data from user where user has role of tasker and acc_status is "Active"
-  static async getActiveTaskers() {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("users.role", "tasker")
-      .eq("users.acc_status", "active");
-    if (error) throw new Error(error.message);
+  // static async getActiveTaskers() {
+  //   const { data, error } = await supabase
+  //     .from("users")
+  //     .select("*")
+  //     .eq("users.role", "tasker")
+  //     .eq("users.acc_status", "active");
+  //   if (error) throw new Error(error.message);
 
-    return data;
-  }
+  //   return data;
+  // }
 
   static async createLike(req: Request, res: Response) {
     try {
@@ -162,7 +193,7 @@ class ClientModel {
       const { client_id, tasker_id } = req.body;
 
       // Check for missing fields
-      if (!client_id || !tasker_id) {
+      if (client_id == 0 || tasker_id == 0) {
         res.status(400).json({ message: "Missing required fields" });
         return;
       }
