@@ -14,6 +14,7 @@ import multer, { memoryStorage } from "multer";
 import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
+import FeedbackController from "../controllers/feedbackController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -98,7 +99,7 @@ router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 router.get("/messages/:task_taken_id", ConversationController.getMessages);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
-router.post("/rate-the-tasker", profileController.TaskerController.postClientFeedbacktoTasker);
+router.post("/rate-the-tasker", FeedbackController.postClientFeedbacktoTasker);
 
 router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
 router.get("/get-tasker-schedule/:tasker_id", ScheduleController.displaySchedules);
