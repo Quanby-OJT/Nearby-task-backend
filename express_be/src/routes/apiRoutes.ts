@@ -13,7 +13,11 @@ import multer, { memoryStorage } from "multer";
 import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
+<<<<<<< HEAD
 import ConversationController from "../controllers/conversartionController";
+=======
+import FeedbackController from "../controllers/feedbackController";
+>>>>>>> f6bf78393a52457f84e9dcd01ec55651350cbab0
 
 const upload = multer({storage: memoryStorage()})
 
@@ -92,9 +96,13 @@ router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
+<<<<<<< HEAD
 
 // Feedback
 router.post("/rate-the-tasker", profileController.TaskerController.postClientFeedbacktoTasker);
+=======
+router.post("/rate-the-tasker", FeedbackController.postClientFeedbacktoTasker);
+>>>>>>> f6bf78393a52457f84e9dcd01ec55651350cbab0
 
 router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
 router.get("/get-tasker-schedule/:tasker_id", ScheduleController.displaySchedules);
