@@ -92,6 +92,8 @@ router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
+
+// Feedback
 router.post("/rate-the-tasker", profileController.TaskerController.postClientFeedbacktoTasker);
 
 router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
