@@ -1,10 +1,14 @@
 import { supabase } from "../config/configuration"
+import ConversationModel from "../models/conversartionModel"
 import { Request, Response } from "express"
 import ConversationModel from "../models/conversartionModel"
 
 class ConversationController {
     static async sendMessage(req: Request, res: Response): Promise<void> {
         const {task_taken_id, user_id, conversation} = req.body
+        console.log(req.body)
+
+        console.log("Sending Message for Task Taken ID of: ", task_taken_id)
 
         const {data, error} = await supabase.from("conversation_history").insert({
             task_taken_id, 
@@ -24,7 +28,7 @@ class ConversationController {
 
     static async getAllMessages(req: Request, res: Response): Promise<void> {
         const user_id = req.params.user_id
-        console.log("Retrieving Messages for User ID of: ", user_id)
+        //console.log("Retrieving Messages for User ID of: ", user_id)
 
         const {data, error} = await supabase.from("user").select("user_role").eq("user_id", user_id).single()
         if(error){
@@ -39,15 +43,27 @@ class ConversationController {
             .from("task_taken")
             .select(`
                 task_taken_id,
-                post_task!task_id (task_title),
+                task_status::text,
+                post_task!task_id (
+                    task_id,
+                    task_title
+                ),
                 clients!client_id (
-                    user!user_id (first_name, middle_name, last_name)
+                    user!user_id (
+                        first_name,
+                        middle_name,
+                        last_name
+                    )
                 ),
                 tasker!tasker_id (
-                    user!user_id (first_name, middle_name, last_name)
+                    user!user_id (
+                        first_name,
+                        middle_name,
+                        last_name
+                    )
                 )
             `)
-            .eq("tasker_id", user_id);
+            .eq("tasker_id", user_id)
                 
             console.log(data, error)
     
@@ -60,7 +76,11 @@ class ConversationController {
         }else if(role === "Client"){
             const { data, error } = await supabase.from("task_taken").select(`
                 task_taken_id,
-                post_task!task_id (task_title),
+                task_status,
+                post_task!task_id (
+                    task_id,
+                    task_title
+                ),
                 clients!client_id (
                     user!user_id (first_name, middle_name, last_name)
                 ),
@@ -83,16 +103,110 @@ class ConversationController {
 
     static async getMessages(req: Request, res: Response): Promise<void> {
         const task_taken_id = req.params.task_taken_id
-        console.log("Retrieving Messages for Task Taken ID of: ", task_taken_id)
+        //console.log("Retrieving Messages for Task Taken ID of: ", task_taken_id)
 
-        const {data, error} = await supabase.from("conversation_history").select("conversation, user_id").eq("task_taken_id", task_taken_id)
+        const {data, error} = await supabase
+            .from("conversation_history")
+            .select(`
+                conversation,
+                user_id,
+                created_at,
+                user:user!conversation_history_user_id_fkey (
+                    first_name,
+                    middle_name,
+                    last_name
+                )
+            `)
+            .eq("task_taken_id", task_taken_id)
+            .order('created_at', { ascending: true });
+
         if(error){
             console.error(error.message)
             res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})
             return
         }
 
-        res.status(200).json({data: data})
+        // Format the created_at field to "hour:minute am/pm" (e.g., "2:53pm")
+        const dateFormatOptions: Intl.DateTimeFormatOptions = {
+            timeZone: "Asia/Manila",
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+        };
+
+        const formattedData = data.map((item: any) => ({
+            ...item,
+            created_at: new Date(item.created_at).toLocaleString("en-US", dateFormatOptions).toLowerCase(),
+        }));
+
+        res.status(200).json({data: formattedData})
+    }
+
+    static async getUserConversation(req: Request, res: Response): Promise<void>{
+        try {
+            const conversation = await ConversationModel.getUserConversation();
+            console.log("The Record Fetch From Conversation History Are:", conversation);            
+            if(!conversation || conversation.length === 0){
+                console.log("No conversations found");
+                res.status(404).json({error: "No conversations found"});
+                return;
+            }
+            res.status(200).json({data: conversation});
+        }
+        catch (error){
+            if (error instanceof Error){
+                res.status(500).json({ error: error.message });
+            }
+            else {
+                res.status(500).json({ error: "Unknown Error Occured" });
+            }
+        }
+    }
+
+    static async banUser(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = parseInt(req.params.id, 10);
+            if (isNaN(userId)) {
+                res.status(400).json({ error: "Invalid user ID" });
+                return;
+            }
+
+            const result = await ConversationModel.banUser(userId);
+            if (result) {
+                res.status(200).json({ message: "User has been banned successfully" });
+            } else {
+                res.status(404).json({ error: "User not found" });
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                res.status(500).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "Unknown error occurred" });
+            }
+        }
+    }
+
+    static async warnUser(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = parseInt(req.params.id, 10);
+            if (isNaN(userId)) {
+                res.status(400).json({ error: "Invalid user ID" });
+                return;
+            }
+
+            const result = await ConversationModel.warnUser(userId);
+            if (result) {
+                res.status(200).json({ message: "User has been warned successfully" });
+            } else {
+                res.status(404).json({ error: "User not found" });
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                res.status(500).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "Unknown error occurred" });
+            }
+        }
     }
 
     static async getUserConversation(req: Request, res: Response): Promise<void>{
@@ -140,4 +254,4 @@ class ConversationController {
     }
 }
 
-export default ConversationController
+export default ConversationController;

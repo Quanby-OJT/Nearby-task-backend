@@ -37,7 +37,7 @@ class auth {
         .from("user")
         .select("*")
         .eq("email", email)
-        .in("user_role", ["admin", "moderator"])
+        .in("user_role", ["Admin", "Moderator"])
         .maybeSingle();
 
       if (!user || error) {
@@ -94,9 +94,18 @@ class auth {
         }
       }
 
+      console.log("Session ID from Backend:", sessionID);
+
+      res.cookie("session", sessionID, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 24 * 60 * 60 * 1000,
+      });
+      
       return res.status(200).json({
         message: "Logged in successfully",
         userSession: userSession,
+        sessionID: sessionID,
       });
     } catch (err: any) {
       console.error("Login error:", err);
@@ -109,14 +118,16 @@ class auth {
       const { userID, cleanedSessionID } = req.body;
       const loggedOut = new Date().toISOString();
 
+      console.log("User ID from Backend to logout:", userID);
+      console.log("Session ID from Backend to logout:", cleanedSessionID);
+
       const { error } = await supabase
         .from("user")
         .update({ status: false })
         .eq("user_id", userID);
 
       if (error) {
-        console.log(error);
-        return res.status(500).json({ message: "Error updating user status" });
+        return res.status(500).json({ message: "Error updating user" });
       }
 
       const { data: sessionExists, error: sessionError } = await supabase
@@ -140,7 +151,7 @@ class auth {
         );
         return res.status(500).json({ message: "Error updating user log" });
       }
-
+      res.clearCookie("session");
       return res.status(200).json({ message: "User updated successfully" });
     } catch (error) {
       return res.status(500).json({ message: "Error" + error });
@@ -164,7 +175,7 @@ class auth {
           .update({ logged_out: loggedOut })
           .eq("session", sessionID);
 
-        return res.status(200).status(200).json({ message: "User logged out" });
+        return res.status(200).json({ message: "User logged out" });
       }
 
       if (sessionError) {
@@ -172,7 +183,7 @@ class auth {
         return res.status(500).json({ message: "Error updating user log" });
       }
 
-      return res.status(200).status(200).json({ message: "User logged out" });
+      return res.status(200).json({ message: "User logged out" });
     } catch (error) {
       return res.status(500).json({ message: "Error" + error });
     }

@@ -10,6 +10,12 @@ import authRoutes from "./routes/authRoutes";
 import session from "express-session";
 import likeRoutes from "./routes/likeRoutes";
 import userlogRoutes from "./routes/userlogRoutes";
+import clientRooutes from "./routes/clientRoutes"; 
+import reportRoutes from "./routes/reportRoutes";
+import cookieParser from "cookie-parser";
+import authorityAccountRoutes from "./routes/authorityAccountRoutes";
+import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
+import paymentRoutes from "./routes/paymentRoutes";
 dotenv.config();
 const app: Application = express();
 
@@ -18,12 +24,13 @@ app.use(
   cors({
     origin: true,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Accept"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Accept", "Authorization"],
   })
 );
 
 app.use(express.json());
+app.use(cookieParser()); 
 app.use(
   session({
     secret: session_key,
@@ -37,18 +44,26 @@ app.use(
   })
 );
 
-// Routes
-app.use(
-  "/connect",
-  server,
-  userAccountRoute,
-  userRoute,
-  taskRoutes,
-  authRoutes,
-  likeRoutes,
-  userlogRoutes
-);
+// Mount auth routes - These should be public
 
+
+// Mount API routes - This contains both public and protected routes
+app.use("/connect", server);
+
+app.use("/connect", authRoutes);
+
+// Mount other routes - These will be protected by the isAuthenticated middleware in their respective files
+
+app.use("/connect", userAccountRoute);
+app.use("/connect", userRoute);
+app.use("/connect", taskRoutes);
+app.use("/connect", likeRoutes);
+app.use("/connect", userlogRoutes);
+app.use("/connect", clientRooutes);
+app.use("/connect", reportRoutes);
+app.use("/connect", authorityAccountRoutes);
+app.use("/connect", reportANDanalysisRoute);
+app.use("/connect", paymentRoutes);
 // Start server
 const PORT = port || 5000;
 app.listen(PORT, () => {

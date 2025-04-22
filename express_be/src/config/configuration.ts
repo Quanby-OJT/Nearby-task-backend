@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
-import crypto from 'crypto';
 
 // Supabase Configuration
 dotenv.config();
@@ -27,3 +26,6 @@ export const session_key = process.env.SESSION_KEY as string;
 export const port = process.env.PORT;
 
 export const url = process.env.URL;
+
+const authString = `${process.env.ESCROW_EMAIL}:${process.env.ESCROW_API}`;
+export const authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
