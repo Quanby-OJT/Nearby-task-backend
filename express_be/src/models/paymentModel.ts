@@ -220,6 +220,27 @@ class PayMongoPayment {
     console.log("Errors:", error);
     if (error) throw new Error(error.message);
   }
+
+  static async getPaymentLogsWithUser() {
+    const { data, error } = await supabase
+      .from('payment_logs')
+      .select(`
+        transaction_id,
+        amount,
+        payment_type,
+        deposit_date,
+        created_at,
+        clients (
+          user (
+            first_name,
+            middle_name,
+            last_name
+          )
+        )
+      `);
+    if (error) throw new Error(error.message);
+    return data;
+  }
 }
 
 export default PayMongoPayment;

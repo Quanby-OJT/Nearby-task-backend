@@ -40,6 +40,21 @@ class FeedbackController {
         res.status(500).json({error: "An Error Occured while retrieving Tasker/s Feedback. Please Try Again"})
     }
   }
+
+
+  static async getFeedbacks(req: Request, res: Response): Promise<void> {
+    try {
+      console.log("Retrieving all tasker feedback...");
+      const feedbacks = await FeedbackModel.getTaskerFeedback();
+      console.log("Retrieved feedbacks:", feedbacks);
+      res.status(200).json({ feedbacks });
+    } catch (error) {
+      console.error("Error in getFeedbacks:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
 }
 
-export default FeedbackController
+export default FeedbackController;
