@@ -143,7 +143,7 @@ class TaskModel {
     const { data, error } = await supabase.from("task_taken").
       select(`
         task_taken_id, 
-        tasker!tasker_id (user!user_id (first_name, middle_name, last_name, email), bio, tasker_specialization!specialization_id(specialization), skills, address, availability, wage_per_hour, pay_period, social_media_links),
+        tasker!tasker_id (user!user_id (first_name, middle_name, last_name, email), bio, tasker_specialization!specialization_id(specialization), skills, address, availability, wage_per_hour, pay_period, social_media_links, rating),
         post_task!task_id (*),
         task_status,
         reason_for_rejection_or_cancellation
