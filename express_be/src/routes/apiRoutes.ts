@@ -97,6 +97,7 @@ router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTa
 router.post("/send-message", ConversationController.sendMessage);
 router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 router.get("/messages/:task_taken_id", ConversationController.getMessages);
+router.get("/getUserConversation", ConversationController.getUserConversation);
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
 
