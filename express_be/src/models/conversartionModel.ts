@@ -21,8 +21,10 @@ class ConversationModel {
             status,
             acc_status
           ),
-          task_taken_id,
           task_taken!task_taken_id (
+            task_taken_id,
+            created_at,
+            task_status,
             client_id,
             clients!client_id (
               user_id,
@@ -63,10 +65,35 @@ class ConversationModel {
         return [];
       }
 
-      const formattedData = data.map((conversation: any) => ({
-        ...conversation,
-        created_at: conversation.created_at ? new Date(conversation.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" }) : null
-      }));
+      const formattedData = data.map((conversation: any) => {
+        // Define the date format options for consistency
+        const dateFormatOptions: Intl.DateTimeFormatOptions = {
+          timeZone: "Asia/Manila",
+          month: "numeric",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
+          hour12: true,
+        };
+
+        return {
+          ...conversation,
+          created_at: conversation.created_at
+            ? new Date(conversation.created_at).toLocaleString("en-US", dateFormatOptions)
+            : null,
+          task_taken: {
+            ...conversation.task_taken,
+            created_at: conversation.task_taken.created_at
+              ? new Date(conversation.task_taken.created_at).toLocaleString("en-US", dateFormatOptions)
+              : null,
+            task_created_at: conversation.task_taken.created_at
+              ? new Date(conversation.task_taken.created_at).toLocaleString("en-US", dateFormatOptions)
+              : null,
+          },
+        };
+      });
 
       console.log("Formatted data:", formattedData);
       return formattedData;

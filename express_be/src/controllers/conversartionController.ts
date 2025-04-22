@@ -104,15 +104,41 @@ class ConversationController {
         const task_taken_id = req.params.task_taken_id
         //console.log("Retrieving Messages for Task Taken ID of: ", task_taken_id)
 
-        const {data, error} = await supabase.from("conversation_history").select("conversation, user_id").eq("task_taken_id", task_taken_id)
-        //console.log(data, error)
+        const {data, error} = await supabase
+            .from("conversation_history")
+            .select(`
+                conversation,
+                user_id,
+                created_at,
+                user:user!conversation_history_user_id_fkey (
+                    first_name,
+                    middle_name,
+                    last_name
+                )
+            `)
+            .eq("task_taken_id", task_taken_id)
+            .order('created_at', { ascending: true });
+
         if(error){
             console.error(error.message)
             res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})
             return
         }
 
-        res.status(200).json({data: data})
+        // Format the created_at field to "hour:minute am/pm" (e.g., "2:53pm")
+        const dateFormatOptions: Intl.DateTimeFormatOptions = {
+            timeZone: "Asia/Manila",
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+        };
+
+        const formattedData = data.map((item: any) => ({
+            ...item,
+            created_at: new Date(item.created_at).toLocaleString("en-US", dateFormatOptions).toLowerCase(),
+        }));
+
+        res.status(200).json({data: formattedData})
     }
 
     static async getUserConversation(req: Request, res: Response): Promise<void>{
