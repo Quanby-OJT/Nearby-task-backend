@@ -1,5 +1,6 @@
 import { supabase } from "../config/configuration"
 import { Request, Response } from "express"
+import ConversationModel from "../models/conversartionModel"
 
 class ConversationController {
     static async sendMessage(req: Request, res: Response): Promise<void> {
@@ -92,6 +93,50 @@ class ConversationController {
         }
 
         res.status(200).json({data: data})
+    }
+
+    static async getUserConversation(req: Request, res: Response): Promise<void>{
+        try {
+            const conversation = await ConversationModel.getUserConversation();
+            console.log("The Record Fetch From Conversation History Are:", conversation);            
+            if(!conversation || conversation.length === 0){
+                console.log("No conversations found");
+                res.status(404).json({error: "No conversations found"});
+                return;
+            }
+            res.status(200).json({data: conversation});
+        }
+        catch (error){
+            if (error instanceof Error){
+                res.status(500).json({ error: error.message });
+            }
+            else {
+                res.status(500).json({ error: "Unknown Error Occured" });
+            }
+        }
+    }
+
+    static async deleteConversation(req: Request, res: Response): Promise<void> {
+        try {
+            const task_taken_id = parseInt(req.params.task_taken_id, 10);
+            if (isNaN(task_taken_id)) {
+                res.status(400).json({ error: "Invalid task taken ID" });
+                return;
+            }
+
+            const result = await ConversationModel.deleteConversation(task_taken_id);
+            if (result) {
+                res.status(200).json({ message: "Conversation deleted successfully" });
+            } else {
+                res.status(404).json({ error: "Conversation not found" });
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                res.status(500).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "Unknown error occurred" });
+            }
+        }
     }
 }
 
