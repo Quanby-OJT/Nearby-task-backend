@@ -261,14 +261,17 @@ class TaskController {
 
     let visit_client = false;
     let visit_tasker = false;
+    let requested_from = "";
 
     
     if (role == "Client") {
       visit_client = true;
       visit_tasker = false;
+      requested_from = "Client";
     } else {
       visit_client = false;
       visit_tasker = true;
+      requested_from = "Tasker";
     }
 
     const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
@@ -285,6 +288,7 @@ class TaskController {
       visit_client,
       visit_tasker,
       task_status: "Pending",
+      requested_from
     });
 
     if (error) {
