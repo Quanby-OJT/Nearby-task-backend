@@ -5,7 +5,6 @@ const router = Router();
 
 // Mobile or Client and Tasker Side
 router.post("/reports", ReportController.uploadReportImages, ReportController.createReport);
-router.get("/taskers", ReportController.getAllTaskers); 
 router.get("/clients", ReportController.getAllClients);
 router.get("/reportHistory", ReportController.getReportHistory)
 

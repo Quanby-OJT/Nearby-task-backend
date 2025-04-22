@@ -18,6 +18,8 @@ interface TaskerWithUser {
   first_name: string;
   middle_name: string;
   last_name: string;
+  specialization: string;
+  specialization_id: number | null;
 }
 
 // Interface for clients with user details
@@ -205,34 +207,7 @@ class ReportModel {
    * Retrieves all taskers with their user details.
    * @returns Promise<TaskerWithUser[]> - Array of tasker objects with user details
    */
-  async getAllTaskersWithUsers(): Promise<TaskerWithUser[]> {
-    const { data, error } = await supabase
-      .from("tasker")
-      .select(`
-        user_id,
-        user:user (first_name, middle_name, last_name)
-      `);
-
-    if (error) {
-      console.error("Supabase fetch taskers error:", error);
-      throw new Error(error.message);
-    }
-
-    console.log("Raw Supabase data (taskers):", data);
-
-    const taskers: TaskerWithUser[] = data
-      .filter((tasker: any) => tasker.user !== null)
-      .map((tasker: any) => ({
-        user_id: tasker.user_id,
-        first_name: tasker.user?.first_name ?? "Unknown",
-        middle_name: tasker.user?.middle_name ?? "",
-        last_name: tasker.user?.last_name ?? "Unknown",
-      }));
-
-    console.log("Mapped taskers:", taskers);
-
-    return taskers;
-  }
+  
 
   /**
    * Retrieves all clients with their user details.
