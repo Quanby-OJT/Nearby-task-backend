@@ -26,10 +26,10 @@ class AuthenticationController {
         return;
       }
 
-      if (verifyLogin.acc_status === "Ban") {
+      if (verifyLogin.acc_status === "Ban" || verifyLogin.acc_status === "Block") {
         res.status(401).json({
           error:
-            "You are banned for using this application. Please contact our team to appeal to your ban.",
+            "You are banned/blocked for using this application. Please contact our team to appeal to your ban.",
         });
         return;
       }

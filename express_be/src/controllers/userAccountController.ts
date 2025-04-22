@@ -86,23 +86,6 @@ class UserAccountController {
         updated_at: new Date().toISOString(),
       };
 
-      //Creating new customer at Escrow
-      const escrowPayload = {
-        email: email,
-        first_name: first_name,
-        middle_name: middle_name,
-        last_name: last_name,
-        birthday: birthday,
-      }
-      // const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/customer`, {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     "Authorization": authHeader,
-      //   },
-      //   body: JSON.stringify(escrowPayload),
-      // })
-
       // Insert user into Supabase database
       const { data: newUser, error: insertError } = await supabase
         .from("user")
