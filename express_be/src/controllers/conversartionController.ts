@@ -1,6 +1,7 @@
 import { supabase } from "../config/configuration"
 import ConversationModel from "../models/conversartionModel"
 import { Request, Response } from "express"
+import ClientTaskerModeration  from "../models/moderationModel"
 
 class ConversationController {
     static async sendMessage(req: Request, res: Response): Promise<void> {
@@ -8,6 +9,18 @@ class ConversationController {
         console.log(req.body)
 
         console.log("Sending Message for Task Taken ID of: ", task_taken_id)
+
+        // Verify if task_taken_id exists
+        const { data: taskExists, error: taskError } = await supabase
+            .from("task_taken")
+            .select("task_taken_id")
+            .eq("task_taken_id", task_taken_id)
+            .single()
+
+        if (taskError || !taskExists) {
+            res.status(404).json({ error: "Task taken ID does not exist" })
+            return
+        }
 
         const {data, error} = await supabase.from("conversation_history").insert({
             task_taken_id, 
@@ -113,7 +126,8 @@ class ConversationController {
                 user:user!conversation_history_user_id_fkey (
                     first_name,
                     middle_name,
-                    last_name
+                    last_name,
+                    image_link
                 )
             `)
             .eq("task_taken_id", task_taken_id)
@@ -162,42 +176,19 @@ class ConversationController {
         }
     }
 
-    static async banUser(req: Request, res: Response): Promise<void> {
+    static async deleteConversation(req: Request, res: Response): Promise<void> {
         try {
-            const userId = parseInt(req.params.id, 10);
-            if (isNaN(userId)) {
-                res.status(400).json({ error: "Invalid user ID" });
+            const task_taken_id = parseInt(req.params.task_taken_id, 10);
+            if (isNaN(task_taken_id)) {
+                res.status(400).json({ error: "Invalid task taken ID" });
                 return;
             }
 
-            const result = await ConversationModel.banUser(userId);
+            const result = await ConversationModel.deleteConversation(task_taken_id);
             if (result) {
-                res.status(200).json({ message: "User has been banned successfully" });
+                res.status(200).json({ message: "Conversation deleted successfully" });
             } else {
-                res.status(404).json({ error: "User not found" });
-            }
-        } catch (error) {
-            if (error instanceof Error) {
-                res.status(500).json({ error: error.message });
-            } else {
-                res.status(500).json({ error: "Unknown error occurred" });
-            }
-        }
-    }
-
-    static async warnUser(req: Request, res: Response): Promise<void> {
-        try {
-            const userId = parseInt(req.params.id, 10);
-            if (isNaN(userId)) {
-                res.status(400).json({ error: "Invalid user ID" });
-                return;
-            }
-
-            const result = await ConversationModel.warnUser(userId);
-            if (result) {
-                res.status(200).json({ message: "User has been warned successfully" });
-            } else {
-                res.status(404).json({ error: "User not found" });
+                res.status(404).json({ error: "Conversation not found" });
             }
         } catch (error) {
             if (error instanceof Error) {
