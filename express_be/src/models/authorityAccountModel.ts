@@ -48,9 +48,7 @@ class AuthorityAccount {
   static async showUser(user_id: string) {
     const { data, error } = await supabase
       .from("user")
-      .select(
-        "first_name, middle_name, last_name, image_link, email, birthdate, user_role, gender, contact, acc_status"
-      )
+      .select("*")
       .eq("user_id", user_id)
       .single();
 
@@ -62,7 +60,7 @@ class AuthorityAccount {
   static async showClient(user_id: string) {
     const { data: client, error: clientError } = await supabase
       .from("clients")
-      .select("preferences, client_address")
+      .select("*")
       .eq("user_id", user_id)
       .maybeSingle();
     console.log(client, clientError);
@@ -78,9 +76,7 @@ class AuthorityAccount {
   static async showTasker(user_id: string) {
     const { data: tasker, error: taskerError } = await supabase
       .from("tasker")
-      .select(
-        "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
-      )
+      .select("*")
       .eq("tasker_id", user_id)
       .maybeSingle();
     console.log(tasker, taskerError);

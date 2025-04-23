@@ -807,6 +807,20 @@ class NotificationController {
           return;
         }
         break;
+    case 'Cancel':
+      const { error: cancelError } = await supabase
+        .from("task_taken")
+        .update({ task_status: "Cancelled", visit_client: visit_client, visit_tasker: visit_tasker })
+        .eq("task_taken_id", taskTakenId);
+    
+            console.log("Cancel request value: $value");
+    
+            if (cancelError) {
+              console.error(cancelError.message);
+              res.status(500).json({ success: false, error: "An Error Occurred while cancelling the request." });
+              return;
+            }
+            break;
     case 'Disputed':
       const { error: disputeError } = await supabase
         .from("task_taken")

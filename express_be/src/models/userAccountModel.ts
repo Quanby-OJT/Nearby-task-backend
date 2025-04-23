@@ -115,7 +115,7 @@ class UserAccount {
   static async showClient(user_id: string) {
     const { data: client, error: clientError } = await supabase
       .from("clients")
-      .select("preferences, client_address")
+      .select("*")
       .eq("user_id", user_id)
       .maybeSingle();
     console.log(client, clientError);

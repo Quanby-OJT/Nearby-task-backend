@@ -141,8 +141,6 @@ class ReportController {
     });
   }
 
- 
-
   static async getAllClients(req: Request, res: Response): Promise<void> {
     try {
       const clients = await reportModel.getAllClientsWithUsers();
