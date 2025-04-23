@@ -2,6 +2,8 @@ import { supabase } from "../config/configuration";
 import { Request, Response } from "express";
 import { AuthorityAccount } from "../models/authorityAccountModel";
 import bcrypt from "bcrypt";
+import path from "path"; 
+
 
 class AuthorityAccountController {
   static async addAuthorityUser(req: Request, res: Response): Promise<any> {
@@ -21,7 +23,6 @@ class AuthorityAccountController {
       const imageFile = req.file;
       console.log("Received authority account data:", req.body);
 
-      // Check if the email exists
       const { data: existingUser, error: findError } = await supabase
         .from("user")
         .select("email")
@@ -67,12 +68,11 @@ class AuthorityAccountController {
         contact,
         gender,
         image_link: imageUrl,
-        acc_status: acc_status || "Review", 
-        emailVerified: true, 
-        verification_token: null, 
+        acc_status: acc_status || "Review",
+        emailVerified: true,
+        verification_token: null,
       };
 
-      // Hash the password if provided
       if (password) {
         const hashedPassword = await bcrypt.hash(password, 10);
         userData.hashed_password = hashedPassword;
@@ -148,7 +148,7 @@ class AuthorityAccountController {
           .from("crud_bucket")
           .upload(fileName, imageFile.buffer, {
             cacheControl: "3600",
-            upsert: true, // Allow overwriting for updates
+            upsert: true,
           });
 
         if (uploadError) {
@@ -233,6 +233,46 @@ class AuthorityAccountController {
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  static async viewDocument(req: Request, res: Response): Promise<any> {
+    try {
+      const fileName = req.params.fileName;
+      if (!fileName) {
+        return res.status(400).json({ error: "File name is required" });
+      }
+  
+      const bucketName = "crud_bucket";
+  
+  
+      const fileUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucketName}/${fileName}`;
+      console.log("Fetching file from:", fileUrl);
+  
+      // Fetch the file from Supabase
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return res.status(404).json({ error: "File not found in Supabase Storage" });
+        }
+        throw new Error(`Failed to fetch the document from Supabase Storage: ${response.statusText}`);
+      }
+  
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+  
+      // Set headers to display the PDF inline
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Content-Length", buffer.length);
+  
+      // Send the file buffer
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error serving document:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to serve the document",
       });
     }
   }
