@@ -102,7 +102,6 @@ class AuthorityAccount {
   }
 
   static async getUserDocs(user_id: string) {
-    // Join user with client_documents directly, and with tasker_documents through tasker
     const { data, error } = await supabase
       .from("user")
       .select(`
@@ -119,6 +118,39 @@ class AuthorityAccount {
     if (error) throw new Error(error.message);
 
     return data;
+  }
+
+  static async updateTaskerDocumentsValid(user_id: string, valid: boolean) {
+    const { data: tasker, error: taskerError } = await supabase
+      .from("tasker")
+      .select("tasker_id")
+      .eq("user_id", user_id)
+      .maybeSingle();
+
+    if (taskerError) {
+      console.error("Tasker Query Error:", taskerError);
+      throw new Error("Tasker Query Error: " + taskerError.message);
+    }
+
+    if (!tasker) {
+      console.log(`No tasker found for user_id: ${user_id}`);
+      return;
+    }
+
+    const taskerId = tasker.tasker_id;
+
+
+    const { error: updateError } = await supabase
+      .from("tasker_documents")
+      .update({ valid: valid })
+      .eq("tasker_id", taskerId);
+
+    if (updateError) {
+      console.error("Tasker Documents Update Error:", updateError);
+      throw new Error("Tasker Documents Update Error: " + updateError.message);
+    }
+
+    console.log(`Updated tasker_documents for tasker_id ${taskerId}: valid set to ${valid}`);
   }
 }
 

@@ -4,7 +4,6 @@ import { AuthorityAccount } from "../models/authorityAccountModel";
 import bcrypt from "bcrypt";
 import path from "path"; 
 
-
 class AuthorityAccountController {
   static async addAuthorityUser(req: Request, res: Response): Promise<any> {
     try {
@@ -126,13 +125,7 @@ class AuthorityAccountController {
       } = req.body;
       const imageFile = req.file;
 
-      const { data: existingUser, error: findError } = await supabase
-        .from("user")
-        .select("email, user_id")
-        .eq("email", email)
-        .neq("user_id", userId)
-        .maybeSingle();
-
+      const { data: existingUser, error: findError } = await supabase.from("user").select("email, user_id").eq("email", email).neq("user_id", userId).maybeSingle();
       if (findError && findError.message !== "No rows found") {
         throw new Error(findError.message);
       }
@@ -179,6 +172,10 @@ class AuthorityAccountController {
       }
 
       const updatedUser = await AuthorityAccount.update(userId, updateData);
+
+      if (acc_status === "Active" && updatedUser.user_role === "Tasker") {
+        await AuthorityAccount.updateTaskerDocumentsValid(userId.toString(), true);
+      }
 
       res.status(200).json({
         message: "Authority user updated successfully.",
@@ -262,12 +259,10 @@ class AuthorityAccountController {
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
   
-      // Set headers to display the PDF inline
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "inline");
       res.setHeader("Content-Length", buffer.length);
   
-      // Send the file buffer
       res.send(buffer);
     } catch (error) {
       console.error("Error serving document:", error);

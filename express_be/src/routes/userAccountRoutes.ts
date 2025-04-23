@@ -18,11 +18,7 @@ router.get("/getUserData/:id", UserAccountController.getUserData);
 
 router.get("/users", UserAccountController.getPaginationUsers);
 
-router.put(
-  "/updateUserInfo/:id/",
-  upload.single("image"),
-  UserAccountController.updateUser
-);
+router.put("/updateUserInfo/:id/", upload.single("image"), UserAccountController.updateUser);
 
 router.post("/verify-otp", AuthenticationController.otpAuthentication);
 
