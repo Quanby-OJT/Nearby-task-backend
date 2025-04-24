@@ -104,9 +104,9 @@ class ConversationModel {
   }
 
   static async deleteConversation(task_taken_id: number) {
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from("task_taken")
-        .delete()
+        .update({is_deleted: true})
         .eq("task_taken_id", task_taken_id)
         .single();
 
@@ -115,7 +115,7 @@ class ConversationModel {
       throw new Error("Failed to delete conversation");
     }
 
-    return data;
+    return true;
   }
 }
 
