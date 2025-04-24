@@ -13,7 +13,7 @@ class FeedbackModel{
             .eq("task_taken_id", feedbackInfo.task_taken_id);
 
         if (existingError) throw new Error(existingError.message);
-        if (existingReview && existingReview.length > 0) throw new Error("Feedback already exists for this task");
+        if (existingReview && existingReview.length > 0) return {error: "Feedback already exists for this task"};
         const { data: taskReviewData, error: taskReviewError } = await supabase.from("task_reviews").insert([feedbackInfo])
 
         if (taskReviewError) throw new Error(taskReviewError.message);
