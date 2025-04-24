@@ -707,6 +707,7 @@ class NotificationController {
 
   static async getTaskerRequestById(req: Request, res: Response): Promise<void> {
     const requestId = req.params.requestId;
+    console.log("Request ID:", requestId);
 
     if (!requestId) {
       res.status(400).json({ error: "Request ID is required." });
@@ -719,7 +720,7 @@ class NotificationController {
       .eq("task_taken_id", requestId)
       .maybeSingle();
 
-    
+    console.log("Fetched request:", data);
 
     if (error) {
       console.error(error.message);
@@ -785,13 +786,36 @@ class NotificationController {
         .update({ task_status: "Ongoing", visit_client: visit_client, visit_tasker: visit_tasker })
         .eq("task_taken_id", taskTakenId);
 
-      console.log("Start request value: $value");
-
       if (startError) {
         console.error(startError.message);
         res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
         return;
       }
+
+      const { data: taskData, error: taskError } = await supabase
+        .from("task_taken")
+        .select("*")
+        .eq("task_taken_id", taskTakenId)
+        .maybeSingle();
+
+      if (taskError) {
+        console.error(taskError.message);
+        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+        return;
+      }
+
+      const { data: postTaskData, error: postTaskError } = await supabase
+        .from("post_task")
+        .update({ status: "Already Taken" })
+        .eq("task_id", taskData.task_id)
+        .maybeSingle();
+
+      if (postTaskError) {
+        console.error(postTaskError.message);
+        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+        return;
+      }
+
       break;
     case 'Reject':
       const { error: rejectError } = await supabase
@@ -865,8 +889,7 @@ class NotificationController {
 
       console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
 
-      //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
-
+      // Update Tasker Amount
       const { error: updateAmountError } = await supabase
         .rpc('update_tasker_amount', {
           addl_credits: task?.post_task.proposed_price, 
