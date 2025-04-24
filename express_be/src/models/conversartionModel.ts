@@ -103,58 +103,19 @@ class ConversationModel {
     }
   }
 
-  static async banUser(userId: number): Promise<boolean> {
-    try {
-      const { data, error } = await supabase
-        .from("user")
-        .update({ acc_status: "Ban" })
-        .eq("user_id", userId)
-        .select()
+  static async deleteConversation(task_taken_id: number) {
+    const { data, error } = await supabase
+        .from("task_taken")
+        .delete()
+        .eq("task_taken_id", task_taken_id)
         .single();
 
-      if (error) {
-        console.error("Supabase update error (banUser):", error);
-        throw error;
-      }
-
-      if (!data) {
-        console.log(`User with ID ${userId} not found`);
-        return false;
-      }
-
-      console.log(`User with ID ${userId} has been banned`);
-      return true;
-    } catch (error) {
-      console.error("Error in banUser:", error);
-      throw error;
+    if (error) {
+      console.error("Supabase delete error:", error);
+      throw new Error("Failed to delete conversation");
     }
-  }
 
-  static async warnUser(userId: number): Promise<boolean> {
-    try {
-      const { data, error } = await supabase
-        .from("user")
-        .update({ acc_status: "Warn" })
-        .eq("user_id", userId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Supabase update error (warnUser):", error);
-        throw error;
-      }
-
-      if (!data) {
-        console.log(`User with ID ${userId} not found`);
-        return false;
-      }
-
-      console.log(`User with ID ${userId} has been warned`);
-      return true;
-    } catch (error) {
-      console.error("Error in warnUser:", error);
-      throw error;
-    }
+    return data;
   }
 }
 

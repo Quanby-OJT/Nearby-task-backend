@@ -27,7 +27,7 @@ class TaskerModel {
   static async getAuthenticatedTasker(user_id: number) {
     const { data, error } = await supabase
       .from("tasker")
-      .select("*")
+      .select("*, user(*)")
       .eq("user_id", user_id);
     if (error) throw new Error(error.message);
     return data;
