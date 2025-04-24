@@ -725,7 +725,7 @@ class NotificationController {
 
       const { error: finishError } = await supabase
         .from("task_taken")
-        .update({ task_status: "Completed", visit_client: visit_client, visit_tasker: visit_tasker })
+        .update({ task_status: "Completed", visit_client: visit_client, visit_tasker: visit_tasker, payment_released: true })
         .eq("task_taken_id", taskTakenId);
 
       console.log("Finish request value:", value);
