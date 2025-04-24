@@ -76,6 +76,7 @@ class ConversationController {
                 )
             `)
             .eq("tasker_id", user_id)
+            .eq("is_deleted", false)
                 
             console.log(data, error)
     
@@ -99,7 +100,8 @@ class ConversationController {
                 tasker!tasker_id (
                     user!user_id (first_name, middle_name, last_name)
                 )
-            `).eq("client_id", user_id);
+            `).eq("client_id", user_id)
+            .eq("is_deleted", false)
                     
             console.log(data, error)
         
@@ -178,7 +180,7 @@ class ConversationController {
 
     static async deleteConversation(req: Request, res: Response): Promise<void> {
         try {
-            const task_taken_id = parseInt(req.params.task_taken_id, 10);
+            const task_taken_id = parseInt(req.params.messageId);
             if (isNaN(task_taken_id)) {
                 res.status(400).json({ error: "Invalid task taken ID" });
                 return;
