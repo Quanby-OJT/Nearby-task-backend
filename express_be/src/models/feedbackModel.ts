@@ -20,22 +20,6 @@ class FeedbackModel{
     }
 
     static async getFeedback(tasker_id: number) {
-        interface TaskReviews {
-            task_taken: {
-                clients: {
-                    user: {
-                        first_name: String;
-                        middle_name: String;
-                        last_name: String;
-                    }
-                },
-                post_task: {
-                    task_title: String
-                }
-            },
-            rating: Number;
-            feedback: String;
-        }
 
         const { data: taskReviewData, error: taskReviewError } = await supabase
             .from("task_reviews")
@@ -53,7 +37,7 @@ class FeedbackModel{
                 rating,
                 feedback
             `)
-            .eq("tasker_id", tasker_id) as { data: TaskReviews | null, error: Error}
+            .eq("tasker_id", tasker_id)
 
         console.log(taskReviewData, taskReviewError);
 
