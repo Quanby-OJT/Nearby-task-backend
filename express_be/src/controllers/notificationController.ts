@@ -3,6 +3,7 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import PayMongoPayment from "../models/paymentModel";
 import taskModel from "../models/taskModel";
+import TaskAssignment from "../models/taskAssignmentModel";
 
 class NotificationController {
 
@@ -266,7 +267,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .in("task_status", ["Ongoing", "Disputed"]);
+          .in("task_status", ["Ongoing", "Disputed", "Awaiting Client Confirmation"]);
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -626,7 +627,7 @@ class NotificationController {
 
 
  static async updateRequest(req: Request, res: Response): Promise<void> {
-  const taskTakenId = req.params.taskTakenId;
+  const taskTakenId = parseInt(req.params.taskTakenId);
   const { value, role, client_id } = req.body;
   console.log("Role:", req.body);
   console.log("Task Taken ID:", taskTakenId);
@@ -653,67 +654,123 @@ class NotificationController {
   switch (value) {
     case 'Accept':
     
-      const { error: acceptError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Confirmed", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
+      // const { error: acceptError } = await supabase
+      //   .from("task_taken")
+      //   .update({ task_status: "Confirmed", visit_client: visit_client, visit_tasker: visit_tasker })
+      //   .eq("task_taken_id", taskTakenId);
 
-        console.log("Accept request value: $value");
+      //   console.log("Accept request value: $value");
 
-      if (acceptError) {
-        console.error(acceptError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while accepting the request." });
-        return;
-      }
+      // if (acceptError) {
+      //   console.error(acceptError.message);
+      //   res.status(500).json({ success: false, error: "An Error Occurred while accepting the request." });
+      //   return;
+      // }
+
+      await TaskAssignment.updateStatus(taskTakenId, "Accepted", visit_client, visit_tasker);
+
       break;
     case 'Start':
-      const { error: startError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Ongoing", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
+      // const { error: startError } = await supabase
+      //   .from("task_taken")
+      //   .update({ task_status: "Ongoing", visit_client: visit_client, visit_tasker: visit_tasker })
+      //   .eq("task_taken_id", taskTakenId);
 
-      console.log("Start request value: $value");
+      // console.log("Start request value: $value");
 
-      if (startError) {
-        console.error(startError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
-        return;
-      }
+      // if (startError) {
+      //   console.error(startError.message);
+      //   res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+      //   return;
+      // }
+
+      await TaskAssignment.updateStatus(taskTakenId, "Ongoing", visit_client, visit_tasker);
       break;
     case 'Reject':
-      const { error: rejectError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Rejected", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
+      // const { error: rejectError } = await supabase
+      //   .from("task_taken")
+      //   .update({ task_status: "Rejected", visit_client: visit_client, visit_tasker: visit_tasker })
+      //   .eq("task_taken_id", taskTakenId);
 
-        console.log("Reject request value: $value");
+      //   console.log("Reject request value: $value");
 
-        if (rejectError) {
-          console.error(rejectError.message);
-          res.status(500).json({ success: false, error: "An Error Occurred while rejecting the request." });
-          return;
-        }
+      //   if (rejectError) {
+      //     console.error(rejectError.message);
+      //     res.status(500).json({ success: false, error: "An Error Occurred while rejecting the request." });
+      //     return;
+      //   }
+
+        await TaskAssignment.updateStatus(taskTakenId, "Rejected", visit_client, visit_tasker);
         break;
     case 'Disputed':
-      const { error: disputeError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Disputed", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
+      // const { error: disputeError } = await supabase
+      //   .from("task_taken")
+      //   .update({ task_status: "Disputed", visit_client: visit_client, visit_tasker: visit_tasker })
+      //   .eq("task_taken_id", taskTakenId);
 
-      if (disputeError) {
-        console.error(disputeError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while disputing the request." });
-        return;
+      // if (disputeError) {
+      //   console.error(disputeError.message);
+      //   res.status(500).json({ success: false, error: "An Error Occurred while disputing the request." });
+      //   return;
+      // }
+
+      await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
+
+      const files = req.files as Express.Multer.File[];
+
+      let imageProof: string[] = [];
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const fileName = `${Date.now()}_${file.originalname}`;
+          const contentType = "image/jpeg"; // Assuming all files are images
+
+          const { data, error } = await supabase.storage
+            .from("dispute_proofs")
+            .upload(fileName, file.buffer, {
+              contentType: contentType,
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+          if (error) {
+            console.error("Error uploading image:", error);
+            res.status(500).json({
+              success: false,
+              message: "Error uploading images",
+            });
+            return;
+          }
+
+          const { data: publicUrlData } = supabase.storage
+            .from("dispute_proofs")
+            .getPublicUrl(fileName);
+
+          imageProof.push(publicUrlData.publicUrl);
+        }
       }
+      await TaskAssignment.createDispute(taskTakenId, "Reason for dispute", imageProof);
       break;
     case 'Finish':
       console.log("Hi");
 
-      const task = await taskModel.getTaskAmount(parseInt(taskTakenId));
+      if(role == "Tasker"){
+        // const { error: finishError } = await supabase
+        //   .from("task_taken")
+        //   .update({ task_status: "Awaiting Client Confirmation", visit_client: visit_client, visit_tasker: visit_tasker })
+        //   .eq("task_taken_id", taskTakenId);
+
+        // console.log("Finish request value:", value);
+
+        // if (finishError) {
+        //   console.error(finishError.message);
+        //   res.status(500).json({ success: false, error: "An Error Occurred while finishing the request." });
+        //   return;
+        // }
+        await TaskAssignment.updateStatus(taskTakenId, "Awaiting Client Confirmation", visit_client, visit_tasker);
+      }else{
+        const task = await taskModel.getTaskAmount(taskTakenId);
       console.log("Task data:", task);
       console.log("Proposed Price:", task?.post_task.proposed_price);
-      
-      // ... rest of your code
 
       await PayMongoPayment.releasePayment({
         client_id: task?.post_task.client_id,
@@ -723,20 +780,22 @@ class NotificationController {
         deposit_date: new Date().toISOString(),
       });
 
-      const { error: finishError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Completed", visit_client: visit_client, visit_tasker: visit_tasker, payment_released: true })
-        .eq("task_taken_id", taskTakenId);
+      // const { error: finishError } = await supabase
+      //   .from("task_taken")
+      //   .update({ task_status: "Completed", visit_client: visit_client, visit_tasker: visit_tasker, payment_released: true })
+      //   .eq("task_taken_id", taskTakenId);
 
-      console.log("Finish request value:", value);
+      // console.log("Finish request value:", value);
 
-      if (finishError) {
-        console.error(finishError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while finishing the request." });
-        return;
-      }
+      // if (finishError) {
+      //   console.error(finishError.message);
+      //   res.status(500).json({ success: false, error: "An Error Occurred while finishing the request." });
+      //   return;
+      // }
 
-      console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
+      await TaskAssignment.updateStatus(taskTakenId, "Completed", visit_client, visit_tasker, undefined, true);
+
+      //console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
 
       //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
 
@@ -752,6 +811,7 @@ class NotificationController {
         return;
       }
       break;
+      }
     default:
       res.status(400).json({ success: false, error: "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'" });
       return;
