@@ -15,6 +15,92 @@ class ClientModel {
     return data;
   }
 
+  static async getAllClientsBySpecialization(req: Request, res: Response): Promise<void> {
+    const specialization = req.query.specialization as string | undefined;
+    console.log('Specialization:', specialization);
+
+    let specializationId: number | null = null;
+    if (specialization && specialization !== 'All') {
+      const { data: specializationData, error: specializationError } = await supabase
+        .from('tasker_specialization')
+        .select('spec_id, specialization')
+        .eq('specialization', specialization)
+        .single();
+
+      if (specializationError || !specializationData) {
+        console.error('Supabase fetch specialization error:', specializationError);
+        throw new Error(specializationError?.message || 'Specialization not found');
+      }
+
+      console.log("Fetched specialization ID:", specializationData.spec_id);
+      console.log("Fetched specialization name:", specializationData.specialization);
+      specializationId = specializationData.spec_id;
+    }
+
+
+
+    try {
+      const { data, error } = await supabase
+      .from('tasker').select(`
+        tasker_id,
+        user_id,
+        specialization_id,
+        bio,
+        skills,
+        availability,
+        social_media_links,
+        address,
+        wage_per_hour,
+        pay_period,
+        group,
+        rating,
+        user!inner (
+          user_id,
+          first_name,
+          middle_name,
+          last_name,
+          image_link,
+          birthdate,
+          acc_status,
+          gender,
+          email,
+          contact,
+          verified,
+          user_role
+        ),
+        tasker_specialization (
+          specialization
+        )
+      `)
+      .not('user', 'is', null)
+      .eq('user.acc_status', 'Active')
+      .eq('user.verified', true)
+      .eq('user.user_role', 'Tasker')
+      .eq('specialization_id', specializationId);
+  
+      console.log("Taskers data:", data, "Error:", error);
+  
+      if (error) {
+        console.error("Error fetching taskers:", error.message);
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+  
+      if (!data || data.length === 0) {
+        res.status(200).json({ error: "No active taskers found." });
+        return;
+      }
+  
+      res.status(200).json({ taskers: data });
+    } catch (error) {
+      console.error("Error fetching taskers:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  }
+
   static async getAllClients(req: Request, res: Response): Promise<void> {
     console.log("Fetching all desired Taskers...");
     try {
