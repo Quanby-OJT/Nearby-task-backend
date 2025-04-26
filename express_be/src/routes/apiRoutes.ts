@@ -135,6 +135,7 @@ router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.
 router.get("/notifications-tasker-request/:userId", NotificationController.getTaskerRequest);
 router.get("/notifications-tasker-confirmed/:userId", NotificationController.getConfirmedRequests);
 router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOngoingRequests);
+router.get("/notifications-tasker-review/:userId", NotificationController.getReviewRequests);
 router.get("/notifications-tasker-reject/:userId", NotificationController.getRejectedRequests);
 router.get("/notifications-tasker-pending/:userId", NotificationController.getPendingRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
