@@ -81,6 +81,17 @@ class TaskController {
     }
   }
 
+  static async getTaskWithSpecialization(req: Request, res: Response): Promise<void> {
+    try {
+      const tasks = await taskModel.getTaskWithSpecialization(req.query.specialization as string);
+      res.status(200).json({ tasks });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
