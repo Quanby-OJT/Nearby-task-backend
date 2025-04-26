@@ -240,6 +240,23 @@ class TaskModel {
     if (error) throw new Error(error.message);
     return data;
   }
+
+  async disableTask(taskId: number) {
+    const { data, error } = await supabase
+      .from("post_task")
+      .update({ status: "Closed" })
+      .eq("task_id", taskId)
+      .select()
+      .single();
+  
+    if (error) {
+      console.error("Error disabling task in model:", error);
+      throw new Error(error.message);
+    }
+  
+    return { success: true, message: "Task closed successfully", task: data };
+  }
+
 }
 
 const taskModel = new TaskModel();
