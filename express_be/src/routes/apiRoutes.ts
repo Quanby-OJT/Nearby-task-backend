@@ -88,6 +88,7 @@ router.use(isAuthenticated);
 router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
+router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
 //router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
@@ -135,6 +136,7 @@ router.get("/notifications-tasker-request/:userId", NotificationController.getTa
 router.get("/notifications-tasker-confirmed/:userId", NotificationController.getConfirmedRequests);
 router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOngoingRequests);
 router.get("/notifications-tasker-reject/:userId", NotificationController.getRejectedRequests);
+router.get("/notifications-tasker-pending/:userId", NotificationController.getPendingRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
 router.put("/update-request/:taskTakenId", NotificationController.updateRequest);
