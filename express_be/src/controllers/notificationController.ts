@@ -716,11 +716,11 @@ class NotificationController {
 
       await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
 
-      const files = req.files as Express.Multer.File[];
+      const images = req.files as Express.Multer.File[];
 
       let imageProof: string[] = [];
-      if (files && files.length > 0) {
-        for (const file of files) {
+      if (images && images.length > 0) {
+        for (const file of images) {
           const fileName = `${Date.now()}_${file.originalname}`;
           const contentType = "image/jpeg"; // Assuming all files are images
 
