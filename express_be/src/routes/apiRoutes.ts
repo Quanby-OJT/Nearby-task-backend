@@ -142,7 +142,7 @@ router.get("/displayRequest/:requestId", NotificationController.getTaskerRequest
 router.put(
   "/update-request/:taskTakenId",
   upload.fields([
-    { name: "images", maxCount: 10 } // Allows up to 10 images, adjust maxCount as needed
+    { name: "imageEvidence", maxCount: 10 } // Allows up to 10 images, adjust maxCount as needed
   ]),
   NotificationController.updateRequest
 );

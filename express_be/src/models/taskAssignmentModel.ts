@@ -19,7 +19,7 @@ class TaskAssignment{
         .eq("task_taken_id", task_taken_id);
     }
 
-    static async createDispute(task_taken_id: number, reason_for_dispute: string, image_proof: string[]){
+    static async createDispute(task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof: string[]){
 
         //TODO: Upload image_proof to Supabase Storage and get the URL
 
@@ -28,7 +28,8 @@ class TaskAssignment{
             .insert({
                 task_taken_id: task_taken_id, 
                 reason_for_dispute: reason_for_dispute,
-                image_proof: image_proof
+                dispute_details: dispute_details,
+                image_proof: JSON.stringify(image_proof) // Convert array to JSONB string
             })
 
         if(error) throw new Error(error.message)
