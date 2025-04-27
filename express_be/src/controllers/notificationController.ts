@@ -916,10 +916,32 @@ class NotificationController {
         .update({ task_status: "Ongoing", visit_client: visit_client, visit_tasker: visit_tasker })
         .eq("task_taken_id", taskTakenId);
 
-      console.log("Start request value: $value");
-
       if (startError) {
         console.error(startError.message);
+        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+        return;
+      }
+
+      const { data: taskData, error: taskError } = await supabase
+        .from("task_taken")
+        .select("*")
+        .eq("task_taken_id", taskTakenId)
+        .maybeSingle();
+
+      if (taskError) {
+        console.error(taskError.message);
+        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+        return;
+      }
+
+      const { data: postTaskData, error: postTaskError } = await supabase
+        .from("post_task")
+        .update({ status: "Already Taken" })
+        .eq("task_id", taskData.task_id)
+        .maybeSingle();
+
+      if (postTaskError) {
+        console.error(postTaskError.message);
         res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
         return;
       }
