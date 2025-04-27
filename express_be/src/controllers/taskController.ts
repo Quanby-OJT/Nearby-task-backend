@@ -102,6 +102,17 @@ class TaskController {
       });
     }
   }
+  static async getTaskWithSpecialization(req: Request, res: Response): Promise<void> {
+    try {
+      const tasks = await taskModel.getTaskWithSpecialization(req.query.specialization as string);
+      res.status(200).json({ tasks });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
@@ -267,18 +278,21 @@ class TaskController {
   static async assignTask(req: Request, res: Response): Promise<void> {
     const { tasker_id, task_id, client_id, role } = req.body;
 
-    console.log("Role: ${role}");
+    console.log("Role this is: " + role);
 
     let visit_client = false;
     let visit_tasker = false;
+    let requested_from = "";
 
-    
     if (role == "Client") {
       visit_client = true;
       visit_tasker = false;
+      requested_from = "Client";
+
     } else {
       visit_client = false;
       visit_tasker = true;
+      requested_from = "Tasker";
     }
 
     const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
@@ -295,6 +309,7 @@ class TaskController {
       visit_client,
       visit_tasker,
       task_status: "Pending",
+      requested_from
     });
 
     if (error) {

@@ -88,16 +88,22 @@ router.use(isAuthenticated);
 router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
+router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
 router.put("/displayTask/:id", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
+
+//All COnversation Messages
 router.post("/send-message", ConversationController.sendMessage);
 router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 router.get("/messages/:task_taken_id", ConversationController.getMessages);
 router.get("/getUserConversation", ConversationController.getUserConversation);
+router.delete("/delete-message/:messageId", ConversationController.deleteConversation);
+
+//Tasker Status Update
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
 
@@ -129,7 +135,9 @@ router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.
 router.get("/notifications-tasker-request/:userId", NotificationController.getTaskerRequest);
 router.get("/notifications-tasker-confirmed/:userId", NotificationController.getConfirmedRequests);
 router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOngoingRequests);
+router.get("/notifications-tasker-review/:userId", NotificationController.getReviewRequests);
 router.get("/notifications-tasker-reject/:userId", NotificationController.getRejectedRequests);
+router.get("/notifications-tasker-pending/:userId", NotificationController.getPendingRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
 router.put("/update-request/:taskTakenId", NotificationController.updateRequest);
