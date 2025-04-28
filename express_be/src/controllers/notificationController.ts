@@ -381,7 +381,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .eq("task_status", "Review");
+          .in("task_status", ["Review", "Disputed"]);
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -495,7 +495,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .in("task_status", ["Ongoing", "Disputed", "Awaiting Client Confirmation"]);
+          .in("task_status", ["Ongoing", "Disputed", "Review"]);
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -883,67 +883,15 @@ class NotificationController {
   
     switch (value) {
       case 'Accept':
-      
-        // const { error: acceptError } = await supabase
-        //   .from("task_taken")
-        //   .update({ task_status: "Confirmed", visit_client: visit_client, visit_tasker: visit_tasker })
-        //   .eq("task_taken_id", taskTakenId);
-  
-        //   console.log("Accept request value: $value");
-  
-        // if (acceptError) {
-        //   console.error(acceptError.message);
-        //   res.status(500).json({ success: false, error: "An Error Occurred while accepting the request." });
-        //   return;
-        // }
-  
         await TaskAssignment.updateStatus(taskTakenId, "Accepted", visit_client, visit_tasker);
-  
         break;
       case 'Start':
-        // const { error: startError } = await supabase
-        //   .from("task_taken")
-        //   .update({ task_status: "Ongoing", visit_client: visit_client, visit_tasker: visit_tasker })
-        //   .eq("task_taken_id", taskTakenId);
-  
-        // console.log("Start request value: $value");
-  
-        // if (startError) {
-        //   console.error(startError.message);
-        //   res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
-        //   return;
-        // }
-  
         await TaskAssignment.updateStatus(taskTakenId, "Ongoing", visit_client, visit_tasker);
         break;
       case 'Reject':
-        // const { error: rejectError } = await supabase
-        //   .from("task_taken")
-        //   .update({ task_status: "Rejected", visit_client: visit_client, visit_tasker: visit_tasker })
-        //   .eq("task_taken_id", taskTakenId);
-  
-        //   console.log("Reject request value: $value");
-  
-        //   if (rejectError) {
-        //     console.error(rejectError.message);
-        //     res.status(500).json({ success: false, error: "An Error Occurred while rejecting the request." });
-        //     return;
-        //   }
-  
           await TaskAssignment.updateStatus(taskTakenId, "Rejected", visit_client, visit_tasker);
           break;
       case 'Disputed':
-        // const { error: disputeError } = await supabase
-        //   .from("task_taken")
-        //   .update({ task_status: "Disputed", visit_client: visit_client, visit_tasker: visit_tasker })
-        //   .eq("task_taken_id", taskTakenId);
-  
-        // if (disputeError) {
-        //   console.error(disputeError.message);
-        //   res.status(500).json({ success: false, error: "An Error Occurred while disputing the request." });
-        //   return;
-        // }
-  
         await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
   
         const imageEvidence = req.files as Express.Multer.File[];
@@ -997,19 +945,7 @@ class NotificationController {
         console.log("Hi");
   
         if(role == "Tasker"){
-          // const { error: finishError } = await supabase
-          //   .from("task_taken")
-          //   .update({ task_status: "Awaiting Client Confirmation", visit_client: visit_client, visit_tasker: visit_tasker })
-          //   .eq("task_taken_id", taskTakenId);
-  
-          // console.log("Finish request value:", value);
-  
-          // if (finishError) {
-          //   console.error(finishError.message);
-          //   res.status(500).json({ success: false, error: "An Error Occurred while finishing the request." });
-          //   return;
-          // }
-          await TaskAssignment.updateStatus(taskTakenId, "Awaiting Client Confirmation", visit_client, visit_tasker);
+          await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
         }else{
           const task = await taskModel.getTaskAmount(taskTakenId);
         console.log("Task data:", task);
@@ -1022,19 +958,6 @@ class NotificationController {
           payment_type: "Release of Payment to Tasker",
           deposit_date: new Date().toISOString(),
         });
-  
-        // const { error: finishError } = await supabase
-        //   .from("task_taken")
-        //   .update({ task_status: "Completed", visit_client: visit_client, visit_tasker: visit_tasker, payment_released: true })
-        //   .eq("task_taken_id", taskTakenId);
-  
-        // console.log("Finish request value:", value);
-  
-        // if (finishError) {
-        //   console.error(finishError.message);
-        //   res.status(500).json({ success: false, error: "An Error Occurred while finishing the request." });
-        //   return;
-        // }
   
         await TaskAssignment.updateStatus(taskTakenId, "Completed", visit_client, visit_tasker, undefined, true);
   
