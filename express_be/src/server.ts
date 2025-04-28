@@ -46,8 +46,6 @@ app.use(
 app.use("/connect", server);
 
 app.use("/connect", authRoutes);
-
-
 app.use("/connect", userAccountRoute);
 app.use("/connect", userRoute);
 app.use("/connect", taskRoutes);
