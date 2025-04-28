@@ -19,7 +19,6 @@ import paymentRoutes from "./routes/paymentRoutes";
 dotenv.config();
 const app: Application = express();
 
-// Middleware
 app.use(
   cors({
     origin: true,
@@ -44,16 +43,9 @@ app.use(
   })
 );
 
-// Mount auth routes - These should be public
-
-
-// Mount API routes - This contains both public and protected routes
 app.use("/connect", server);
 
 app.use("/connect", authRoutes);
-
-// Mount other routes - These will be protected by the isAuthenticated middleware in their respective files
-
 app.use("/connect", userAccountRoute);
 app.use("/connect", disputeRoute);
 app.use("/connect", taskRoutes);
@@ -69,6 +61,6 @@ const PORT = port || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(
-    "Click this to direct: http://localhost:" + PORT + "/connect"
+    "Click this to direct: http://localhost:5000/connect"
   );
 });

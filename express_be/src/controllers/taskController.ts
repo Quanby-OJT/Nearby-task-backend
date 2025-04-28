@@ -81,6 +81,27 @@ class TaskController {
     }
   }
 
+  static async disableTask(req: Request, res: Response): Promise<void> {
+    try {
+      const taskId = parseInt(req.params.id);
+  
+      if (isNaN(taskId)) {
+        res.status(400).json({ success: false, message: "Invalid task ID" });
+        return;
+      }
+  
+      const result = await taskModel.disableTask(taskId);
+  
+      res.status(200).json(result);
+    } catch (error) {
+      console.error("Error in disableTask:", error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while closing the task",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
   static async getTaskWithSpecialization(req: Request, res: Response): Promise<void> {
     try {
       const tasks = await taskModel.getTaskWithSpecialization(req.query.specialization as string);
