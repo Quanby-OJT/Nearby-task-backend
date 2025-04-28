@@ -3,49 +3,63 @@ import {Request, Response} from "express";
 
 class ScheduleController {
     static async scheduleTask(req: Request, res: Response): Promise<void> {
-        const {tasker_id, scheduled_date, start_time, end_time} = req.body;
+        const { tasker_id, schedule } = req.body;
         console.log(req.body);
-
-        const extractTime = (timeString: string): string => {
-            const match = timeString.match(/TimeOfDay\((\d{2}:\d{2})\)/);
-            return match ? match[1] : timeString;
-        };
-
-        const extractedStartTime = extractTime(start_time);
-        const extractedEndTime = extractTime(end_time);
-
-        const {data, error} = await supabase.from("tasker_available_schedule").insert({
-            tasker_id,
-            scheduled_date,
-            start_time: extractedStartTime,
-            end_time: extractedEndTime,
-        });
-
-        if (error) {
-            console.error(error.message);
-            res.status(500).json({error: "An Error Occurred while Scheduling the Task"});
+    
+        if (!tasker_id || !Array.isArray(schedule)) {
+            res.status(400).json({ error: "tasker_id and schedule array are required" });
             return;
         }
-
-        res.status(200).json({message: "Task has been Scheduled Successfully.", data: data});
-    }
-
-    static async displaySchedules(req: Request, res: Response): Promise<void> {
-        const {tasker_id} = req.params;
-        console.log(req.params);
-
-        const {data, error} = await supabase.from("tasker_available_schedule").select("*").eq("tasker_id", tasker_id);
-
-        if (error) {
-            console.error(error.message);
-            res.status(500).json({error: "An Error Occurred while Fetching the Schedules"});
-            return;
+    
+        try {
+            const insertData = schedule.map((item: any) => ({
+                tasker_id,
+                scheduled_date: item.scheduled_date,
+                start_time: item.start_time, // Already in HH:MM format
+                end_time: item.end_time,     // Already in HH:MM format
+            }));
+    
+            const { data, error } = await supabase
+                .from("tasker_available_schedule")
+                .insert(insertData);
+    
+            if (error) {
+                console.error(error.message);
+                res.status(500).json({ error: "An Error Occurred while Scheduling the Task" });
+                return;
+            }
+    
+            res.status(200).json({ message: "Tasks have been Scheduled Successfully.", data });
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "An Error Occurred while Scheduling the Task" });
         }
-
-        res.status(200).json({message: "Schedules fetched successfully.", data: data});
     }
 
-    static async rescheduleTask(req: Request, res: Response): Promise<void> {
+
+
+    static async displaySchedules(req: Request, res: Response): Promise<any> {
+       const { tasker_id } = req.params;
+
+        try {
+            const { data, error } = await supabase
+            .from('tasker_available_schedule')
+            .select('*')
+            .eq('tasker_id', tasker_id);
+
+            if (error) {
+            console.error('Supabase error:', error.message);
+            return res.status(500).json({ error: error.message });
+            }
+
+            res.status(200).json({message: "Schedules fetched successfully.", data: data});
+        } catch (error) {
+            console.error('Error fetching schedules:', error);
+            res.status(500).json({ error: 'An error occurred while fetching schedules' });
+        }
+    }
+
+    static async rescheduleTask(req: Request, res: Response): Promise<any> {
         const {tasker_id, scheduled_date, start_time, end_time} = req.body;
         console.log(req.body);
 
