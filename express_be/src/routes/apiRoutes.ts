@@ -88,6 +88,7 @@ router.use(isAuthenticated);
 router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
+router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
 //router.patch("/displayTask/:id/disable", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
@@ -134,10 +135,18 @@ router.put("/updateUserInfo/:id/", upload.single("image"),UserAccountController.
 router.get("/notifications-tasker-request/:userId", NotificationController.getTaskerRequest);
 router.get("/notifications-tasker-confirmed/:userId", NotificationController.getConfirmedRequests);
 router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOngoingRequests);
+router.get("/notifications-tasker-review/:userId", NotificationController.getReviewRequests);
 router.get("/notifications-tasker-reject/:userId", NotificationController.getRejectedRequests);
+router.get("/notifications-tasker-pending/:userId", NotificationController.getPendingRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
-router.put("/update-request/:taskTakenId", NotificationController.updateRequest);
+router.put(
+  "/update-request/:taskTakenId",
+  upload.fields([
+    { name: "imageEvidence", maxCount: 10 } // Allows up to 10 images, adjust maxCount as needed
+  ]),
+  NotificationController.updateRequest
+);
 router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
 
 //User CRUD
