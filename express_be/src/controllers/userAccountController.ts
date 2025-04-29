@@ -301,7 +301,7 @@ class UserAccountController {
 
   static async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
-      const { data, error } = await supabase.from("user").select();
+      const { data, error } = await supabase.from("user").select().order("created_at", { ascending: false });;
 
       if (error) {
         res.status(500).json({ error: error.message });
