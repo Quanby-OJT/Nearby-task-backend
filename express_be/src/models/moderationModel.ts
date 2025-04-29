@@ -86,7 +86,8 @@ class ClientTaskerModeration{
         )
         ),
         post_task(
-        task_title
+          task_id,
+          task_title
         )
       ),
       reason_for_dispute,
@@ -96,45 +97,11 @@ class ClientTaskerModeration{
       `)
       .order("created_at", { ascending: false });
 
-    console.log("Dispute Data:" + data, "Dispute Errors: " + error)
+    //console.log("Dispute Data:" + data, "Dispute Errors: " + error)
 
     if (error) throw new Error(error.message)
 
     return data;
-  }
-
-  /**
-   * Get Specific Dispute to be displayed on the Modal.
-   * @param dispute_id 
-   * @returns 
-   */
-
-  static async getADispute(dispute_id: number){
-    const { data, error } = await supabase
-      .from("dispute")
-      .select(`
-        dispute_id,
-        task_taken(
-          clients(
-            user(
-              first_name,
-              middle_name,
-              last_name,
-              user_role
-            )
-          )
-        ),
-        reason_for_dispute,
-        dispute_details,
-        image_proof,
-        created_at,
-      `)
-      .eq("dispute_id", dispute_id)
-      .single();
-
-    if (error) throw new Error(error.message)
-
-    return data
   }
 
   static async updateADispute(task_taken_id: number, task_status: string, dispute_id: number, moderator_action: Text, addl_dispute_notes: Text, moderator_id: number){
@@ -155,6 +122,12 @@ class ClientTaskerModeration{
       .eq("task_taken_id", task_taken_id)
 
     if(taskTakenError) throw new Error(taskTakenError.message)
+  }
+
+  static async deleteDispute(dispute_id: number){
+    const {error} = await supabase.from("dispute_logs").update({is_archived: true}).eq("dispute_id", dispute_id)
+
+    if(error) throw new Error(error.message)
   }
 }
 

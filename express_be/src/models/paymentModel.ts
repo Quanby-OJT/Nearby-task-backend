@@ -34,6 +34,8 @@ interface PayMongoResponse {
   errors?: Array<{ detail: string }>; // For error cases
 }
 
+//TODO: Implement XENDIT API response structure
+
 class PayMongoPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
@@ -153,52 +155,9 @@ class PayMongoPayment {
     return data.transaction_id;
   }
 
-  static async fetchPaymentMethods(transactionId: string) {
-    const response = await fetch(`${process.env.PAYMONGO_API_URL}/checkout_sessions/${transactionId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString("base64")}`,
-      },
-    });
-    if (!response.ok) {
-      console.error("Error fetching checkout session:", response.statusText);
-      throw new Error(`Failed to fetch payment methods: ${response.statusText}`);
-    }
-    const data = await response.json();
-    console.log("Checkout Session Response:", data);
-    return data.data.attributes.payment_method_types; // Returns supported payment methods
-  }
-
+  //To Refund ALL payment to Client in case of account deletion.
   static async cancelTransaction(transactionId: string, cancellationReason: string) {
-    // PayMongo doesn’t support direct cancellation of checkout sessions; refund if paid
-    const response = await fetch(`${process.env.PAYMONGO_API_URL}/checkout_sessions/${transactionId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString("base64")}`,
-      },
-    });
-    const sessionData = await response.json();
-
-    if (sessionData.data.attributes.status === "paid") {
-      const refundPayload = {
-        data: {
-          attributes: {
-            amount: sessionData.data.attributes.line_items[0].amount,
-            reason: cancellationReason,
-            payment_id: sessionData.data.attributes.payments[0]?.id, // Requires payment to be completed
-          },
-        },
-      };
-      const refundResponse = await fetch(`${process.env.PAYMONGO_API_URL}/refunds`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString("base64")}`,
-        },
-        body: JSON.stringify(refundPayload),
-      });
-      if (!refundResponse.ok) throw new Error(`Refund failed: ${refundResponse.statusText}`);
-    }
+    // TODO: Utilize Xendit API for refunds (or other payment processor)
 
     const { error } = await supabase
       .from("payment_logs")
@@ -240,6 +199,21 @@ class PayMongoPayment {
       `);
     if (error) throw new Error(error.message);
     return data;
+  }
+
+  static async getTaskAmount(task_id: number){
+    const { data, error } = await supabase
+      .from("post_task")
+      .select("proposed_price")
+      .eq("task_id", task_id)
+      .single();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("No task found for this ID");
+    return data;
+  }
+
+  //In Case of Dispute raised by either user/
+  static async refundCreditstoClient(task_taken_id: number, amount: number) {
   }
 }
 
