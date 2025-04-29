@@ -90,7 +90,7 @@ router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
-//router.patch("/displayTask/:id/disable", TaskController.disableTask);
+router.put("/displayTask/:id", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
@@ -201,6 +201,7 @@ router.put(
   ]),
   UserAccountController.updateTaskerWithPDF
 );
+
 
 
 // updating tasker with only profile image and user details
