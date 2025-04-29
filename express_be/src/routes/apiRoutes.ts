@@ -114,6 +114,8 @@ router.get("/get-all-tasker-feedback", FeedbackController.getFeedbacks);
 
 router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
 router.get("/get-tasker-schedule/:tasker_id", ScheduleController.displaySchedules);
+router.delete("/delete-tasker-schedule/:id", ScheduleController.deleteSchedule);
+router.put("/edit-tasker-schedule/:id", ScheduleController.editSchedule);
 router.post("/reschedule-task", ScheduleController.rescheduleTask);
 
 router.get("/get-token-balance/:userId", TaskController.getTokenBalance);
