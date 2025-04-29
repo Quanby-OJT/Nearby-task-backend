@@ -17,7 +17,7 @@ class DisputeController {
 
       const data = await ClientTaskerModeration.getADispute(parseInt(dispute_id))
 
-      res.status(200).json({ message: "Dispute retrieved successfully", data });
+      res.status(200).json({ message: "Dispute retrieved successfully", disputes: data });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "An unexpected error occurred" });

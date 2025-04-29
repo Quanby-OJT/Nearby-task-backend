@@ -75,26 +75,32 @@ class ClientTaskerModeration{
     const { data, error } = await supabase
       .from("dispute_logs")
       .select(`
-        dispute_id,
-        task_taken(
-          clients(
-            user(
-              first_name,
-              middle_name,
-              last_name
-            )
-          )
+      dispute_id,
+      task_taken(
+        clients(
+        user(
+          first_name,
+          middle_name,
+          last_name,
+          user_role
+        )
         ),
-        reason_for_dispute,
-        dispute_details,
-        image_proof,
-        created_at,
+        post_task(
+        task_title
+        )
+      ),
+      reason_for_dispute,
+      dispute_details,
+      image_proof,
+      created_at::date
       `)
       .order("created_at", { ascending: false });
 
+    console.log("Dispute Data:" + data, "Dispute Errors: " + error)
+
     if (error) throw new Error(error.message)
 
-      return data;
+    return data;
   }
 
   /**
@@ -113,7 +119,8 @@ class ClientTaskerModeration{
             user(
               first_name,
               middle_name,
-              last_name
+              last_name,
+              user_role
             )
           )
         ),
