@@ -104,7 +104,7 @@ class ClientTaskerModeration{
     return data;
   }
 
-  static async updateADispute(task_taken_id: number, task_status: string, dispute_id: number, moderator_action: Text, addl_dispute_notes: Text, moderator_id: number){
+  static async updateADispute(task_taken_id: number, task_status: string, dispute_id: number, moderator_action: string, addl_dispute_notes: Text, moderator_id: number){
     const {error: disputeError} = await supabase.from('dispute_logs').
       update({
         moderator_action,

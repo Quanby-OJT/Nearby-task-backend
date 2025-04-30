@@ -1,5 +1,6 @@
 import {Request, Response} from "express";
 import { supabase } from "../config/configuration";
+import taskModel from "./taskModel";
 
 interface Payment {
   payment_history_id?: number;
@@ -170,7 +171,10 @@ class PayMongoPayment {
 
   static async releasePayment(paymentInfo: Payment) {
     if (paymentInfo.amount <= 0) throw new Error("Invalid Amount to be released. Please Try Again.");
-    // TODO: Implement payment release logic for task completion using Xendit (fallback is aemi-auto release of payment.).
+    
+    const finalAmount = paymentInfo.amount * 0.9;
+    paymentInfo.amount = finalAmount
+    // TODO: Implement payment release logic for task completion using Xendit (fallback is semi-auto release of payment.).
 
     // Placeholder: Mark as completed in Supabase once payment is confirmed
     const { error } = await supabase
@@ -201,19 +205,34 @@ class PayMongoPayment {
     return data;
   }
 
-  static async getTaskAmount(task_id: number){
-    const { data, error } = await supabase
-      .from("post_task")
-      .select("proposed_price")
-      .eq("task_id", task_id)
-      .single();
-    if (error) throw new Error(error.message);
-    if (!data) throw new Error("No task found for this ID");
-    return data;
+  //In Case of Dispute raised by either user/
+  static async refundCreditstoClient(task_taken_id: number, task_id: number) {
+    const task_amount = await taskModel.getTaskAmount(task_taken_id);
+    if(!task_amount) return {error: "Unable to retrieve task payment. Please Try Again."}
+
+    const {error: UpdateClientCreditsError} = await supabase.rpc('increment_client_credits', { addl_credits: task_amount.post_task.proposed_price, id: task_amount.post_task.client_id})
+
+    if(UpdateClientCreditsError) throw new Error(UpdateClientCreditsError.message)
   }
 
-  //In Case of Dispute raised by either user/
-  static async refundCreditstoClient(task_taken_id: number, amount: number) {
+  static async releaseHalfCredits(task_taken_id: number, task_id: number){
+    const task_amount = await taskModel.getTaskAmount(task_taken_id)
+
+    if(!task_amount) return {error: "Unable to retrieve task payment. Please Try Again."}
+
+    const amountSplitted = task_amount.post_task.proposed_price * 0.5
+
+    const {error: UpdateClientCreditsError} = await supabase.rpc('increment_client_credits', { addl_credits: amountSplitted, id: task_amount.post_task.client_id})
+
+    if(UpdateClientCreditsError) throw new Error(UpdateClientCreditsError.message)
+
+    const { error: updateTaskerCreditsError } = await supabase
+    .rpc('update_tasker_amount', {
+      addl_credits: amountSplitted, 
+      id: task_amount?.tasker.tasker_id,
+    });
+
+    if(updateTaskerCreditsError) throw new Error(updateTaskerCreditsError.message)
   }
 }
 

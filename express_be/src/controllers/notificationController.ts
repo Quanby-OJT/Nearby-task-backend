@@ -948,34 +948,41 @@ class NotificationController {
           await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
         }else{
           const task = await taskModel.getTaskAmount(taskTakenId);
-        console.log("Task data:", task);
-        console.log("Proposed Price:", task?.post_task.proposed_price);
-  
-        await PayMongoPayment.releasePayment({
-          client_id: task?.post_task.client_id,
-          transaction_id: "Id from Xendit", //Temporary value
-          amount: task?.post_task.proposed_price ?? 0,
-          payment_type: "Release of Payment to Tasker",
-          deposit_date: new Date().toISOString(),
-        });
-  
-        await TaskAssignment.updateStatus(taskTakenId, "Completed", visit_client, visit_tasker, undefined, true);
-  
-        //console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
-  
-        //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
-  
-        const { error: updateAmountError } = await supabase
-          .rpc('update_tasker_amount', {
-            addl_credits: task?.post_task.proposed_price, 
-            id: task?.tasker.tasker_id,
+          console.log("Task data:", task);
+          console.log("Proposed Price:", task?.post_task.proposed_price);
+
+          if(!task){
+            res.status(400).json({error: "Unable to Retrieve task amount. Please Try Again."})
+            return;
+          }
+    
+          await PayMongoPayment.releasePayment({
+            client_id: task?.post_task.client_id,
+            transaction_id: "Id from Xendit", //Temporary value
+            amount: task?.post_task.proposed_price ?? 0,
+            payment_type: "Release of Payment to Tasker",
+            deposit_date: new Date().toISOString(),
           });
-  
-        if (updateAmountError) {
-          console.error(updateAmountError.message);
-          res.status(500).json({ success: false, error: "An Error Occurred while updating tasker amount." });
-          return;
-        }
+    
+          await TaskAssignment.updateStatus(taskTakenId, "Completed", visit_client, visit_tasker, undefined, true);
+    
+          //console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
+    
+          //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
+    
+          const finalAmount = task?.post_task.proposed_price * 0.9;
+
+          const { error: updateAmountError } = await supabase
+            .rpc('update_tasker_amount', {
+              addl_credits: finalAmount, 
+              id: task?.tasker.tasker_id,
+            });
+    
+          if (updateAmountError) {
+            console.error(updateAmountError.message);
+            res.status(500).json({ success: false, error: "An Error Occurred while updating tasker amount." });
+            return;
+          }
         break;
         }
       default:
