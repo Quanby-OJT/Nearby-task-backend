@@ -98,6 +98,7 @@ class ClientTaskerModeration{
       addl_dispute_notes,
       created_at::date
       `)
+      .eq("is_archived", false)
       .order("created_at", { ascending: false });
 
     //console.log("Dispute Data:" + data, "Dispute Errors: " + error)
