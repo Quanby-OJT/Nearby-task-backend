@@ -16,7 +16,7 @@ class DisputeController {
 
   static async updateDispute(req: Request, res: Response): Promise<void> {
     try{
-      console.log("Updating dispute with the Information..." + req.body)
+      console.log("Updating dispute with the Information...", req.body)
       const {task_taken_id, task_status, task_id, moderator_id, moderator_action, addl_dispute_notes} = req.body
       const dispute_id = parseInt(req.params.id)
 

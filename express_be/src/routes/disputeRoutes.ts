@@ -1,12 +1,8 @@
 // routes/userRoutes.ts
 import { Router } from "express";
-
-import multer from "multer";
 import DisputeController from "../controllers/disputeController";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
-
 router.get('/get-all-disputes', DisputeController.getAllDisputes);
 router.put('/update-dispute/:id', DisputeController.updateDispute);
 router.delete('/delete-dispute/:id', DisputeController.deleteDispute);

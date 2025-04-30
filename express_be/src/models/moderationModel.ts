@@ -77,13 +77,14 @@ class ClientTaskerModeration{
       .select(`
       dispute_id,
       task_taken(
+        task_taken_id,
         clients(
-        user(
-          first_name,
-          middle_name,
-          last_name,
-          user_role
-        )
+          user(
+            first_name,
+            middle_name,
+            last_name,
+            user_role
+          )
         ),
         post_task(
           task_id,
@@ -93,6 +94,8 @@ class ClientTaskerModeration{
       reason_for_dispute,
       dispute_details,
       image_proof,
+      moderator_action,
+      addl_dispute_notes,
       created_at::date
       `)
       .order("created_at", { ascending: false });
