@@ -12,13 +12,29 @@ class TaskAssignment{
         return data
     }
 
-    static async updateStatus(status: {task_status: string, reason_for_rejection_or_cancellation: string}){
-        const {data, error} = await supabase.from("task_taken").insert([status])
+    static async updateStatus(task_taken_id: number, task_status: string, visit_client: boolean, visit_tasker: boolean, reason_for_rejection_or_cancellation?: string, payment_relased?: boolean, is_deleted?: boolean){
+        const { error } = await supabase
+        .from("task_taken")
+        .update({ task_status: "Disputed", visit_client: visit_client, visit_tasker: visit_tasker, reason_for_rejection_or_cancellation: reason_for_rejection_or_cancellation, payment_relased: payment_relased, is_deleted: is_deleted })
+        .eq("task_taken_id", task_taken_id);
+    }
+
+    static async createDispute(task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof: string[]){
+
+        //TODO: Upload image_proof to Supabase Storage and get the URL
+
+        const { data, error } = await supabase
+            .from('dispute_logs')
+            .insert({
+                task_taken_id: task_taken_id, 
+                reason_for_dispute: reason_for_dispute,
+                dispute_details: dispute_details,
+                image_proof: JSON.stringify(image_proof) // Convert array to JSONB string
+            })
 
         if(error) throw new Error(error.message)
-
         return data
     }
 }
 
-export {TaskAssignment}
+export default TaskAssignment

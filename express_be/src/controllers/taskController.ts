@@ -4,7 +4,7 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
-import { TaskAssignment } from "../models/taskAssignmentModel";
+import TaskAssignment from "../models/taskAssignmentModel";
 import fetch from "node-fetch";
 import { User } from "@supabase/supabase-js";
 require("dotenv").config();

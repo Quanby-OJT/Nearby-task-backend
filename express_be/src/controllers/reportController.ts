@@ -177,7 +177,7 @@ class ReportController {
   static async getAllReports(req: Request, res: Response) {
     try {
       const reports = await reportModel.getAllReports();
-      console.log("Fetched Data: ", reports);
+      // console.log("Fetched Data: ", reports);
       res.status(200).json({
         success: true,
         reports: reports,

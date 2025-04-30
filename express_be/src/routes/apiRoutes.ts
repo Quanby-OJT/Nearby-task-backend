@@ -142,7 +142,13 @@ router.get("/notifications-tasker-reject/:userId", NotificationController.getRej
 router.get("/notifications-tasker-pending/:userId", NotificationController.getPendingRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
-router.put("/update-request/:taskTakenId", NotificationController.updateRequest);
+router.put(
+  "/update-request/:taskTakenId",
+  upload.fields([
+    { name: "imageEvidence", maxCount: 10 } // Allows up to 10 images, adjust maxCount as needed
+  ]),
+  NotificationController.updateRequest
+);
 router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
 
 //User CRUD
