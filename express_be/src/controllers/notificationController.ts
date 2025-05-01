@@ -990,8 +990,6 @@ class NotificationController {
       const task = await taskModel.getTaskAmount(parseInt(taskTakenId));
       console.log("Task data:", task);
       console.log("Proposed Price:", task?.post_task.proposed_price);
-      
-      // ... rest of your code
 
       await PayMongoPayment.releasePayment({
         client_id: task?.post_task.client_id,
