@@ -1024,7 +1024,30 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
             isAssigned: false
         });
     }
-}
+  }
+
+  static async getAllCompletedTasks(req: Request, res: Response): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from("post_task")
+        .select(`
+          task_title,
+          proposed_price,
+        `)
+        .eq("task_status", "Completed")
+        .eq("is_deleted", false);
+
+      if (error) {
+        console.error(error.message);
+        res.status(500).json({ error: "An Error Occurred while Retrieving Your Completed Tasks. Please Try Again" });
+        return;
+      }
+      res.status(200).json({ data: data });
+    } catch (error) {
+      console.error("Error fetching completed tasks:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
 } 
 
 
