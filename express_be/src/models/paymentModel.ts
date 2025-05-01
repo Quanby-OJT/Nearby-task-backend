@@ -174,9 +174,6 @@ class PayMongoPayment {
     
     const finalAmount = paymentInfo.amount * 0.9;
     paymentInfo.amount = finalAmount
-    // TODO: Implement payment release logic for task completion using Xendit (fallback is semi-auto release of payment.).
-
-    // Placeholder: Mark as completed in Supabase once payment is confirmed
     const { error } = await supabase
           .from("payment_logs")
           .insert([paymentInfo])

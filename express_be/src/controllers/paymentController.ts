@@ -24,6 +24,20 @@ class PaymentController {
       }
     }
   }
+
+  static async releaseEscrowPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const { task_taken_id, task_id } = req.body;
+      const result = await PaymentModel.releaseHalfCredits(task_taken_id, task_id);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unknown error occurred" });
+      }
+    }
+  }
 }
 
 export default PaymentController;
