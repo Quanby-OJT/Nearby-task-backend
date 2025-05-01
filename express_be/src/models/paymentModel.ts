@@ -200,7 +200,7 @@ class PayMongoPayment {
             last_name
           )
         )
-      `);
+      `).order('payment_history_id', { ascending: false });;
     if (error) throw new Error(error.message);
     return data;
   }

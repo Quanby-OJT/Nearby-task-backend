@@ -72,8 +72,7 @@ class FeedbackModel {
   }
 
   static async getTaskerFeedback() {
-    const { data, error } = await supabase
-      .from("task_reviews")
+    const { data, error } = await supabase.from("task_reviews")
       .select(`
         created_at,
         feedback,
@@ -97,7 +96,8 @@ class FeedbackModel {
             )
           )
         )
-      `);
+      `)
+      .order('review_id', { ascending: false });;
 
     if (error) {
       throw error;
