@@ -15,8 +15,10 @@ class TaskAssignment{
     static async updateStatus(task_taken_id: number, task_status: string, visit_client: boolean, visit_tasker: boolean, reason_for_rejection_or_cancellation?: string, payment_relased?: boolean, is_deleted?: boolean){
         const { error } = await supabase
         .from("task_taken")
-        .update({ task_status: "Disputed", visit_client: visit_client, visit_tasker: visit_tasker, reason_for_rejection_or_cancellation: reason_for_rejection_or_cancellation, payment_relased: payment_relased, is_deleted: is_deleted })
+        .update({ task_status: task_status, visit_client: visit_client, visit_tasker: visit_tasker, reason_for_rejection_or_cancellation: reason_for_rejection_or_cancellation, payment_released: payment_relased, is_deleted: is_deleted })
         .eq("task_taken_id", task_taken_id);
+
+        if (error) throw new Error(error.message)
     }
 
     static async createDispute(task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof: string[]){

@@ -381,7 +381,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .in("task_status", ["Review", "Disputed"]);
+          .in("task_status", ["Review", "Disputed", "Dispute Settled"]);
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -855,8 +855,8 @@ class NotificationController {
 
 
 static async updateRequest(req: Request, res: Response): Promise<void> {
-  const taskTakenId = req.params.taskTakenId;
-  const { value, role, client_id } = req.body;
+  const taskTakenId = parseInt(req.params.taskTakenId);
+  const { value, role, reason_for_dispute, dispute_details } = req.body;
   console.log("Role:", req.body);
   console.log("Task Taken ID:", taskTakenId);
   console.log("Value:", value);
@@ -881,72 +881,22 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
 
   switch (value) {
     case 'Accept':
-    
-      const { error: acceptError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Confirmed", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
-
-        console.log("Accept request value: $value");
-
-      if (acceptError) {
-        console.error(acceptError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while accepting the request." });
-        return;
-      }
+      await TaskAssignment.updateStatus(taskTakenId, "Confirmed", visit_client, visit_tasker);
       break;
-
-    case 'Review':
-      const { error: reviewError } = await supabase
-      .from("task_taken")
-      .update({ task_status: "Review", visit_client: visit_client, visit_tasker: visit_tasker })
-      .eq("task_taken_id", taskTakenId);
-
-      console.log("Review request value: $value");
-
-    if (reviewError) {
-      console.error(reviewError.message);
-      res.status(500).json({ success: false, error: "An Error Occurred while reviewing the request." });
-      return;
-    }
-    break;
-
     case 'Start':
-      const { error: startError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Ongoing", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
-
-      if (startError) {
-        console.error(startError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
-        return;
-      }
-
-      const { data: taskData, error: taskError } = await supabase
-        .from("task_taken")
-        .select("*")
-        .eq("task_taken_id", taskTakenId)
-        .maybeSingle();
-
-      if (taskError) {
-        console.error(taskError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
-        return;
-      }
-
-      const { data: postTaskData, error: postTaskError } = await supabase
-        .from("post_task")
-        .update({ status: "Already Taken" })
-        .eq("task_id", taskData.task_id)
-        .maybeSingle();
-
-      if (postTaskError) {
-        console.error(postTaskError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
-        return;
-      }
+      await TaskAssignment.updateStatus(taskTakenId, "Ongoing", visit_client, visit_tasker);
       break;
+    case 'Reject':
+      await TaskAssignment.updateStatus(taskTakenId, "Rejected", visit_client, visit_tasker);
+      break;
+    case 'Review':
+      await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
+      break;
+    case 'Disputed':
+      await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
+      break;
+    // case 'Dispute Settled':
+    //   await 
     case 'Reject':
       const { error: rejectError } = await supabase
         .from("task_taken")
@@ -962,73 +912,110 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
         }
         break;
     case 'Cancel':
-      const { error: cancelError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Cancelled", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
+      // const { error: cancelError } = await supabase
+      //   .from("task_taken")
+      //   .update({ task_status: "Cancelled", visit_client: visit_client, visit_tasker: visit_tasker })
+      //   .eq("task_taken_id", taskTakenId);
         
-        console.log("Cancel request value: $value");
+      //   console.log("Cancel request value: $value");
 
-        if (cancelError) {
-          console.error(cancelError.message);
-          res.status(500).json({ success: false, error: "An Error Occurred while cancelling the request." });
+      //   if (cancelError) {
+      //     console.error(cancelError.message);
+      //     res.status(500).json({ success: false, error: "An Error Occurred while cancelling the request." });
+      //     return;
+      //   }
+      await TaskAssignment.updateStatus(taskTakenId, "Cancelled", visit_client, visit_tasker);
+      break;
+
+    case 'Disputed':
+      await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
+
+      const imageEvidence = req.files as Express.Multer.File[];
+      console.log("Image Evidence:", imageEvidence);
+
+      let imageProof: string[] = [];
+      if (imageEvidence && imageEvidence.length > 0) {
+        for (const file of imageEvidence) {
+          // Validate file mimetype
+          const validImageTypes = ["image/jpeg", "image/png", "image/gif"];
+          if (!validImageTypes.includes(file.mimetype)) {
+            console.error(`Invalid file type: ${file.mimetype}`);
+            res.status(400).json({
+              success: false,
+              message: `Invalid file type. Only JPEG, PNG, and GIF are allowed.`,
+            });
+            return
+          }
+          const fileName = `dispute_proof/${Date.now()}_${file.originalname}`;
+          const contentType = "image/jpeg"; // Assuming all files are images
+
+          const { data, error } = await supabase.storage
+            .from("documents")
+            .upload(fileName, file.buffer, {
+              contentType: contentType,
+              cacheControl: "3600",
+              upsert: false,
+            });           
+
+          if (error) {
+            console.error("Error uploading image:", error);
+            res.status(500).json({
+              success: false,
+              message: "Error uploading images",
+            });
+            return;
+          }
+
+          console.log("Image uploaded successfully:", data);
+
+          const { data: publicUrlData } = supabase.storage
+            .from("documents")
+            .getPublicUrl(fileName);
+
+          imageProof.push(publicUrlData.publicUrl);
+        }
+      }
+
+      console.log("Image Proof:", imageProof);
+      await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
+      break;
+    case 'Finish':
+      console.log("Hi");
+  
+      if(role == "Tasker"){
+        await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
+      }else{
+        const task = await taskModel.getTaskAmount(taskTakenId);
+        console.log("Task data:", task);
+        console.log("Proposed Price:", task?.post_task.proposed_price);
+  
+        await PayMongoPayment.releasePayment({
+          client_id: task?.post_task.client_id,
+          transaction_id: "Id from Xendit", //Temporary value
+          amount: task?.post_task.proposed_price ?? 0,
+          payment_type: "Release of Payment to Tasker",
+          deposit_date: new Date().toISOString(),
+        });
+  
+        await TaskAssignment.updateStatus(taskTakenId, "Completed", visit_client, visit_tasker, undefined, true);
+  
+        //console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
+  
+        //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
+  
+        const { error: updateAmountError } = await supabase
+          .rpc('update_tasker_amount', {
+            addl_credits: task?.post_task.proposed_price, 
+            id: task?.tasker.tasker_id,
+          });
+  
+        if (updateAmountError) {
+          console.error(updateAmountError.message);
+          res.status(500).json({ success: false, error: "An Error Occurred while updating tasker amount." });
           return;
         }
         break;
-    case 'Disputed':
-      const { error: disputeError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Disputed", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
-
-      if (disputeError) {
-        console.error(disputeError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while disputing the request." });
-        return;
       }
-      break;
-    case 'Finish':
-      const task = await taskModel.getTaskAmount(parseInt(taskTakenId));
-      console.log("Task data:", task);
-      console.log("Proposed Price:", task?.post_task.proposed_price);
-
-      await PayMongoPayment.releasePayment({
-        client_id: task?.post_task.client_id,
-        transaction_id: "Id from Xendit", //Temporary value
-        amount: task?.post_task.proposed_price ?? 0,
-        payment_type: "Release of Payment to Tasker",
-        deposit_date: new Date().toISOString(),
-      });
-
-      const { error: finishError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Completed", visit_client: visit_client, visit_tasker: visit_tasker, payment_released: true })
-        .eq("task_taken_id", taskTakenId);
-
-      console.log("Finish request value:", value);
-
-      if (finishError) {
-        console.error(finishError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while finishing the request." });
-        return;
-      }
-
-      console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
-
-      //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
-
-      const { error: updateAmountError } = await supabase
-        .rpc('update_tasker_amount', {
-          addl_credits: task?.post_task.proposed_price, 
-          id: task?.tasker.tasker_id,
-        });
-
-      if (updateAmountError) {
-        console.error(updateAmountError.message);
-        res.status(500).json({ success: false, error: "An Error Occurred while updating tasker amount." });
-        return;
-      }
-      break;
     default:
       res.status(400).json({ success: false, error: "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'" });
       return;
