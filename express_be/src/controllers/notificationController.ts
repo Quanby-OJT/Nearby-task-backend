@@ -3,6 +3,7 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import PayMongoPayment from "../models/paymentModel";
 import taskModel from "../models/taskModel";
+import TaskAssignment from "../models/taskAssignmentModel";
 
 class NotificationController {
 
@@ -380,7 +381,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .eq("task_status", "Review");
+          .in("task_status", ["Review", "Disputed"]);
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -494,7 +495,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .in("task_status", ["Ongoing", "Disputed"]);
+          .in("task_status", ["Ongoing", "Disputed", "Review"]);
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -853,7 +854,7 @@ class NotificationController {
   }
 
 
- static async updateRequest(req: Request, res: Response): Promise<void> {
+static async updateRequest(req: Request, res: Response): Promise<void> {
   const taskTakenId = req.params.taskTakenId;
   const { value, role, client_id } = req.body;
   console.log("Role:", req.body);

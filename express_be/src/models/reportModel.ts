@@ -273,9 +273,7 @@ class ReportModel {
    */
   async getAllReports() {
     try {
-      const { data: reports, error: reportError } = await supabase
-        .from("report")
-        .select("*");
+      const { data: reports, error: reportError } = await supabase.from("report").select("*") .order('report_id', { ascending: false });;
 
       if (reportError) {
         console.error("Supabase error fetching reports:", reportError);

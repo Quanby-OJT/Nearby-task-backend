@@ -4,7 +4,7 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
-import { TaskAssignment } from "../models/taskAssignmentModel";
+import TaskAssignment from "../models/taskAssignmentModel";
 import fetch from "node-fetch";
 import { User } from "@supabase/supabase-js";
 require("dotenv").config();
@@ -361,25 +361,61 @@ class TaskController {
     }
   }
 
+//Specialization Part Ito
 
-  static async getAllSpecializations(req: Request, res: Response): Promise<void> {
+static async getAllSpecializations(req: Request, res: Response): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from("tasker_specialization")
+      .select("specialization, created_at")
+      .order("spec_id", { ascending: true });
+
+    if (error) {
+      console.error(error.message);
+      res.status(500).json({ error: error.message });
+      return;
+    }
+// This is for formatting date like formatting yun like date and time na format
+    const formattedSpecialization = (data ?? []).map((specialization: any) => ({
+      ...specialization,
+      created_at: specialization.created_at
+        ? new Date(specialization.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
+        : null,
+    }));
+
+    res.status(200).json({ specializations: formattedSpecialization });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+}
+
+  static async createSpecialization(req: Request, res: Response): Promise<void> {
     try {
-      //console.log("Received request to get all specializations");
+      const { specialization } = req.body;
+  
+      if (!specialization) {
+        res.status(400).json({ error: "Specialization name is required" });
+        return;
+      }
+  
       const { data, error } = await supabase
         .from("tasker_specialization")
-        .select("specialization").order("spec_id", { ascending: true });
-
-      //console.log("Data retrieved:", data);
-
+        .insert({ specialization })
+        .select();
+  
       if (error) {
-        console.error(error.message);
+        console.error("Error adding specialization:", error.message);
         res.status(500).json({ error: error.message });
-      } else {
-        res.status(200).json({ specializations: data });
+        return;
       }
+  
+      res.status(201).json({ message: "Specialization added successfully", specialization: data[0] });
     } catch (error) {
+      console.error("Error in createSpecialization:", error);
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   }

@@ -100,7 +100,6 @@ router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTa
 router.post("/send-message", ConversationController.sendMessage);
 router.get("/all-messages/:user_id", ConversationController.getAllMessages);
 router.get("/messages/:task_taken_id", ConversationController.getMessages);
-router.get("/getUserConversation", ConversationController.getUserConversation);
 router.delete("/delete-message/:messageId", ConversationController.deleteConversation);
 
 //Tasker Status Update
@@ -119,6 +118,11 @@ router.put("/edit-tasker-schedule/:id", ScheduleController.editSchedule);
 router.post("/reschedule-task", ScheduleController.rescheduleTask);
 
 router.get("/get-token-balance/:userId", TaskController.getTokenBalance);
+
+//Conversation(Client&Moderator)
+router.get("/getUserConversation", ConversationController.getUserConversation); 
+router.post("/banUser/:id", ConversationController.banUser); 
+router.post("/warnUser/:id", ConversationController.warnUser); 
 
 //Payment Routes
 router.post("/deposit-escrow-payment", TaskController.depositEscrowAmount);
@@ -142,7 +146,13 @@ router.get("/notifications-tasker-reject/:userId", NotificationController.getRej
 router.get("/notifications-tasker-pending/:userId", NotificationController.getPendingRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
-router.put("/update-request/:taskTakenId", NotificationController.updateRequest);
+router.put(
+  "/update-request/:taskTakenId",
+  upload.fields([
+    { name: "imageEvidence", maxCount: 10 } // Allows up to 10 images, adjust maxCount as needed
+  ]),
+  NotificationController.updateRequest
+);
 router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
 
 //User CRUD

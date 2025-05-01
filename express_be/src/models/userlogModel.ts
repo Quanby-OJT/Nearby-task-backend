@@ -17,7 +17,7 @@ class UserLogModel {
           user_role
         )
       `)
-      .order('log_id  ', { ascending: true });
+      .order('log_id  ', { ascending: false });
   
     if (error) {
       throw error;
