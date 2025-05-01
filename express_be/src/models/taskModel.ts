@@ -109,7 +109,7 @@ class TaskModel {
             last_name
           )
          )
-      `);
+      `).order('task_id', { ascending: false });;
     if (error) throw new Error(error.message);
     return data;
   }
