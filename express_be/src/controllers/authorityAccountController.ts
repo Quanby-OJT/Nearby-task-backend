@@ -165,6 +165,7 @@ class AuthorityAccountController {
         contact,
         gender,
         acc_status,
+        verified: true,
       };
 
       if (imageUrl) {

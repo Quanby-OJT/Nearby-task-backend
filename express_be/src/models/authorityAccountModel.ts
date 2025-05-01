@@ -33,6 +33,7 @@ class AuthorityAccount {
     gender: string;
     acc_status: string;
     image_link?: string | null;
+    verified: boolean;
   }) {
     const { data, error } = await supabase
       .from("user")
