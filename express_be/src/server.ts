@@ -2,7 +2,7 @@ import express, { Application } from "express";
 import cors from "cors";
 import { port, session_key } from "./config/configuration";
 import server from "./routes/apiRoutes";
-import userRoute from "./routes/userRoutes";
+import disputeRoute from "./routes/disputeRoutes";
 import userAccountRoute from "./routes/userAccountRoutes";
 import taskRoutes from "./routes/taskRoutes";
 import dotenv from "dotenv";
@@ -47,7 +47,7 @@ app.use("/connect", server);
 
 app.use("/connect", authRoutes);
 app.use("/connect", userAccountRoute);
-app.use("/connect", userRoute);
+app.use("/connect", disputeRoute);
 app.use("/connect", taskRoutes);
 app.use("/connect", likeRoutes);
 app.use("/connect", userlogRoutes);
