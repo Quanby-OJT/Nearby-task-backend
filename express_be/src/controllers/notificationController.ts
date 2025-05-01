@@ -885,15 +885,36 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
       break;
     case 'Start':
       await TaskAssignment.updateStatus(taskTakenId, "Ongoing", visit_client, visit_tasker);
+
+      const { data: taskData, error: taskError } = await supabase
+      .from("task_taken")
+      .select("*")
+      .eq("task_taken_id", taskTakenId)
+      .maybeSingle();
+
+    if (taskError) {
+      console.error(taskError.message);
+      res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+      return;
+    }
+
+    const { data: postTaskData, error: postTaskError } = await supabase
+      .from("post_task")
+      .update({ status: "Already Taken" })
+      .eq("task_id", taskData.task_id)
+      .maybeSingle();
+
+    if (postTaskError) {
+      console.error(postTaskError.message);
+      res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+      return;
+    }
       break;
     case 'Reject':
       await TaskAssignment.updateStatus(taskTakenId, "Rejected", visit_client, visit_tasker);
       break;
     case 'Review':
       await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
-      break;
-    case 'Disputed':
-      await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
       break;
     // case 'Dispute Settled':
     //   await 
@@ -912,21 +933,8 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
         }
         break;
     case 'Cancel':
-      // const { error: cancelError } = await supabase
-      //   .from("task_taken")
-      //   .update({ task_status: "Cancelled", visit_client: visit_client, visit_tasker: visit_tasker })
-      //   .eq("task_taken_id", taskTakenId);
-        
-      //   console.log("Cancel request value: $value");
-
-      //   if (cancelError) {
-      //     console.error(cancelError.message);
-      //     res.status(500).json({ success: false, error: "An Error Occurred while cancelling the request." });
-      //     return;
-      //   }
       await TaskAssignment.updateStatus(taskTakenId, "Cancelled", visit_client, visit_tasker);
       break;
-
     case 'Disputed':
       await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
 
@@ -989,13 +997,13 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
         console.log("Task data:", task);
         console.log("Proposed Price:", task?.post_task.proposed_price);
   
-        await PayMongoPayment.releasePayment({
-          client_id: task?.post_task.client_id,
-          transaction_id: "Id from Xendit", //Temporary value
-          amount: task?.post_task.proposed_price ?? 0,
-          payment_type: "Release of Payment to Tasker",
-          deposit_date: new Date().toISOString(),
-        });
+        // await PayMongoPayment.releasePayment({
+        //   client_id: task?.post_task.client_id,
+        //   transaction_id: "Id from Xendit", //Temporary value
+        //   amount: task?.post_task.proposed_price ?? 0,
+        //   payment_type: "Release of Payment to Tasker",
+        //   deposit_date: new Date().toISOString(),
+        // });
   
         await TaskAssignment.updateStatus(taskTakenId, "Completed", visit_client, visit_tasker, undefined, true);
   
