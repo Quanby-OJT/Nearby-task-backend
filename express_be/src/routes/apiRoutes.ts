@@ -143,8 +143,11 @@ router.get("/notifications-tasker-confirmed/:userId", NotificationController.get
 router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOngoingRequests);
 router.get("/notifications-tasker-review/:userId", NotificationController.getReviewRequests);
 router.get("/notifications-tasker-reject/:userId", NotificationController.getRejectedRequests);
+router.get("/notifications-tasker-cancel/:userId", NotificationController.getCancelledRequests);
 router.get("/notifications-tasker-pending/:userId", NotificationController.getPendingRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
+router.get("/notifications-tasker-disputed/:userId", NotificationController.getDisputedRequests);
+router.get("/notifications-tasker-disputed-settled/:userId", NotificationController.getDisputedSettledRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
 router.put(
   "/update-request/:taskTakenId",
