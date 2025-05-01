@@ -26,6 +26,7 @@
     "ngx-cookie-service": "^19.1.2",
     "node-fetch": "^2.7.0",
     "nodemailer": "^6.10.1",
+    "openai": "^4.96.2",
     "otp-generator": "^4.0.1",
     "postgres": "^3.4.5",
     "xendit-node": "^6.3.0"

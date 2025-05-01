@@ -838,7 +838,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .eq("task_status", "Dispute Settled");
+          .eq("task_status", "Disputed");
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);

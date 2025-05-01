@@ -69,6 +69,7 @@ class AuthorityAccountController {
         image_link: imageUrl,
         acc_status: acc_status || "Review",
         emailVerified: true,
+        verified: true,
         verification_token: null,
       };
 
