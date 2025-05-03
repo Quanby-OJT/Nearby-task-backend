@@ -202,6 +202,7 @@ class UserAccountController {
           acc_status: "Review",
           verification_token: null,
           emailVerified: true,
+          verified: true
         })
         .eq("user_id", user.user_id);
 
@@ -209,7 +210,6 @@ class UserAccountController {
         throw new Error(updateError.message);
       }
 
-      // Create session
       req.session.userId = user.user_id;
 
       res.status(200).json({

@@ -15,6 +15,7 @@ import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
+import SettingController from "../controllers/settingController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -156,7 +157,10 @@ router.put(
   ]),
   NotificationController.updateRequest
 );
-router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
+router.put("/set-location/:tasker_id", SettingController.setLocation);
+router.get("/get-location/:tasker_id", SettingController.getLocation);
+
+// User Location
 
 //User CRUD
 router.put(
