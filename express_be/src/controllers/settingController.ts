@@ -4,9 +4,9 @@ import { Request, Response } from "express";
 class SettingController {
     static async setLocation(req: Request, res: Response): Promise<void> {
         const { latitude, longitude } = req.body;
-        const { tasker_id } = req.params;
+        const { user_id } = req.params;
 
-        console.log(tasker_id);
+        console.log(user_id);
         console.log(latitude);
         console.log(longitude);
     
@@ -18,9 +18,9 @@ class SettingController {
         try {
 
             const { data: existingData, error: fetchError } = await supabase
-            .from("tasker_preference")
+            .from("user_preference")
             .select("*")
-            .eq("tasker_id", tasker_id)
+            .eq("user_id", user_id)
             .single();
 
             if (fetchError && fetchError.code !== 'PGRST116') { 
@@ -32,9 +32,9 @@ class SettingController {
             if (existingData) {
 
                 const { data: updateData, error: updateError } = await supabase
-                    .from("tasker_preference")
+                    .from("user_preference")
                     .update({ latitude, longitude, updated_at: new Date() })
-                    .eq("tasker_id", tasker_id)
+                    .eq("user_id", user_id)
                     .select();
 
             if (updateError) {
@@ -45,8 +45,8 @@ class SettingController {
 
             } else {
                 const { data: insertData, error: insertError } = await supabase
-                    .from("tasker_preference")
-                    .insert({ latitude, longitude, tasker_id })
+                    .from("user_preference")
+                    .insert({ latitude, longitude, user_id })
                     .select();
 
             if (insertError) {
@@ -64,13 +64,13 @@ class SettingController {
     }
 
     static async getLocation(req: Request, res: Response): Promise<void> {
-        const { tasker_id } = req.params;
+        const { user_id } = req.params;
     
         try {
             const { data, error } = await supabase
-                .from("tasker_preference")
+                .from("user_preference")
                 .select("*")
-                .eq("tasker_id", tasker_id);
+                .eq("user_id", user_id);
     
             if (error) {
                 console.error(error);
