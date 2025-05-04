@@ -367,7 +367,7 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
   try {
     const { data, error } = await supabase
       .from("tasker_specialization")
-      .select("specialization, created_at")
+      .select("spec_id, specialization")
       .order("spec_id", { ascending: true });
 
     if (error) {
