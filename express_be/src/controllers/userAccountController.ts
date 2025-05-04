@@ -210,7 +210,6 @@ class UserAccountController {
         throw new Error(updateError.message);
       }
 
-      // Create session
       req.session.userId = user.user_id;
 
       res.status(200).json({
