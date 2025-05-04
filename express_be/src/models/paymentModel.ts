@@ -1,6 +1,8 @@
 import {Request, Response} from "express";
 import { supabase } from "../config/configuration";
 import taskModel from "./taskModel";
+import { send } from "process";
+import auth from "../controllers/authAngularController";
 
 interface Payment {
   payment_history_id?: number;
@@ -10,24 +12,89 @@ interface Payment {
   deposit_date: string;
   payment_type: string;
   task_taken_id?: number;
+  payment_method?: string;
+  status?: string;
 }
 
 // Updated to match PayMongo's checkout_sessions response structure
-interface PayMongoResponse {
+interface PayMongoIntentResponse {
   data: {
     id: string;
     type: string;
     attributes: {
-      billing: object;
+      amount: number,
+      capture_type: string;
+      currency: string;
       checkout_url: string;
       client_key: string;
       description: string;
-      line_items: Array<object>;
-      payment_method_types: string[];
+      livemode: boolean;
+      original_amount: number;
+      statement_descriptor: string;
+      last_payment_error: null | object;
+      payment_method_allowed: string[];
+      payments: Array<object>;
+      next_action: null | object;
       status: string; 
       send_email_receipt: boolean;
-      show_description: boolean;
-      show_line_items: boolean;
+      metadata: object | null;
+      setup_future_usage: null | string;
+      created_at: number;
+      updated_at: number;
+    };
+  };
+  errors?: Array<{ detail: string }>; // For error cases
+}
+
+interface PaymentMethodResponse {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      billing: {
+        name: string;
+        phone: string;
+        email: string;
+      };
+      type: string;
+      created_at: string;
+      updated_at: string;
+      status: string;
+      brand: string;
+      last4: string;
+      exp_month: number;
+      exp_year: number;
+    };
+  };
+  errors?: Array<{ detail: string }>; // For error cases
+}
+
+interface AttachedPaymentResponse {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      amount: number;
+      capture_type: string;
+      client_key: string;
+      currency: string;
+      description: string;
+      livemode: boolean;
+      original_amount: number;
+      statement_descriptor: string;
+      last_payment_error: null | object;
+      payment_method_allowed: string[];
+      payments: Array<object>;
+      next_action: {
+        type: string;
+        redirect: {
+          url: string;
+          return_url: string;
+        }
+      }
+      payment_method_options: null | object;
+      metadata: object | null;
+      setup_future_usage: null | string;
       created_at: number;
       updated_at: number;
     };
@@ -36,6 +103,23 @@ interface PayMongoResponse {
 }
 
 //TODO: Implement XENDIT API response structure
+interface XenditResponse {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      amount: number;
+      currency: string;
+      status: string;
+      created_at: string;
+      updated_at: string;
+      payment_method: string;
+      description: string;
+      metadata: object | null;
+      error_message?: string; // For error cases
+    };
+  };
+}
 
 class PayMongoPayment {
   static async checkoutPayment(paymentInfo: Payment) {
@@ -60,75 +144,55 @@ class PayMongoPayment {
     console.log("User Email Response:", userEmailResponse);
 
     const clientName = `${userEmailResponse.user.first_name} ${userEmailResponse.user.middle_name} ${userEmailResponse.user.last_name}`;
-
     // PayMongo auth (only secret key needed, not duplicated)
-    const authString = `${process.env.PAYMONGO_SECRET_KEY}:`;
+    const authString = `${process.env.PAYMONGO_SECRET_KEY?.trim()}:`;
     const authHeader = `Basic ${Buffer.from(authString).toString("base64")}`;
 
-    // PayMongo checkout session payload
-    const options = {
-      method: "POST",
+    /**
+     * Creating PaymewntIntent
+     */
+    
+    const paymentIntentOptions = {
+      method: 'POST',
       headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: authHeader,
+      accept: 'application/json',
+      'content-type': 'application/json',
+      authorization: authHeader
       },
       body: JSON.stringify({
-        data: {
-          attributes: {
-            billing: {
-              address: {
-                line1: "4th Floor, Landco Business Park",
-                city: "Legazpi",
-                postal_code: "4500",
-                country: "PH",
-                state: "Albay",
-              },
-              name: clientName,
-              email: userEmailResponse.user.email,
-              phone: userEmailResponse.user.contact,
-            },
-            send_email_receipt: true,
-            show_description: true,
-            show_line_items: true,
-            payment_method_types: ["gcash", "paymaya", "qrph"], // Add more payment methods as needed
-            description: `NearByTask Escrow Deposit`,
-            line_items: [
-              {
-                currency: "PHP",
-                amount: paymentInfo.amount * 100, 
-                name: `NearByTask Escrow Tokens for ${clientName}`,
-                description: `This is a deposit for the task assigned to you`,
-                quantity: 1,
-              },
-            ],
-          },
-        },
-      }),
+      data: {
+        attributes: {
+        amount: paymentInfo.amount * 100,
+        payment_method_allowed: ['paymaya', 'gcash'],
+        payment_method_options: {card: {request_three_d_secure: 'any'}},
+        currency: 'PHP',
+        capture_type: 'automatic',
+        description: `IMONALICK Credits Purchase:\n` +
+          `• Amount: PHP ${paymentInfo.amount}\n` +
+          `• Client: ${clientName}\n` +
+          `• Purpose: Credits for Task Creation\n` +
+          `• Usage: These credits will be used to:\n` +
+          `  - Create and post new tasks\n` +
+          `  - Set task budgets\n` +
+          `  - Secure task payments`,
+        statement_descriptor: 'IMONALICK Task Credits'
+        }
+      }
+      })
     };
 
-    // Create PayMongo checkout session
-    const paymongoResponse = await fetch(`${process.env.PAYMONGO_URL}/checkout_sessions`, options);
-    if (!paymongoResponse.ok) {
-      const errorData = await paymongoResponse.json();
-      console.error("PayMongo API Error:", errorData);
-      if (paymongoResponse.status === 401) {
-        throw new Error("Unauthorized: Invalid PayMongo credentials");
-      } else if (paymongoResponse.status === 422) {
-        throw new Error(`Invalid payment data: ${JSON.stringify(errorData.errors)}`);
-      } else {
-        throw new Error(`PayMongo API failed: ${paymongoResponse.statusText}`);
-      }
+    const intentData = await fetch(`${process.env.PAYMONGO_URL}/payment_intents`, paymentIntentOptions);
+    if (!intentData.ok) {
+      const errorData = await intentData.json();
+      this.handlePayMongoErrors(errorData);
+      throw new Error(`PayMongo API failed: ${errorData.message}`);
     }
 
-    const paymongoData = await paymongoResponse.json() as PayMongoResponse;
-    console.log("PayMongo Response:", paymongoData);
+    const paymongoIntentData = await intentData.json() as PayMongoIntentResponse;
+    console.log("PayMongo Response:", paymongoIntentData);
 
     // Assign transaction_id and payment_date *after* successful response
-    paymentInfo.transaction_id = paymongoData.data.id;
-
-
-    console.log("Updated Payment Info:", paymentInfo);
+    paymentInfo.transaction_id = paymongoIntentData.data.id;
 
     // Insert into Supabase
     const { error: insertError } = await supabase.from("payment_logs").insert([paymentInfo]);
@@ -137,13 +201,124 @@ class PayMongoPayment {
       throw new Error(`Failed to log payment: ${insertError.message}`);
     }
 
+    /**
+     * Creating Payment Methods from the client-side
+     */
+    const payment_method = {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'Content-Type': 'application/json',
+        authorization: authHeader
+      },
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            billing: {
+              name: clientName,
+              phone: userEmailResponse.user.contact,
+              email: userEmailResponse.user.email
+            },
+            type: paymentInfo.payment_method,
+          }
+        }
+      })
+    };
+    
+    const paymentData = await fetch(`${process.env.PAYMONGO_URL}/payment_methods`, payment_method);
+    if (!paymentData.ok) {
+      const errorData = await paymentData.json();
+      this.handlePayMongoErrors(errorData);
+      throw new Error(`PayMongo API failed: ${errorData.message}`);
+    }
 
+    const paymentMethodData = await paymentData.json() as PaymentMethodResponse;
+    console.log("Payment Method Response:", paymentMethodData);
+
+    /**
+     * Attaching Payment Intent to Payment Method
+     */
+    const payMongoAttachOptions = {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: authHeader
+      },
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            payment_method: paymentMethodData.data.id,
+            client_key: `${paymongoIntentData.data.attributes.client_key}_${paymongoIntentData.data.attributes.client_key}`,
+            return_url: 'https://imonalick.com/payment/success'
+          }
+        }
+      })
+    };
+
+    const attachData = await fetch(`${process.env.PAYMONGO_URL}/payment_intents/${paymongoIntentData.data.id}/attach`, payMongoAttachOptions);
+    if (!attachData.ok) {
+      const errorData = await attachData.json();
+      console.error("Attach Payment Error:", errorData);
+      this.handlePayMongoErrors(errorData);
+    }
+
+    const paymentAttachedData = await attachData.json() as AttachedPaymentResponse;
+    console.log("PayMongo Response:", paymentAttachedData);
 
     return {
-      paymentUrl: paymongoData.data.attributes.checkout_url,
-      transactionId: paymongoData.data.id,
+      checkout_url: paymentAttachedData.data.attributes.next_action.redirect.url,
+      client_key: paymentAttachedData.data.attributes.client_key,
+      amount: paymentInfo.amount
     };
   }
+
+  private static handlePayMongoErrors(error: any) {
+    if (error.status === 401) {
+      throw new Error("Unauthorized: Invalid PayMongo credentials");
+    } else if (error.status === 422) {
+      throw new Error(`Invalid payment data: ${JSON.stringify(error.errors)}`);
+    } else {
+      throw new Error(`PayMongo API failed: ${error.errors.detail}`);
+    }
+  }
+
+  static async verifyPaymentIntent(req: Request, res: Response): Promise<void> {
+    try {
+      const { transaction_id } = req.body;
+  
+      const authHeader = `Basic ${Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString("base64")}`;
+  
+      const response = await fetch(`${process.env.PAYMONGO_URL}/payment_intents/${transaction_id}`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          authorization: 'Basic ' + authHeader
+        }
+      });
+  
+      const paymentIntent = await response.json();
+  
+      const status = paymentIntent.data.attributes.status;
+  
+      console.log("Verified Status:", status);
+  
+      // Optional: Update Supabase record status based on this
+      if (status === "succeeded") {
+        // Update credits or payment_logs here
+        await supabase.from("payment_logs")
+          .update({ status: "succeeded", confirmed_date: new Date().toISOString() })
+          .eq("transaction_id", transaction_id);
+  
+        res.status(200).json({ success: true, status });
+      } else {
+        res.status(200).json({ success: false, status });
+      }
+    } catch (err) {
+      console.error("Error verifying payment intent:", err);
+      res.status(500).json({ error: "Verification failed" });
+    }
+  }  
 
   static async fetchTransactionId(taskTakenId: number) {
     const { data, error } = await supabase

@@ -550,42 +550,44 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     }
   }
 
-    /**
-   * The contarct price set by the client will be sent first to Escrow and will be released to the Tasker once the task is completed.
-   * 
-   * 
-   * 
-   * How will it work, according to documentation?
-   * 
-   * 1. If the client and tasker come to the final contract price agreement and the tasker "Confirmed", the client will deposit the amount to Escrow.
-   * 2. As the tasker starts the task assigned, the client can monitor it via chat.
-   * 3. Once the task is completed, the client will release the amount to the tasker.
-   * 4. If the tasker did not complete the task, the client can cancel the task and the amount will be returned to the client.
-   * 
-   * -Ces
-   */
-    static async depositEscrowAmount(req: Request, res: Response): Promise<void> {
+  /**
+ * The contarct price set by the client will be sent first to Escrow and will be released to the Tasker once the task is completed.
+ * 
+ * 
+ * 
+ * How will it work, according to documentation?
+ * 
+ * 1. If the client and tasker come to the final contract price agreement and the tasker "Confirmed", the client will deposit the amount to Escrow.
+ * 2. As the tasker starts the task assigned, the client can monitor it via chat.
+ * 3. Once the task is completed, the client will release the amount to the tasker.
+ * 4. If the tasker did not complete the task, the client can cancel the task and the amount will be returned to the client.
+ * 
+ * -Ces
+ */
+  static async depositEscrowAmount(req: Request, res: Response): Promise<void> {
       try {
           console.log("Transaction Data: ", req.body);
-          const { client_id, amount, status } = req.body;
+          const { client_id, amount, payment_method } = req.body;
+
+          const fixedPaymentMethod = payment_method.replace(/-/g, "_").toLowerCase();
 
           const PaymentInformation = await PayMongoPayment.checkoutPayment({
               client_id,
               amount,
               deposit_date: new Date().toISOString(),
-              payment_type: "Client Deposit"
+              payment_type: "Client Deposit",
+              payment_method: fixedPaymentMethod,
           });
 
           await ClientModel.addCredits(client_id, amount)
   
           res.status(200).json({
-              success: true,
-              payment_url: PaymentInformation.paymentUrl,
-              transaction_id: PaymentInformation.transactionId,
+            success: true,
+            payment_url: PaymentInformation.checkout_url,
           });
       } catch (error) {
           console.error("Error in depositTaskPayment:", error instanceof Error ? error.message : error);
-          res.status(500).json({ error: "Internal Server Error" });
+          res.status(500).json({ success: false, error: "An Error Occured while Processing Your Payment. Please Try Again Later." });
       }
   }
 
@@ -764,13 +766,13 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
         case "Tasker":
           const { data: taskerTokens, error: taskerTokensError} = await supabase.from('tasker').select('amount').eq('user_id', userId).single();
           if(taskerTokensError) throw new Error('Error fetching tasker tokens: ' + taskerTokensError.message);
-          console.log("Tasker Tokens: ", taskerTokens);
+          //console.log("Tasker Tokens: ", taskerTokens);
           res.status(200).json({ success: true, tokens: taskerTokens.amount });
           break;
         case "Client":
           const { data: clientTokens, error: clientTokensError} = await supabase.from('clients').select('amount').eq('user_id', userId).single();
           if(clientTokensError) throw new Error('Error fetching tasker tokens: ' + clientTokensError.message);
-          console.log("Client Tokens: ", clientTokens);
+          //console.log("Client Tokens: ", clientTokens);
           res.status(200).json({ success: true, tokens: clientTokens.amount });
           break;
         default:

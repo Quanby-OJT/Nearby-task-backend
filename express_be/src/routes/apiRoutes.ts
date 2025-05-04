@@ -96,12 +96,6 @@ router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
 
-//All COnversation Messages
-router.post("/send-message", ConversationController.sendMessage);
-router.get("/all-messages/:user_id", ConversationController.getAllMessages);
-router.get("/messages/:task_taken_id", ConversationController.getMessages);
-router.delete("/delete-message/:messageId", ConversationController.deleteConversation);
-
 //Tasker Status Update
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
@@ -226,14 +220,7 @@ router.put(
   UserAccountController.updateTaskerWithProfileImage
 );
 
-
-
-
-
-
-
-
-
+router.post("/generate-ai-text", FeedbackController.generateAIText);
 
 // updating client with profile image only
 router.put(
