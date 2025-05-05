@@ -1,8 +1,8 @@
 import {Request, Response} from "express";
-import { supabase } from "../config/configuration";
+import { supabase, xenditPayoutClient } from "../config/configuration";
 import taskModel from "./taskModel";
 import { send } from "process";
-import auth from "../controllers/authAngularController";
+import { CreatePayoutRequest, GetPayouts200ResponseDataInner } from 'xendit-node/payout/models'
 
 interface Payment {
   payment_history_id?: number;
@@ -348,9 +348,9 @@ class PayMongoPayment {
 
     // Fetch user and task data from Supabase
     const { data: userEmailResponse, error: emailError } = await supabase
-      .from("clients")
+      .from("tasker")
       .select("user(first_name, middle_name, last_name, email, contact)")
-      .eq("client_id", paymentInfo.client_id)
+      .eq("tasker_id", paymentInfo.tasker_id)
       .single() as { data: UserEmailResponse | null; error: any };
 
     if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
@@ -358,50 +358,30 @@ class PayMongoPayment {
 
     const clientName = `${userEmailResponse.user.first_name} ${userEmailResponse.user.middle_name} ${userEmailResponse.user.last_name}`;
     
-    const finalAmount = paymentInfo.amount * 0.9;
+    const finalAmount = paymentInfo.amount * 0.9; //Will be changed according to the desired amount by the business owner.
     paymentInfo.amount = finalAmount
 
-    const authString = `${process.env.XENDIT_API_KEY?.trim()}:`;
-    const authHeader = `Basic ${Buffer.from(authString).toString("base64")}`;
+    const channelCode = `PH_${paymentInfo.payment_method?.toUpperCase()}`;
 
-    //TODO: Implement Xendit Cash Disbursement
-    // const releaseEscrowPaymentOptions = {
-    //   channel_code: 'PH_GCASH',
-    //   channel_properties: {
-    //     account_number: paymentInfo.account_no,
-    //     account_holder_name: clientName
-    //   },
-    //   amount: 1000,
-    //   description: "Release of Escrow Payment to Tasker with Tasker ID of: ",
-    //   currency: 'PHP',
-    //   receipt_notification: {
-    //     email_to: [
-    //       userEmailResponse.user.email,
-    //       userEmailResponse.user.email
-    //     ],
-    //     email_cc: [
-    //       userEmailResponse.user.email,
-    //       userEmailResponse.user.email
-    //     ],
-    //     email_bcc: [
-    //       userEmailResponse.user.email,
-    //       userEmailResponse.user.email
-    //     ]
-    //   },
-    //   metadata: {
-    //      disb: 24
-    //   }
-    // };
-
-    // const attachData = await fetch(`${process.env.XENDIT_URL}/`, releaseEscrowPaymentOptions);
-    // if (!attachData.ok) {
-    //   const errorData = await attachData.json();
-    //   console.error("Attach Payment Error:", errorData);
-    //   this.handlePayMongoErrors(errorData);
-    // }
-
-    // const paymentAttachedData = await attachData.json() as AttachedPaymentResponse;
-    // console.log("PayMongo Response:", paymentAttachedData);
+    const data: CreatePayoutRequest = {
+      amount : paymentInfo.amount * 100,
+      channelProperties : {
+        accountNumber : "000000",
+        accountHolderName : clientName
+      },
+      description : "Cash Withdrawal for ",
+      currency : "PHP",
+      referenceId : "DISB-001",
+      channelCode : channelCode,
+    }
+    
+    const response: GetPayouts200ResponseDataInner = await xenditPayoutClient.createPayout({
+        idempotencyKey: "DISB-1234",
+        data
+    })
+    
+    paymentInfo.transaction_id = response.id
+    paymentInfo.withdraw_date = response.created.toISOString()
 
     const { error } = await supabase
           .from("payment_logs")
