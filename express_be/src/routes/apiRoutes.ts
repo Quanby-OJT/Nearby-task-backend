@@ -151,8 +151,10 @@ router.put(
   ]),
   NotificationController.updateRequest
 );
-router.put("/set-location/:tasker_id", SettingController.setLocation);
-router.get("/get-location/:tasker_id", SettingController.getLocation);
+router.put("/set-location/:user_id", SettingController.setLocation);
+router.get("/get-location/:user_id", SettingController.getLocation);
+router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
+router.put("/update-distance/:user_id", SettingController.updateDistance);
 
 // User Location
 
