@@ -71,12 +71,12 @@ class AuthenticationController {
       </div>`;
 
     // Send the email
-    await mailer.sendMail({
-      from: "noreply@nearbytask.com",
-      to: verifyLogin.email,
-      subject: "Your OTP Code for NearByTask",
-      html: otpHtml,
-    });
+    // await mailer.sendMail({
+    //   from: "noreply@nearbytask.com",
+    //   to: verifyLogin.email,
+    //   subject: "Your OTP Code for NearByTask",
+    //   html: otpHtml,
+    // });
 
       res.status(200).json({ user_id: verifyLogin.user_id });
     } catch (error) {

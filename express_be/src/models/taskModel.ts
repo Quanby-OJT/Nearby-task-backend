@@ -162,9 +162,6 @@ class TaskModel {
       .delete()
       .eq("task_id", taskId);
 
-     // .update({ status: "disabled" })
-     //.eq("task_id", jobPostId)
-
     if (error) throw new Error(error.message);
     return { success: true, message: "Task deleted successfully" };
   }

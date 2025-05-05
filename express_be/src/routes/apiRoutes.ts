@@ -153,7 +153,7 @@ router.get("/displayRequest/:requestId", NotificationController.getTaskerRequest
 router.put(
   "/update-request/:taskTakenId",
   upload.fields([
-    { name: "imageEvidence", maxCount: 10 } // Allows up to 10 images, adjust maxCount as needed
+    { name: "imageEvidence", maxCount: 10 } 
   ]),
   NotificationController.updateRequest
 );
@@ -162,9 +162,6 @@ router.get("/get-location/:user_id", SettingController.getLocation);
 router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
 
-// User Location
-
-//User CRUD
 router.put(
   "/user/client/:id", 
   upload.fields([    
@@ -175,7 +172,7 @@ router.put(
   "/user/tasker/:id",
   upload.fields([    
     { name: "image", maxCount: 1 },
-    { name: "documents", maxCount: 10 } // Adjust maxCount as needed
+    { name: "documents", maxCount: 10 } 
   ]),
   profileController.TaskerController.updateTasker
 );
@@ -191,7 +188,6 @@ router.put(
 
 router.post("/logout", AuthenticationController.logout);
 
-// updating client with both profile and ID images
 router.put(
   "/update-user-with-images/:id",
   upload.fields([
@@ -201,7 +197,6 @@ router.put(
   UserAccountController.updateUserWithImages
 );
 
-// updating tasker with both profile and PDF images
 router.put(
   "/update-tasker-with-file-profile/:id",
   upload.fields([
@@ -211,8 +206,6 @@ router.put(
   UserAccountController.updateTaskerWithFileandImage
 );
 
-
-// updating tasker with PDF only
 router.put(
   "/update-tasker-with-pdf/:id",
   upload.fields([
@@ -221,9 +214,6 @@ router.put(
   UserAccountController.updateTaskerWithPDF
 );
 
-
-
-// updating tasker with only profile image and user details
 router.put(
   "/update-tasker-with-image-profile/:id",
   upload.fields([

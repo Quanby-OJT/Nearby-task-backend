@@ -101,6 +101,63 @@ class ClientModel {
     }
   }
 
+  
+
+  static async getAllFilteredTaskers(req: Request, res: Response): Promise<void> {
+    console.log("Fetching all desired Taskers...");
+
+    const userId = req.params.id;
+    console.log("User ID:", userId);
+    try {
+      const { data, error } = await supabase
+        .from("tasker")
+        .select(`
+          *,
+          tasker_specialization (
+        specialization
+          ),
+          user!inner (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            image_link,
+            birthdate,
+            acc_status,
+            gender,
+            email,
+            contact,
+            verified,
+            user_role
+          )
+        `)
+        .not('user', 'is', null)
+        .eq('user.acc_status', 'Active')
+        .eq('user.verified', true)
+        .eq('user.user_role', 'Tasker')
+  
+      console.log("Taskers data:", data, "Error:", error);
+  
+      if (error) {
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+  
+      if (!data || data.length === 0) {
+        res.status(200).json({ error: "No active taskers found." });
+        return;
+      }
+  
+      res.status(200).json({ taskers: data });
+    } catch (error) {
+      console.error("Error fetching taskers:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  }
+
   static async getAllClients(req: Request, res: Response): Promise<void> {
     console.log("Fetching all desired Taskers...");
     try {
@@ -183,18 +240,6 @@ class ClientModel {
     if (error) throw new Error(error.message);
     return data;
   }
-
-  // fetch data from user where user has role of tasker and acc_status is "Active"
-  // static async getActiveTaskers() {
-  //   const { data, error } = await supabase
-  //     .from("users")
-  //     .select("*")
-  //     .eq("users.role", "tasker")
-  //     .eq("users.acc_status", "active");
-  //   if (error) throw new Error(error.message);
-
-  //   return data;
-  // }
 
   static async createLike(req: Request, res: Response) {
     try {
