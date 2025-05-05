@@ -16,6 +16,7 @@ import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
+import ConversationRoutes from "./routes/conversationRoutes";
 dotenv.config();
 const app: Application = express();
 
@@ -49,6 +50,7 @@ app.use("/connect", authRoutes);
 app.use("/connect", userAccountRoute);
 app.use("/connect", disputeRoute);
 app.use("/connect", taskRoutes);
+app.unsubscribe("/connect", ConversationRoutes);
 app.use("/connect", likeRoutes);
 app.use("/connect", userlogRoutes);
 app.use("/connect", clientRooutes);
