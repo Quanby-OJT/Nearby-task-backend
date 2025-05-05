@@ -16,6 +16,7 @@ import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
 import SettingController from "../controllers/settingController";
+import PaymentController from "../controllers/paymentController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -120,9 +121,9 @@ router.post("/banUser/:id", ConversationController.banUser);
 router.post("/warnUser/:id", ConversationController.warnUser); 
 
 //Payment Routes
-router.post("/deposit-escrow-payment", TaskController.depositEscrowAmount);
-router.put("/webhook/paymongo", TaskController.handlePayMongoWebhook);
-router.put("/update-payment-status/:taskTakenId", TaskController.updateTask);
+router.post("/deposit-escrow-payment", PaymentController.depositEscrowAmount);
+router.put("/webhook/paymongo", PaymentController.handlePayMongoWebhook);
+router.put("/withdraw-escrow-amount", PaymentController.depositEscrowAmount);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);

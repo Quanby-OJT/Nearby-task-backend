@@ -7,9 +7,12 @@ import auth from "../controllers/authAngularController";
 interface Payment {
   payment_history_id?: number;
   client_id?: number;
+  account_no?: string;
+  tasker_id?: number;
   transaction_id?: string;
   amount: number;
-  deposit_date: string;
+  deposit_date?: string;
+  withdraw_date?: string;
   payment_type: string;
   task_taken_id?: number;
   payment_method?: string;
@@ -104,21 +107,7 @@ interface AttachedPaymentResponse {
 
 //TODO: Implement XENDIT API response structure
 interface XenditResponse {
-  data: {
-    id: string;
-    type: string;
-    attributes: {
-      amount: number;
-      currency: string;
-      status: string;
-      created_at: string;
-      updated_at: string;
-      payment_method: string;
-      description: string;
-      metadata: object | null;
-      error_message?: string; // For error cases
-    };
-  };
+  error_message?: string; // For error cases
 }
 
 class PayMongoPayment {
@@ -346,9 +335,74 @@ class PayMongoPayment {
 
   static async releasePayment(paymentInfo: Payment) {
     if (paymentInfo.amount <= 0) throw new Error("Invalid Amount to be released. Please Try Again.");
+
+    interface UserEmailResponse {
+      user: { 
+        first_name: string, 
+        middle_name: string, 
+        last_name: string 
+        email: string,
+        contact: string
+      }
+    }
+
+    // Fetch user and task data from Supabase
+    const { data: userEmailResponse, error: emailError } = await supabase
+      .from("clients")
+      .select("user(first_name, middle_name, last_name, email, contact)")
+      .eq("client_id", paymentInfo.client_id)
+      .single() as { data: UserEmailResponse | null; error: any };
+
+    if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
+    console.log("User Email Response:", userEmailResponse);
+
+    const clientName = `${userEmailResponse.user.first_name} ${userEmailResponse.user.middle_name} ${userEmailResponse.user.last_name}`;
     
     const finalAmount = paymentInfo.amount * 0.9;
     paymentInfo.amount = finalAmount
+
+    const authString = `${process.env.XENDIT_API_KEY?.trim()}:`;
+    const authHeader = `Basic ${Buffer.from(authString).toString("base64")}`;
+
+    //TODO: Implement Xendit Cash Disbursement
+    // const releaseEscrowPaymentOptions = {
+    //   channel_code: 'PH_GCASH',
+    //   channel_properties: {
+    //     account_number: paymentInfo.account_no,
+    //     account_holder_name: clientName
+    //   },
+    //   amount: 1000,
+    //   description: "Release of Escrow Payment to Tasker with Tasker ID of: ",
+    //   currency: 'PHP',
+    //   receipt_notification: {
+    //     email_to: [
+    //       userEmailResponse.user.email,
+    //       userEmailResponse.user.email
+    //     ],
+    //     email_cc: [
+    //       userEmailResponse.user.email,
+    //       userEmailResponse.user.email
+    //     ],
+    //     email_bcc: [
+    //       userEmailResponse.user.email,
+    //       userEmailResponse.user.email
+    //     ]
+    //   },
+    //   metadata: {
+    //      disb: 24
+    //   }
+    // };
+
+    // const attachData = await fetch(`${process.env.XENDIT_URL}/`, releaseEscrowPaymentOptions);
+    // if (!attachData.ok) {
+    //   const errorData = await attachData.json();
+    //   console.error("Attach Payment Error:", errorData);
+    //   this.handlePayMongoErrors(errorData);
+    // }
+
+    // const paymentAttachedData = await attachData.json() as AttachedPaymentResponse;
+    // console.log("PayMongo Response:", paymentAttachedData);
+
     const { error } = await supabase
           .from("payment_logs")
           .insert([paymentInfo])
