@@ -16,6 +16,7 @@ import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
 import AuthorityAccountController from "../controllers/authorityAccountController";
+import SettingController from "../controllers/settingController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -148,8 +149,11 @@ router.get("/notifications-tasker-confirmed/:userId", NotificationController.get
 router.get("/notifications-tasker-ongoing/:userId", NotificationController.getOngoingRequests);
 router.get("/notifications-tasker-review/:userId", NotificationController.getReviewRequests);
 router.get("/notifications-tasker-reject/:userId", NotificationController.getRejectedRequests);
+router.get("/notifications-tasker-cancel/:userId", NotificationController.getCancelledRequests);
 router.get("/notifications-tasker-pending/:userId", NotificationController.getPendingRequests);
 router.get("/notifications-tasker-finish/:userId", NotificationController.getFinishRequests);
+router.get("/notifications-tasker-disputed/:userId", NotificationController.getDisputedRequests);
+router.get("/notifications-tasker-disputed-settled/:userId", NotificationController.getDisputedSettledRequests);
 router.get("/displayRequest/:requestId", NotificationController.getTaskerRequestById);
 router.put(
   "/update-request/:taskTakenId",
@@ -158,7 +162,12 @@ router.put(
   ]),
   NotificationController.updateRequest
 );
-router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
+router.put("/set-location/:user_id", SettingController.setLocation);
+router.get("/get-location/:user_id", SettingController.getLocation);
+router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
+router.put("/update-distance/:user_id", SettingController.updateDistance);
+
+// User Location
 
 //User CRUD
 router.put(
