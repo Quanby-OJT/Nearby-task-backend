@@ -3,6 +3,16 @@ import { supabase } from "../config/configuration";
 import likeModel from "../models/likeModel";
 import { console } from "inspector";
 
+// Define the ClientPreferences interface
+interface ClientPreferences {
+  distance: number;
+  age_start: number;
+  age_end: number;
+  specialization: string;
+  limit: number;
+  address?: Array<{ latitude: number; longitude: number }>;
+}
+
 class ClientModel {
   static async createNewClient(clientInfo: {
     user_id: number;
@@ -15,33 +25,45 @@ class ClientModel {
     return data;
   }
 
-  static async getAllClientsBySpecialization(req: Request, res: Response): Promise<void> {
+  static async getAllClientsBySpecialization(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     const specialization = req.query.specialization as string | undefined;
-    console.log('Specialization:', specialization);
+    console.log("Specialization:", specialization);
 
     let specializationId: number | null = null;
-    if (specialization && specialization !== 'All') {
-      const { data: specializationData, error: specializationError } = await supabase
-        .from('tasker_specialization')
-        .select('spec_id, specialization')
-        .eq('specialization', specialization)
-        .single();
+    if (specialization && specialization !== "All") {
+      const { data: specializationData, error: specializationError } =
+        await supabase
+          .from("tasker_specialization")
+          .select("spec_id, specialization")
+          .eq("specialization", specialization)
+          .single();
 
       if (specializationError || !specializationData) {
-        console.error('Supabase fetch specialization error:', specializationError);
-        throw new Error(specializationError?.message || 'Specialization not found');
+        console.error(
+          "Supabase fetch specialization error:",
+          specializationError
+        );
+        throw new Error(
+          specializationError?.message || "Specialization not found"
+        );
       }
 
       console.log("Fetched specialization ID:", specializationData.spec_id);
-      console.log("Fetched specialization name:", specializationData.specialization);
+      console.log(
+        "Fetched specialization name:",
+        specializationData.specialization
+      );
       specializationId = specializationData.spec_id;
     }
 
-
-
     try {
       const { data, error } = await supabase
-      .from('tasker').select(`
+        .from("tasker")
+        .select(
+          `
         tasker_id,
         user_id,
         specialization_id,
@@ -71,50 +93,104 @@ class ClientModel {
         tasker_specialization (
           specialization
         )
-      `)
-      .not('user', 'is', null)
-      .eq('user.acc_status', 'Active')
-      .eq('user.verified', true)
-      .eq('user.user_role', 'Tasker')
-      .eq('specialization_id', specializationId);
-  
+      `
+        )
+        .not("user", "is", null)
+        .eq("user.acc_status", "Active")
+        .eq("user.verified", true)
+        .eq("user.user_role", "Tasker")
+        .eq("specialization_id", specializationId);
+
       console.log("Taskers data:", data, "Error:", error);
-  
+
       if (error) {
         console.error("Error fetching taskers:", error.message);
         console.error("Error fetching taskers:", error.message);
         res.status(500).json({ error: error.message });
         return;
       }
-  
+
       if (!data || data.length === 0) {
         res.status(200).json({ error: "No active taskers found." });
         return;
       }
-  
+
       res.status(200).json({ taskers: data });
     } catch (error) {
       console.error("Error fetching taskers:", error);
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   }
 
-  
+  static async getMyData(req: Request, res: Response): Promise<void> {
+    const userId = req.params.userId;
 
-  static async getAllFilteredTaskers(req: Request, res: Response): Promise<void> {
-    console.log("Fetching all desired Taskers...");
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select(
+          `
+        *,
+        user!inner (
+          user_id,
+          first_name,
+          middle_name,
+          last_name,
+          image_link,
+          birthdate,
+          acc_status,
+          gender,
+          email,
+          contact,
+          verified,
+          user_role,
+          user_preference!inner(*, address(*))
+        ) 
+      `
+        )
+        .eq("user.user_id", userId)
+        .single();
+      
+      console.log("User ID:", userId);
 
-    const userId = req.params.id;
-    console.log("User ID:", userId);
+      console.log("Client data:", data, "Error:", error);
+
+      if (error) {
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        res.status(200).json({ error: "No active client found." });
+        return;
+      }
+
+      res.status(200).json({ client: data });
+    } catch (error) {
+      console.error("Error fetching client:", error);
+      res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  }
+
+  static async getAllFilteredTaskers(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const { data, error } = await supabase
         .from("tasker")
-        .select(`
+        .select(
+          `
           *,
           tasker_specialization (
-        specialization
+            specialization
           ),
           user!inner (
             user_id,
@@ -128,32 +204,35 @@ class ClientModel {
             email,
             contact,
             verified,
-            user_role
-          )
-        `)
-        .not('user', 'is', null)
-        .eq('user.acc_status', 'Active')
-        .eq('user.verified', true)
-        .eq('user.user_role', 'Tasker')
-  
+            user_role,
+            user_preference!inner(*, address(*))
+          ) 
+        `
+        )
+        .not("user", "is", null)
+        .eq("user.acc_status", "Active")
+        .eq("user.verified", true)
+        .eq("user.user_role", "Tasker");
+
       console.log("Taskers data:", data, "Error:", error);
-  
+
       if (error) {
         console.error("Error fetching taskers:", error.message);
         res.status(500).json({ error: error.message });
         return;
       }
-  
+
       if (!data || data.length === 0) {
         res.status(200).json({ error: "No active taskers found." });
         return;
       }
-  
+
       res.status(200).json({ taskers: data });
     } catch (error) {
       console.error("Error fetching taskers:", error);
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   }
@@ -163,7 +242,8 @@ class ClientModel {
     try {
       const { data, error } = await supabase
         .from("tasker")
-        .select(`
+        .select(
+          `
           *,
           tasker_specialization (
         specialization
@@ -182,37 +262,44 @@ class ClientModel {
             verified,
             user_role
           )
-        `)
-        .not('user', 'is', null)
-        .eq('user.acc_status', 'Active')
-        .eq('user.verified', true)
-        .eq('user.user_role', 'Tasker')
-  
+        `
+        )
+        .not("user", "is", null)
+        .eq("user.acc_status", "Active")
+        .eq("user.verified", true)
+        .eq("user.user_role", "Tasker");
+
       console.log("Taskers data:", data, "Error:", error);
-  
+
       if (error) {
         console.error("Error fetching taskers:", error.message);
         res.status(500).json({ error: error.message });
         return;
       }
-  
+
       if (!data || data.length === 0) {
         res.status(200).json({ error: "No active taskers found." });
         return;
       }
-  
+
       res.status(200).json({ taskers: data });
     } catch (error) {
       console.error("Error fetching taskers:", error);
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   }
 
   static async updateClient(
     clientId: number,
-    clientInfo: { user_id?: number; preferences?: Text; client_address?: Text, amount?: number }
+    clientInfo: {
+      user_id?: number;
+      preferences?: Text;
+      client_address?: Text;
+      amount?: number;
+    }
   ) {
     const { data, error } = await supabase
       .from("clients")
@@ -223,11 +310,12 @@ class ClientModel {
   }
 
   static async addCredits(clientId: number, amount: number) {
+    const { data, error } = await supabase.rpc("increment_client_credits", {
+      addl_credits: amount,
+      id: clientId,
+    });
 
-    const { data, error } = await supabase
-      .rpc('increment_client_credits', { addl_credits: amount, id: clientId});
-
-      console.log("add credits to client: " + data, error);
+    console.log("add credits to client: " + data, error);
     if (error) throw new Error(error.message);
     return data;
   }
