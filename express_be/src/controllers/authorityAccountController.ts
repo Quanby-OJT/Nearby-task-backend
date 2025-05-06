@@ -444,6 +444,142 @@ class AuthorityAccountController {
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to reset password" });
     }
   }
+
+  static async updatePassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, newPassword } = req.body;
+
+      // Validate input
+      if (!email || !newPassword) {
+        res.status(400).json({ error: "Email and new password are required" });
+        return;
+      }
+
+      // Get user
+      const { data: user, error: userError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("email", email)
+        .single();
+
+      if (userError || !user) {
+        res.status(404).json({ error: "Email not found" });
+        return;
+      }
+
+      // Validate password requirements
+      const passwordRegex = /^(?!.*\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()]).{8,}$/;
+      if (!passwordRegex.test(newPassword)) {
+        res.status(400).json({
+          error: "Password must be at least 8 characters long, contain at least one lowercase letter, one uppercase letter, one number, one special character (!@#$%^&*()), and no spaces."
+        });
+        return;
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password in user table
+      const { error: updateError } = await supabase
+        .from("user")
+        .update({ hashed_password: hashedPassword })
+        .eq("user_id", user.user_id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error in updatePassword:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to update password" });
+    }
+  }
+
+  static async addAddress(req: Request, res: Response): Promise<void> {
+    try {
+      const { user_id, street, barangay, city, province, postal_code, country, latitude, longitude, default: isDefault } = req.body;
+
+      if (!user_id || !street || !barangay || !city || !province || !postal_code || !country) {
+        res.status(400).json({ error: "Required fields (user_id, street, barangay, city, province, postal_code, country) are missing" });
+        return;
+      }
+
+      const addressData = {
+        user_id,
+        street,
+        barangay,
+        city,
+        province,
+        postal_code,
+        country,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        default: isDefault || false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase.from("address").insert([addressData]).select();
+
+      if (error) throw new Error(error.message);
+
+      res.status(201).json({ message: "Address added successfully", addresses: data });
+    } catch (error) {
+      console.error("Error in addAddress:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to add address" });
+    }
+  }
+
+  static async updateAddress(req: Request, res: Response): Promise<void> {
+    try {
+      const addressId = req.params.addressId;
+      const { user_id, street, barangay, city, province, postal_code, country, latitude, longitude, default: isDefault } = req.body;
+
+      if (!addressId || !user_id || !street || !barangay || !city || !province || !postal_code || !country) {
+        res.status(400).json({ error: "Required fields (addressId, user_id, street, barangay, city, province, postal_code, country) are missing" });
+        return;
+      }
+
+      const addressData = {
+        user_id,
+        street,
+        barangay,
+        city,
+        province,
+        postal_code,
+        country,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        default: isDefault || false,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase.from("address").update(addressData).eq("id", addressId).select();
+
+      if (error) throw new Error(error.message);
+
+      res.status(200).json({ message: "Address updated successfully", addresses: data });
+    } catch (error) {
+      console.error("Error in updateAddress:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to update address" });
+    }
+  }
+
+  static async getAddresses(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.params.userId;
+
+      const { data, error } = await supabase.from("address").select("*").eq("user_id", userId);
+
+      if (error) throw new Error(error.message);
+
+      res.status(200).json({ message: "Addresses retrieved successfully", addresses: data });
+    } catch (error) {
+      console.error("Error in getAddresses:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to retrieve addresses" });
+    }
+  }
 }
 
 export default AuthorityAccountController;
