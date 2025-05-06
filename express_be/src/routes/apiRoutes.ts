@@ -49,7 +49,10 @@ router.post(
   UserAccountController.registerUser
 );
 
-
+// New routes for forgot password
+router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
+router.post("/forgot-password/verify-otp", UserAccountController.verifyOtp);
+router.post("/forgot-password/reset-password", UserAccountController.resetPassword);
 
 router.post("/verify", UserAccountController.verifyEmail)
 // router.use(isAuthenticated);

@@ -23,8 +23,8 @@ router.put("/updateUserInfo/:id/", upload.single("image"), UserAccountController
 router.post("/verify-otp", AuthenticationController.otpAuthentication);
 
 // New routes for forgot password
-router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
-router.post("/forgot-password/verify-otp", UserAccountController.verifyOtp);
-router.post("/forgot-password/reset-password", UserAccountController.resetPassword);
+// router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
+// router.post("/forgot-password/verify-otp", UserAccountController.verifyOtp);
+// router.post("/forgot-password/reset-password", UserAccountController.resetPassword);
 
 export default router;

@@ -17,6 +17,7 @@ import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
 import ConversationRoutes from "./routes/conversationRoutes";
+import UserAccountController from "./controllers/userAccountController";
 dotenv.config();
 const app: Application = express();
 
