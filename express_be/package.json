@@ -29,6 +29,7 @@
     "openai": "^4.96.2",
     "otp-generator": "^4.0.1",
     "postgres": "^3.4.5",
+    "socket.io": "^4.8.1",
     "xendit-node": "^6.3.0"
   },
   "devDependencies": {
