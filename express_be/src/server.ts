@@ -16,6 +16,7 @@ import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
+import AuthorityAccountController from "././controllers/authorityAccountController";
 dotenv.config();
 const app: Application = express();
 
@@ -42,6 +43,12 @@ app.use(
     },
   })
 );
+
+// Explicit unauthenticated forgot password routes, Forgot don't need authentication ehh kaya wag nyo to alisin
+app.post("/connect/forgot-password/send-otp", AuthorityAccountController.sendOtp);
+app.post("/connect/forgot-password/verify-otp", AuthorityAccountController.verifyOtp);
+app.post("/connect/forgot-password/reset-password", AuthorityAccountController.resetPassword);
+
 
 app.use("/connect", server);
 
