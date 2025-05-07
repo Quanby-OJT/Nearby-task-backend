@@ -110,6 +110,17 @@ class Auth {
     return data;
   }
 
+  //This will be changed once we start to implement the reset password link, which is already built-in within the application.
+  static async getUserEmail(email: string) {
+    const {data, error} = await supabase.from("users").select("email, acc_status").eq("email", email).single()
+
+    if(error) throw new Error("Error while retrieving email" + error.message)
+
+    if(!data) return null
+
+    return data
+  }
+
   static async createOTP(otp_input: { user_id: number; two_fa_code: string }) {
     const addMinutes = (date: number, n: number) => {
       const d = new Date(date);
@@ -260,36 +271,34 @@ class Auth {
   }
 
   static async logout(user_id: number, session_key: string) {
-    
-try {
-  const loggedOutAt = new Date().toISOString();
+    try {
+      const loggedOutAt = new Date().toISOString();
 
-    const { error: logError } = await supabase
-    .from("user_logs")
-    .update({ logged_out: loggedOutAt })
-    .eq("user_id", user_id)
-    .eq("session", session_key);
+        const { error: logError } = await supabase
+        .from("user_logs")
+        .update({ logged_out: loggedOutAt })
+        .eq("user_id", user_id)
+        .eq("session", session_key);
 
-  if (logError) {
-    throw new Error(`Error updating user_logs: ${logError.message}`);
-  }
+      if (logError) {
+        throw new Error(`Error updating user_logs: ${logError.message}`);
+      }
 
-  // Update user status
-  const { error: userError } = await supabase
-  .from("user")
-  .update({ status: false })
-  .eq("user_id", user_id);
+      // Update user status
+      const { error: userError } = await supabase
+      .from("user")
+      .update({ status: false })
+      .eq("user_id", user_id);
 
-if (userError) {
-  throw new Error(`Error updating user status: ${userError.message}`);
-}
+    if (userError) {
+      throw new Error(`Error updating user status: ${userError.message}`);
+    }
 
-return { success: true, message: "User logged out successfully" };
-} catch (error:any) {
-  console.error("Logout Error:", error);
-    return { success: false, message: error.message };
-}
-     
+    return { success: true, message: "User logged out successfully" };
+    } catch (error:any) {
+      console.error("Logout Error:", error);
+        return { success: false, message: error.message };
+    }
   }
 }
 
