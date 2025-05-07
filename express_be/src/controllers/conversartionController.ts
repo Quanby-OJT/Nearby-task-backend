@@ -94,7 +94,7 @@ class ConversationController {
       
         if (!TaskTakenData || TaskTakenData.length === 0) {
           console.log("No Task Taken Data Found");
-          res.status(200).json({ data: [] });
+          res.status(200).json({ data: [[], []] }); // Return empty task and conversation lists
           return;
         }
       
@@ -117,22 +117,27 @@ class ConversationController {
                 console.error(`Error fetching message for task_taken_id ${task.task_taken_id}:`, error.message);
                 return null; // Return null for failed queries
               }
-              return { task_taken_id: task.task_taken_id, latest_message: data };
+              return {
+                task_taken_id: task.task_taken_id,
+                user_id: data?.user_id || null,
+                created_at: data?.created_at || null,
+              };
             })
         );
       
         const latestMessages = await Promise.all(latestMessagesPromises);
       
-        // Merge latest message data with TaskTakenData
-        const enrichedData = TaskTakenData.map((task: any) => {
-          const message = latestMessages.find((msg) => msg?.task_taken_id === task.task_taken_id);
-          return {
-            ...task,
-            latest_message: message?.latest_message || null, // Attach latest message or null if none
-          };
-        });
+        // Filter out null messages and format conversation data
+        const conversationData = latestMessages
+          .filter((msg) => msg !== null && msg.user_id !== null && msg.created_at !== null)
+          .map((msg) => ({
+            task_taken_id: msg?.task_taken_id,
+            user_id: msg?.user_id,
+            created_at: msg?.created_at,
+          }));
       
-        res.status(200).json({ data: enrichedData });
+        // Return task and conversation data as separate sublists
+        res.status(200).json({ data: [TaskTakenData, conversationData] });
       }
 
     static async getMessages(req: Request, res: Response): Promise<void> {
