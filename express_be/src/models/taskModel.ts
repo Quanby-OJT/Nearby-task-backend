@@ -1,6 +1,136 @@
 import { supabase } from "../config/configuration";
+import UserWithTasksModel from "./userClientModel";
 
-class TaskModel {
+
+export class TaskModel {
+  task_id: number;
+  task_title: string;
+  task_description: string;
+  duration: number;
+  proposed_price: number;
+  urgent: boolean;
+  remarks: string;
+  client_id: number;
+  task_begin_date: string;
+  period: string;
+  location: string;
+  specialization: string;
+  status: string;
+  work_type: string;
+  created_at: string;
+  updated_at: string | null;
+  clients: {
+    client_id: number;
+    user: {
+      user_id: number;
+      first_name: string;
+      middle_name: string | null;
+      last_name: string;
+      image_link: string | null;
+      birthdate: string | null;
+      acc_status: string;
+      gender: string | null;
+      email: string | null;
+      contact: string | null;
+      verified: boolean;
+      user_role: string;
+      user_preference: {
+        id: number;
+        latitude: number;
+        longitude: number;
+        distance: number;
+        specialization: string;
+        age_start: number;
+        age_end: number;
+        limit: number;
+        created_at: string;
+        updated_at: string | null;
+        address: {
+          id: number;
+          barangay: string;
+          city: string;
+          province: string;
+          postal_code: string;
+          country: string;
+          street: string;
+          latitude: number;
+          longitude: number;
+          default: boolean;
+          created_at: string;
+          updated_at: string | null;
+        } | null;
+      } | null;
+    };
+  } | null;
+
+  constructor(data: any = {}) {
+    this.task_id = data?.task_id;
+    this.task_title = data?.task_title;
+    this.task_description = data?.task_description;
+    this.duration = data?.duration;
+    this.proposed_price = data?.proposed_price;
+    this.urgent = data?.urgent;
+    this.remarks = data?.remarks;
+    this.client_id = data?.client_id;
+    this.task_begin_date = data?.task_begin_date;
+    this.period = data?.period;
+    this.location = data?.location;
+    this.specialization = data?.specialization;
+    this.status = data?.status;
+    this.work_type = data?.work_type;
+    this.created_at = data?.created_at;
+    this.updated_at = data?.updated_at;
+    this.clients = data?.clients
+      ? {
+          client_id: data.clients.client_id,
+          user: {
+            user_id: data.clients.user.user_id,
+            first_name: data.clients.user.first_name,
+            middle_name: data.clients.user.middle_name,
+            last_name: data.clients.user.last_name,
+            image_link: data.clients.user.image_link,
+            birthdate: data.clients.user.birthdate,
+            acc_status: data.clients.user.acc_status,
+            gender: data.clients.user.gender,
+            email: data.clients.user.email,
+            contact: data.clients.user.contact,
+            verified: data.clients.user.verified,
+            user_role: data.clients.user.user_role,
+            user_preference: data.clients.user.user_preference
+              ? {
+                  id: data.clients.user.user_preference.id,
+                  latitude: data.clients.user.user_preference.latitude,
+                  longitude: data.clients.user.user_preference.longitude,
+                  distance: data.clients.user.user_preference.distance,
+                  specialization: data.clients.user.user_preference.specialization,
+                  age_start: data.clients.user.user_preference.age_start,
+                  age_end: data.clients.user.user_preference.age_end,
+                  limit: data.clients.user.user_preference.limit,
+                  created_at: data.clients.user.user_preference.created_at,
+                  updated_at: data.clients.user.user_preference.updated_at,
+                  address: data.clients.user.user_preference.address
+                    ? {
+                        id: data.clients.user.user_preference.address.id,
+                        barangay: data.clients.user.user_preference.address.barangay,
+                        city: data.clients.user.user_preference.address.city,
+                        province: data.clients.user.user_preference.address.province,
+                        postal_code: data.clients.user.user_preference.address.postal_code,
+                        country: data.clients.user.user_preference.address.country,
+                        street: data.clients.user.user_preference.address.street,
+                        latitude: data.clients.user.user_preference.address.latitude,
+                        longitude: data.clients.user.user_preference.address.longitude,
+                        default: data.clients.user.user_preference.address.default,
+                        created_at: data.clients.user.user_preference.address.created_at,
+                        updated_at: data.clients.user.user_preference.address.updated_at,
+                      }
+                    : null,
+                }
+              : null,
+          },
+        }
+      : null;
+  }
+
   async createNewTask(
     client_id: number,
     description: string,
@@ -14,7 +144,7 @@ class TaskModel {
     remarks: string,
     task_begin_date: string,
     user_id?: number,
-    work_type?: string 
+    work_type?: string
   ) {
     let statuses: string = "Available";
     console.log(
@@ -98,24 +228,66 @@ class TaskModel {
   }
 
   async getAllTasks() {
-    const { data, error } = await supabase.from("post_task").select(`
-      *,
-      clients:client_id (
-        client_id,
-          user:user_id (
+    const { data, error } = await supabase
+      .from("post_task")
+      .select(`
+        *,
+        clients!post_task_client_id_fkey (
+          client_id,
+          user!clients_user_id_fkey (
             user_id,
             first_name,
             middle_name,
-            last_name
+            last_name,
+            image_link,
+            birthdate,
+            acc_status,
+            gender,
+            email,
+            contact,
+            verified,
+            user_role,
+            user_preference!user_preference_user_id_fkey (
+              id,
+              latitude,
+              longitude,
+              distance,
+              specialization,
+              age_start,
+              age_end,
+              limit,
+              created_at,
+              updated_at,
+              address:user_address (
+                id,
+                barangay,
+                city,
+                province,
+                postal_code,
+                country,
+                street,
+                latitude,
+                longitude,
+                default,
+                created_at,
+                updated_at
+              )
+            )
           )
-         )
-      `).order('task_id', { ascending: false });;
-    if (error) throw new Error(error.message);
-    return data;
+        )
+      `)
+      .order("task_id", { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data || []).map((task: any) => new TaskModel(task));
   }
 
+  
   async getTaskById(jobPostId: number) {
-    const { data, error } = await supabase
+    const { data, error } = await supabase  
       .from("post_task")
       .select("*, clients:client_id (user:user_id (user_id, first_name, middle_name, last_name), preferences, client_address)")
       .eq("task_id", jobPostId)
@@ -263,8 +435,7 @@ class TaskModel {
   
     return { success: true, message: "Task closed successfully", task: data };
   }
-
 }
 
-const taskModel = new TaskModel();
+const taskModel = new TaskModel({});
 export default taskModel;

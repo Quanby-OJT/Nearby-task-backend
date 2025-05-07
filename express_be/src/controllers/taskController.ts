@@ -117,7 +117,7 @@ class TaskController {
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
       const tasks = await taskModel.getAllTasks();
-      //console.log("Retrieved tasks:", tasks);
+    
       res.status(200).json({ tasks });
     } catch (error) {
       res.status(500).json({
@@ -126,6 +126,195 @@ class TaskController {
     }
   }
 
+  static async getAllTaskersJobPost(req: Request, res: Response): Promise<void> {
+    try {
+      const tasks = await TaskController.getAllTaskers();
+      res.status(200).json({ tasks });
+    } catch (error) {
+      console.error("API Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        message: "Failed to process request",
+      });
+    }
+  }
+
+  private static async getAllTaskers() {
+    try {
+     
+      const { data: tasksData, error: tasksError } = await supabase
+        .from("post_task")
+        .select(`
+          *,
+          clients:client_id (
+            client_id,
+            user_id
+          )
+        `)
+        .order("created_at", { ascending: false });
+  
+      if (tasksError) {
+        console.error("Supabase Error fetching tasks:", tasksError);
+        throw new Error(tasksError.message);
+      }
+  
+      if (!tasksData || tasksData.length === 0) {
+        return [];
+      }
+  
+      const clientUserIds = tasksData
+        .map(task => task.clients?.user_id)
+        .filter(Boolean);
+  
+      if (clientUserIds.length === 0) {
+        return tasksData.map(task => TaskController.transformTaskData(task, null));
+      }
+  
+      const { data: userData, error: userError } = await supabase
+        .from("user")
+        .select(`
+          *,
+          user_preference (
+            *,
+            address (*)
+          )
+        `)
+        .in("user_id", clientUserIds)
+        .eq("user_role", "Client");
+  
+      if (userError) {
+        console.error("Supabase Error fetching users:", userError);
+        throw new Error(userError.message);
+      }
+  
+      const userMap: { [key: string]: any } = {};
+      userData?.forEach(user => {
+        userMap[user.user_id] = user;
+      });
+  
+      return tasksData.map(task => {
+        const clientUserId = task.clients?.user_id;
+        const user = clientUserId ? userMap[clientUserId] : null;
+        return TaskController.transformTaskData(task, user);
+      });
+    } catch (error) {
+      console.error("Error in getAllTaskers:", error);
+      throw error;
+    }
+  
+  }
+
+  private static transformTaskData(task: any, user: any | null) {
+    
+    let taskSpecialization = "Unknown";
+    try {
+      const parsed = JSON.parse(task.specialization || "[]");
+      taskSpecialization = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : "Unknown";
+    } catch (e) {
+      taskSpecialization = task.specialization || "Unknown";
+    }
+  
+    return {
+      task_id: task.task_id,
+      client_id: task.client_id,
+      task_title: task.task_title,
+      specialization: taskSpecialization,
+      task_description: task.task_description?.trim() || "",
+      location: task.location,
+      period: task.period,
+      duration: task.duration?.toString() || "0",
+      urgent: task.urgent ? "Urgent" : "Non-Urgent",
+      status: task.status || "Unknown",
+      proposed_price: task.proposed_price,
+      remarks: task.remarks,
+      task_begin_date: task.task_begin_date,
+      work_type: task.work_type,
+      task_created_at: task.created_at,
+      task_updated_at: task.updated_at,
+      client: user
+        ? {
+            preferences: user.user_preference?.[0]?.specialization || "",
+            client_address: user.user_preference?.[0]?.address
+              ? [
+                  user.user_preference[0].address.street,
+                  user.user_preference[0].address.barangay,
+                  user.user_preference[0].address.city,
+                  user.user_preference[0].address.province,
+                  user.user_preference[0].address.country,
+                ]
+                  .filter((v) => v)
+                  .join(", ")
+              : "",
+            amount: 0.0,
+            rating: 0.0,
+            user: {
+              user_id: user.user_id,
+              first_name: user.first_name, 
+              middle_name: user.middle_name,
+              last_name: user.last_name,
+              email: user.email,
+              birthdate: user.birthdate,
+              image_link: user.image_link,
+              user_role: user.user_role,
+              acc_status: user.acc_status,
+              contact: user.contact,
+              gender: user.gender,
+              verified: user.verified,
+              user_preference: user.user_preference?.length
+                ? [
+                    {
+                      id: user.user_preference[0].id,
+                      limit: user.user_preference[0].limit,
+                      address: user.user_preference[0].address
+                        ? {
+                            id: user.user_preference[0].address.id,
+                            street_address: user.user_preference[0].address.street || "",
+                            barangay: user.user_preference[0].address.barangay || "",
+                            city: user.user_preference[0].address.city || "",
+                            province: user.user_preference[0].address.province || "",
+                            postal_code: user.user_preference[0].address.postal_code || "",
+                            country: user.user_preference[0].address.country || "",
+                            latitude: user.user_preference[0].address.latitude || 0,
+                            longitude: user.user_preference[0].address.longitude || 0,
+                            default: user.user_preference[0].address.default || false,
+                            created_at: user.user_preference[0].address.created_at,
+                            updated_at: user.user_preference[0].address.updated_at,
+                          }
+                        : {
+                            id: "",
+                            street_address: "",
+                            barangay: "",
+                            city: "",
+                            province: "",
+                            postal_code: "",
+                            country: "",
+                            latitude: 0,
+                            longitude: 0,
+                            default: false,
+                          },
+                      age_end: user.user_preference[0].age_end,
+                      user_id: user.user_preference[0].user_id,
+                      distance: user.user_preference[0].distance,
+                      latitude: user.user_preference[0].latitude,
+                      longitude: user.user_preference[0].longitude,
+                      age_start: user.user_preference[0].age_start,
+                      created_at: user.user_preference[0].created_at,
+                      updated_at: user.user_preference[0].updated_at,
+                      user_address: user.user_preference[0].user_address,
+                      specialization: user.user_preference[0].specialization
+                        ? [user.user_preference[0].specialization]
+                        : [],
+                    },
+                  ]
+                : null,
+            },
+          }
+        : null,
+    };
+  }
+
+  
   static async getTaskById(req: Request, res: Response): Promise<void> {
     try {
       const jobPostId = parseInt(req.params.id);

@@ -17,9 +17,15 @@ router.delete("/deleteTask/:id", TaskController.deleteTask);
 
 router.get("/task-taken/tasker/:taskerId", TaskController.getTaskforTasker);
 
-router.get("/getCreatedTaskByClient/:client_id", TaskController.getCreatedTaskByClient);
+router.get(
+  "/getCreatedTaskByClient/:client_id",
+  TaskController.getCreatedTaskByClient
+);
 
-router.post("/check-task-assignment/:taskId/:taskerId", TaskController.checkTaskAssignment);
+router.post(
+  "/check-task-assignment/:taskId/:taskerId",
+  TaskController.checkTaskAssignment
+);
 
 router.put("/updateTask/:id", TaskController.updateTask);
 
@@ -29,12 +35,15 @@ router.put(
   "/update-tasker-with-images/:id",
   upload.fields([
     { name: "profileImage", maxCount: 1 },
-    { name: "documentImage", maxCount: 1 }
+    { name: "documentImage", maxCount: 1 },
   ]),
   TaskController.updateTaskerProfile
 );
 
-router.put("/update-tasker-profile/:id", TaskController.updateTaskerProfileNoImages);
+router.put(
+  "/update-tasker-profile/:id",
+  TaskController.updateTaskerProfileNoImages
+);
 
 // New routes for specialization Parts Ito
 router.get("/specializations", TaskController.getAllSpecializations);
