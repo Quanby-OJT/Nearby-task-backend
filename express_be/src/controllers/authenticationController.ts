@@ -145,6 +145,25 @@ class AuthenticationController {
     }
   }
 
+  static async resetPassword(req: Request, res: Response): Promise<void> {
+    const {email, password, verification_token} = req.body
+
+    try {
+      const {error} = await supabase.from("user").update({hashed_password: password}).eq("verification_token", verification_token).eq("email", email)
+  
+        if(error) throw new Error(error.message)
+  
+        const {error: errorDelete} = await supabase.from("user").update({verification_token: null}).eq("email", email).eq("verification_token", verification_token)
+  
+        if(errorDelete) throw new Error(errorDelete.message)
+  
+        res.status(200).json({message: "Password has been reset successfully. Please login to your account."})
+      }catch(error){
+        console.error(error instanceof Error ? error.message : "Internal Server Error")
+        res.status(500).json({error: "An error occured while resetting your password. Please Try Again. If the problem persists. Contact us."})
+      }
+  }
+
   static async generateOTP(req: Request, res: Response): Promise<void> {
     try {
       const { user_id } = req.body;
