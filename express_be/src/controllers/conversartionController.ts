@@ -5,112 +5,135 @@ import ClientTaskerModeration  from "../models/moderationModel"
 
 class ConversationController {
     static async sendMessage(req: Request, res: Response): Promise<void> {
-        const {task_taken_id, user_id, conversation} = req.body
-        console.log(req.body)
-
-        console.log("Sending Message for Task Taken ID of: ", task_taken_id)
-
-        // Verify if task_taken_id exists
-        const { data: taskExists, error: taskError } = await supabase
-            .from("task_taken")
-            .select("task_taken_id")
-            .eq("task_taken_id", task_taken_id)
-            .single()
-
-        if (taskError || !taskExists) {
-            res.status(404).json({ error: "Task taken ID does not exist" })
-            return
+        try{
+            const {task_taken_id, user_id, role, conversation} = req.body
+            console.log(req.body)
+    
+            console.log("Sending Message for Task Taken ID of: ", task_taken_id)
+    
+            await ConversationModel.sendMessage(task_taken_id, user_id, conversation)
+    
+            await ConversationModel.updateMessageNotification(task_taken_id, role)
+    
+            res.status(200).json({message: "Your Message has been Sent Successfully."})
+        }catch(error){
+            console.error(error instanceof Error ? error.message : "Internal Server Error")
+            res.status(500).json({error: "An Error Occurred while Sending Your Message. Please Try Again"})
         }
-
-        const {data: messageData, error: conversationError} = await supabase.from("conversation_history").insert({
-            task_taken_id, 
-            user_id, 
-            conversation,
-            reported: false
-        }).select("convo_id").single()
-
-        if(conversationError){
-            console.error(conversationError.message)
-            res.status(500).json({error: "An Error Occured while Sending a New Message"})
-            return
-        }
-
-        const { error: incrementError } = await supabase.rpc('increment_message_notifs', {
-            p_task_taken_id: task_taken_id,
-            p_message_id: messageData.convo_id,
-          });
-
-          if(incrementError){
-            console.error(incrementError.message)
-            res.status(500).json({error: "An Error Occured while Sending Messages. Please Try Again Later."})
-            return
-          }
-
-
-        res.status(200).json({message: "Your Message has been Sent Successfully."})
     }
 
     static async getAllMessages(req: Request, res: Response): Promise<void> {
-        const user_id = req.params.user_id
-        //console.log("Retrieving Messages for User ID of: ", user_id)
-
-        const {data, error} = await supabase.from("user").select("user_role").eq("user_id", user_id).single()
-        if(error){
-            console.error(error.message)
-            res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})
-            return
+        const user_id = req.params.user_id;
+      
+        // Retrieve user role
+        const { data, error } = await supabase
+          .from("user")
+          .select("user_role")
+          .eq("user_id", user_id)
+          .single();
+      
+        if (error) {
+          console.error(error.message);
+          res.status(500).json({ error: "An Error Occurred while Retrieving Your Messages. Please Try Again" });
+          return;
         }
-        const role = data.user_role
-        let user_role_id = ""
-
-        if(role == "Tasker") user_role_id = "tasker_id"
-        else if(role == "Client") user_role_id = "client_id"
+      
+        const role = data.user_role;
+        let user_role_id = "";
+      
+        if (role === "Tasker") user_role_id = "tasker_id";
+        else if (role === "Client") user_role_id = "client_id";
         else {
-            res.status(400).json({error: "Invalid User Role"})
-            return
+          res.status(400).json({ error: "Invalid User Role" });
+          return;
         }
-
-        console.log("User Role ID: ", user_role_id)
-
+      
+        console.log("User Role ID: ", user_role_id);
+      
+        // Retrieve task taken data
         const { data: TaskTakenData, error: TaskTakenError } = await supabase
-            .from("task_taken")
+          .from("task_taken")
+          .select(`
+            task_taken_id,
+            task_status::text,
+            unread_count,
+            post_task!task_id (
+              task_id,
+              task_title
+            ),
+            tasker_id,
+            client_id,
+            clients!client_id (
+              user!user_id (
+                user_id,
+                first_name,
+                middle_name,
+                last_name,
+                image_link
+              )
+            ),
+            tasker!tasker_id (
+              user!user_id (
+                user_id,
+                first_name,
+                middle_name,
+                last_name,
+                image_link
+              )
+            )
+          `)
+          .eq(user_role_id, user_id)
+          .eq("is_deleted", false)
+          .order("task_taken_id", { ascending: false });
+      
+        if (TaskTakenError) {
+          console.error(TaskTakenError.message);
+          res.status(500).json({ error: "An Error Occurred while Retrieving Your Messages. Please Try Again" });
+          return;
+        }
+      
+        if (!TaskTakenData || TaskTakenData.length === 0) {
+          console.log("No Task Taken Data Found");
+          res.status(200).json({ data: [] });
+          return;
+        }
+      
+        console.log("Task Taken IDs: ", TaskTakenData.map((item: any) => item.task_taken_id));
+      
+        // Fetch latest message for each task_taken_id
+        const latestMessagesPromises = TaskTakenData.map((task: any) =>
+          supabase
+            .from("conversation_history")
             .select(`
-                task_taken_id,
-                task_status::text,
-                unread_count,
-                post_task!task_id (
-                    task_id,
-                    task_title
-                ),
-                clients!client_id (
-                    user!user_id (
-                        first_name,
-                        middle_name,
-                        last_name,
-                        image_link
-                    )
-                ),
-                tasker!tasker_id (
-                    user!user_id (
-                        first_name,
-                        middle_name,
-                        last_name,
-                        image_link
-                    )
-                )
+              user_id,
+              created_at
             `)
-            .eq(user_role_id, user_id)
-            .eq("is_deleted", false)
-                
-            //console.log("Chat Data: ", TaskTakenData, TaskTakenError)
-    
-            if(TaskTakenError){
-                console.error(TaskTakenError.message)
-                res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})
-                return
-            }
-            res.status(200).json({data: TaskTakenData})
-    }
+            .eq("task_taken_id", task.task_taken_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single()
+            .then(({ data, error }) => {
+              if (error) {
+                console.error(`Error fetching message for task_taken_id ${task.task_taken_id}:`, error.message);
+                return null; // Return null for failed queries
+              }
+              return { task_taken_id: task.task_taken_id, latest_message: data };
+            })
+        );
+      
+        const latestMessages = await Promise.all(latestMessagesPromises);
+      
+        // Merge latest message data with TaskTakenData
+        const enrichedData = TaskTakenData.map((task: any) => {
+          const message = latestMessages.find((msg) => msg?.task_taken_id === task.task_taken_id);
+          return {
+            ...task,
+            latest_message: message?.latest_message || null, // Attach latest message or null if none
+          };
+        });
+      
+        res.status(200).json({ data: enrichedData });
+      }
 
     static async getMessages(req: Request, res: Response): Promise<void> {
         const task_taken_id = req.params.task_taken_id

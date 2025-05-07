@@ -103,6 +103,34 @@ class ConversationModel {
     }
   }
 
+  static async sendMessage(task_taken_id: number, user_id: string, conversation: string) {
+            // Verify if task_taken_id exists
+            const { data: taskExists, error: taskError } = await supabase
+            .from("task_taken")
+            .select("task_taken_id")
+            .eq("task_taken_id", task_taken_id)
+            .single()
+
+        if (taskError || !taskExists) throw new Error("Task Taken ID does not exist or an error occurred while checking it.");
+
+        const {data: messageData, error: conversationError} = await supabase.from("conversation_history").insert({
+            task_taken_id, 
+            user_id, 
+            conversation,
+            reported: false
+        }).select("convo_id").single()
+
+        if(conversationError) throw new Error("An error occurred while sending the message: " + conversationError.message)
+        if(!messageData) throw new Error("An error occurred while sending the message: No data returned.")
+
+        const { error: incrementError } = await supabase.rpc('increment_message_notifs', {
+            p_task_taken_id: task_taken_id,
+            p_message_id: messageData.convo_id,
+          });
+
+        if(incrementError) throw new Error("An error occurred while incrementing the message notifications: " + incrementError.message)
+  }
+
   static async deleteConversation(task_taken_id: number) {
     const { error } = await supabase
         .from("task_taken")
@@ -169,6 +197,35 @@ class ConversationModel {
     } catch (error) {
       console.error("Error in warnUser:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Updates the task_taken on who currently visits.
+   * @param task_taken_id 
+   * @param user_id 
+   * @param role 
+   * @returns 
+   */
+  static async updateMessageNotification(task_taken_id: number, role: string) {
+    console.log("Role: ", role)
+
+    let updateData = {};
+    if (role === "Client") {
+      updateData = { visit_client: true, visit_tasker : false };
+    } else if (role === "Tasker") {
+      updateData = { visit_tasker: true, visit_client : false };
+    } else {
+      throw new Error("Invalid role provided. Must be either 'Client' or 'Tasker'.");
+    }
+
+    const { error } = await supabase
+      .from("task_taken")
+      .update(updateData)
+      .eq("task_taken_id", task_taken_id);
+
+    if (error) {
+      throw new Error("Failed to update message notification. The Error is: " + error.message);
     }
   }
 }
