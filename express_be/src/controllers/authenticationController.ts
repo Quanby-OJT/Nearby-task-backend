@@ -88,6 +88,10 @@ class AuthenticationController {
     }
   }
 
+  static async forgotPassword(req: Request, res: Response): Promise<void> {
+      
+  }
+
   static async generateOTP(req: Request, res: Response): Promise<void> {
     try {
       const { user_id } = req.body;
