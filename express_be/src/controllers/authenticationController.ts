@@ -116,7 +116,7 @@ class AuthenticationController {
       if(error) throw new Error(error.message)
 
 
-      const verificationLink = `${process.env.URL}/verify?token=${verificationToken}&email=${email}`;
+      const verificationLink = `myapp://verify?token=${verificationToken}&email=${email}`;
       console.log(verificationLink);
 
       const html = `
@@ -139,7 +139,8 @@ class AuthenticationController {
         html: html,
       });
 
-      res.status(200).json({message: "You have requested to reset your password for NearByTask. Please Chack Your Email"})
+      
+      res.redirect(verificationLink);
 
     }catch(error){
       console.error(error instanceof Error ? error.message : "Internal Server Error")
