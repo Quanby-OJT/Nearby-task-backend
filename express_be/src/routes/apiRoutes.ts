@@ -17,6 +17,8 @@ import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
 import AuthorityAccountController from "../controllers/authorityAccountController";
 import SettingController from "../controllers/settingController";
+import PaymentController from "../controllers/paymentController";
+import { Auth } from "../models/authenticationModel";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -49,8 +51,13 @@ router.post(
   UserAccountController.registerUser
 );
 
+// New routes for forgot password (for AngularJS only)
+router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
+router.post("/forgot-password/verify-otp", UserAccountController.verifyOtp);
+router.post("/forgot-password/reset-password", UserAccountController.resetPassword);
 
-
+// New route for forget password (for Flutter Only)
+router.post("/forgot-password", AuthenticationController.forgotPassword);
 router.post("/verify", UserAccountController.verifyEmail)
 // router.use(isAuthenticated);
 
@@ -102,12 +109,6 @@ router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
 
-//All COnversation Messages
-router.post("/send-message", ConversationController.sendMessage);
-router.get("/all-messages/:user_id", ConversationController.getAllMessages);
-router.get("/messages/:task_taken_id", ConversationController.getMessages);
-router.delete("/delete-message/:messageId", ConversationController.deleteConversation);
-
 //Tasker Status Update
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
 router.post("/update-status-client", TaskController.updateTaskStatusforClient);
@@ -131,9 +132,9 @@ router.post("/banUser/:id", ConversationController.banUser);
 router.post("/warnUser/:id", ConversationController.warnUser); 
 
 //Payment Routes
-router.post("/deposit-escrow-payment", TaskController.depositEscrowAmount);
-router.put("/webhook/paymongo", TaskController.handlePayMongoWebhook);
-router.put("/update-payment-status/:taskTakenId", TaskController.updateTask);
+router.post("/deposit-escrow-payment", PaymentController.depositEscrowAmount);
+router.put("/webhook/paymongo", PaymentController.handlePayMongoWebhook);
+router.put("/withdraw-escrow-amount", PaymentController.depositEscrowAmount);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
@@ -237,14 +238,7 @@ router.put(
   UserAccountController.updateTaskerWithProfileImage
 );
 
-
-
-
-
-
-
-
-
+router.post("/generate-ai-text", FeedbackController.generateAIText);
 
 // updating client with profile image only
 router.put(

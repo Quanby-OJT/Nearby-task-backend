@@ -16,6 +16,8 @@ import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
+import ConversationRoutes from "./routes/conversationRoutes";
+import UserAccountController from "./controllers/userAccountController";
 dotenv.config();
 const app: Application = express();
 
@@ -49,6 +51,7 @@ app.use("/connect", authRoutes);
 app.use("/connect", userAccountRoute);
 app.use("/connect", disputeRoute);
 app.use("/connect", taskRoutes);
+app.use("/connect", ConversationRoutes);
 app.use("/connect", likeRoutes);
 app.use("/connect", userlogRoutes);
 app.use("/connect", clientRooutes);
@@ -61,6 +64,6 @@ const PORT = port || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(
-    "Click this to direct: http://192.168.43.15:5000/connect"
+    "Click this to direct: http://localhost:5000/connect"
   );
 });
