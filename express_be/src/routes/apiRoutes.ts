@@ -15,6 +15,7 @@ import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
+import AuthorityAccountController from "../controllers/authorityAccountController";
 import SettingController from "../controllers/settingController";
 import PaymentController from "../controllers/paymentController";
 import { Auth } from "../models/authenticationModel";
@@ -87,6 +88,10 @@ router.post(
 
 router.post("/verify", UserAccountController.verifyEmail);
 router.put("/update-client-user/:id", UserAccountController.updateUser);
+
+router.post("/authority/forgot-password/send-otp", AuthorityAccountController.sendOtp);
+router.post("/authority/forgot-password/verify-otp", AuthorityAccountController.verifyOtp);
+router.post("/authority/forgot-password/reset-password", AuthorityAccountController.resetPassword);
 
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
