@@ -11,7 +11,8 @@ router.get(
   ClientController.getAllFilteredTaskers
 );
 
-router.get("/client/getMyData/:userId", ClientController.getMyData);
+router.get("/client/getMyDataTasker/:userId", ClientController.getMyDataTasker);
+router.get("/client/getMyDataClient/:userId", ClientController.getMyDataClient);
 router.get(
   "/client/getAllTaskerbySpecialization",
   ClientController.getAllClientsBySpecialization

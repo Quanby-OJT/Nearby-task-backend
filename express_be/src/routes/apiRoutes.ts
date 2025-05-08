@@ -90,6 +90,7 @@ router.post("/userAdd", upload.single("image"),UserAccountController.registerUse
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/fetchAllTasks", TaskController.getAllTaskersJobPost);
+router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
 router.put("/displayTask/:id", TaskController.disableTask);

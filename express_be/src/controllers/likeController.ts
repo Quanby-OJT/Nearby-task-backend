@@ -35,12 +35,11 @@ class LikeController {
 
   static async getLikedJob(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.params.id; // Get userId from URL parameter
+      const userId = req.params.id;
 
-      // Filter likes by user_id
       const { data, error } = await supabase
         .from("likes")
-        .select("*") // Join with tasks/jobs table if needed
+        .select("*")
         .eq("user_id", userId);
 
       console.log("Liked: " + data, "Errors :" + error);
@@ -52,6 +51,35 @@ class LikeController {
           .json({
             error:
               "An Error Occured while retrieiving Your liked jobs. Please Try Again.",
+          });
+      } else {
+        res.status(200).json({ liked_tasks: data });
+      }
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  static async getLikedTask(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.params.id; 
+
+      const { data, error } = await supabase
+        .from("likes")
+        .select("*")
+        .eq("user_id", userId);
+
+      console.log("Liked: " + data, "Errors :" + error);
+
+      if (error) {
+        console.error("Error fetching liked tasks:", error.message);
+        res
+          .status(500)
+          .json({
+            error:
+              "An Error Occured while retrieiving Your liked tasks. Please Try Again.",
           });
       } else {
         res.status(200).json({ liked_tasks: data });
