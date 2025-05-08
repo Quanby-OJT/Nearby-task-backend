@@ -119,28 +119,28 @@ class AuthenticationController {
       const verificationLink = `myapp://verify?token=${verificationToken}&email=${email}`;
       console.log(verificationLink);
 
-      const html = `
-      <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-        <h2 class="text-xl font-bold text-gray-800">Your Reset Password Link</h2>
-        <p class="text-gray-700 mt-4">Do you request to reset your password? If not, please ignore this message. If so, please click this link here: </p>
-        <div class="mt-4 text-center">
-          <span class="text-3xl font-bold text-blue-600">${verificationLink}</span>
-        </div>
-        <p class="text-red-500 mt-4">Note: This verification link will expire 30 minutes from now.</p>
-        <p class="text-gray-500 mt-6 text-sm">Should you have any concerns, please don't hesitate to contact us.</p>
-        <p class="text-gray-500 mt-6 text-sm">Cheers.</p>
-        <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
-      </div>`;
+      // const html = `
+      // <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+      //   <h2 class="text-xl font-bold text-gray-800">Your Reset Password Link</h2>
+      //   <p class="text-gray-700 mt-4">Do you request to reset your password? If not, please ignore this message. If so, please click this link here: </p>
+      //   <div class="mt-4 text-center">
+      //     <span class="text-3xl font-bold text-blue-600">${verificationLink}</span>
+      //   </div>
+      //   <p class="text-red-500 mt-4">Note: This verification link will expire 30 minutes from now.</p>
+      //   <p class="text-gray-500 mt-6 text-sm">Should you have any concerns, please don't hesitate to contact us.</p>
+      //   <p class="text-gray-500 mt-6 text-sm">Cheers.</p>
+      //   <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
+      // </div>`;
 
-      await mailer.sendMail({
-        from: "noreply@nearbytask.com",
-        to: verifyEmail.email,
-        subject: "Rest IMONALICK Password",
-        html: html,
-      });
+      // await mailer.sendMail({
+      //   from: "noreply@nearbytask.com",
+      //   to: verifyEmail.email,
+      //   subject: "Rest IMONALICK Password",
+      //   html: html,
+      // });
 
       
-      res.redirect(verificationLink);
+      res.status(200).json({message: "Password reset link has been sent to your email. Please check your inbox."});
 
     }catch(error){
       console.error(error instanceof Error ? error.message : "Internal Server Error")
@@ -148,11 +148,30 @@ class AuthenticationController {
     }
   }
 
+  //To be changed 
   static async resetPassword(req: Request, res: Response): Promise<void> {
     const {email, password, verification_token} = req.body
 
+    const hashedPassword = await bcrypt.hash(password, 10)
+
     try {
-      const {error} = await supabase.from("user").update({hashed_password: password}).eq("verification_token", verification_token).eq("email", email)
+      const { data: user } = await supabase
+        .from("user")
+        .select("hashed_password")
+        .eq("email", email)
+        .single();
+
+      if (user) {
+        const isSamePassword = await bcrypt.compare(password, user.hashed_password);
+        if (isSamePassword) {
+          throw new Error("New password cannot be the same as the current password");
+        }
+      }
+
+      const {error} = await supabase
+        .from("user")
+        .update({hashed_password: hashedPassword})
+        .eq("email", email);
   
         if(error) throw new Error(error.message)
   
