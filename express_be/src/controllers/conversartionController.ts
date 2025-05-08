@@ -24,121 +24,124 @@ class ConversationController {
 
     static async getAllMessages(req: Request, res: Response): Promise<void> {
         const user_id = req.params.user_id;
-      
+    
         // Retrieve user role
         const { data, error } = await supabase
-          .from("user")
-          .select("user_role")
-          .eq("user_id", user_id)
-          .single();
-      
+            .from("user")
+            .select("user_role")
+            .eq("user_id", user_id)
+            .single();
+    
         if (error) {
-          console.error(error.message);
-          res.status(500).json({ error: "An Error Occurred while Retrieving Your Messages. Please Try Again" });
-          return;
+            console.error(error.message);
+            res.status(500).json({ error: "An Error Occurred while Retrieving Your Messages. Please Try Again" });
+            return;
         }
-      
+    
         const role = data.user_role;
         let user_role_id = "";
-      
+    
         if (role === "Tasker") user_role_id = "tasker_id";
         else if (role === "Client") user_role_id = "client_id";
         else {
-          res.status(400).json({ error: "Invalid User Role" });
-          return;
+            res.status(400).json({ error: "Invalid User Role" });
+            return;
         }
-      
+    
         console.log("User Role ID: ", user_role_id);
-      
+    
         // Retrieve task taken data
         const { data: TaskTakenData, error: TaskTakenError } = await supabase
-          .from("task_taken")
-          .select(`
-            task_taken_id,
-            task_status::text,
-            unread_count,
-            post_task!task_id (
-              task_id,
-              task_title
-            ),
-            tasker_id,
-            client_id,
-            clients!client_id (
-              user!user_id (
-                user_id,
-                first_name,
-                middle_name,
-                last_name,
-                image_link
-              )
-            ),
-            tasker!tasker_id (
-              user!user_id (
-                user_id,
-                first_name,
-                middle_name,
-                last_name,
-                image_link
-              )
-            )
-          `)
-          .eq(user_role_id, user_id)
-          .eq("is_deleted", false)
-          .order("task_taken_id", { ascending: false });
-      
+            .from("task_taken")
+            .select(`
+                task_taken_id,
+                task_status::text,
+                unread_count,
+                post_task!task_id (
+                    task_id,
+                    task_title
+                ),
+                tasker_id,
+                client_id,
+                clients!client_id (
+                    user!user_id (
+                        user_id,
+                        first_name,
+                        middle_name,
+                        last_name,
+                        image_link
+                    )
+                ),
+                tasker!tasker_id (
+                    user!user_id (
+                        user_id,
+                        first_name,
+                        middle_name,
+                        last_name,
+                        image_link
+                    )
+                )
+            `)
+            .eq(user_role_id, user_id)
+            .eq("is_deleted", false)
+            .order("task_taken_id", { ascending: false });
+    
         if (TaskTakenError) {
-          console.error(TaskTakenError.message);
-          res.status(500).json({ error: "An Error Occurred while Retrieving Your Messages. Please Try Again" });
-          return;
+            console.error("Error while retrieving tasks" + TaskTakenError.message);
+            res.status(500).json({ error: "An Error Occurred while Retrieving Your Messages. Please Try Again" });
+            return;
         }
-      
+    
         if (!TaskTakenData || TaskTakenData.length === 0) {
-          console.log("No Task Taken Data Found");
-          res.status(200).json({ data: [[], []] }); // Return empty task and conversation lists
-          return;
+            console.log("No Task Taken Data Found");
+            res.status(200).json({ data: [[], []] }); // Return empty task and conversation lists
+            return;
         }
-      
+    
         console.log("Task Taken IDs: ", TaskTakenData.map((item: any) => item.task_taken_id));
-      
+    
         // Fetch latest message for each task_taken_id
         const latestMessagesPromises = TaskTakenData.map((task: any) =>
-          supabase
-            .from("conversation_history")
-            .select(`
-              user_id,
-              created_at
-            `)
-            .eq("task_taken_id", task.task_taken_id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single()
-            .then(({ data, error }) => {
-              if (error) {
-                console.error(`Error fetching message for task_taken_id ${task.task_taken_id}:`, error.message);
-                return null; // Return null for failed queries
-              }
-              return {
-                task_taken_id: task.task_taken_id,
-                user_id: data?.user_id || null,
-                created_at: data?.created_at || null,
-              };
-            })
+            supabase
+                .from("conversation_history")
+                .select(`
+                    user_id,
+                    created_at
+                `)
+                .eq("task_taken_id", task.task_taken_id)
+                .order("created_at", { ascending: false })
+                .order("convo_id", { ascending: false }) // Tiebreaker: sort by primary key (e.g., 'id') if created_at is the same
+                .limit(1)
+                .then(({ data, error }) => {
+                    if (error) {
+                        console.error(`Error fetching message for task_taken_id ${task.task_taken_id}:`, error.message);
+                        return null; // Return null for failed queries
+                    }
+                    if (!data || data.length === 0) {
+                        return null; // Return null if no messages exist
+                    }
+                    return {
+                        task_taken_id: task.task_taken_id,
+                        user_id: data[0].user_id || null,
+                        created_at: data[0].created_at || null,
+                    };
+                })
         );
-      
+    
         const latestMessages = await Promise.all(latestMessagesPromises);
-      
+    
         // Filter out null messages and format conversation data
         const conversationData = latestMessages
-          .filter((msg) => msg !== null && msg.user_id !== null && msg.created_at !== null)
-          .map((msg) => ({
-            task_taken_id: msg?.task_taken_id,
-            user_id: msg?.user_id,
-            created_at: msg?.created_at,
-          }));
-      
+            .filter((msg) => msg !== null && msg.user_id !== null && msg.created_at !== null)
+            .map((msg) => ({
+                task_taken_id: msg?.task_taken_id,
+                user_id: msg?.user_id,
+                created_at: msg?.created_at,
+            }));
+    
         // Return task and conversation data as separate sublists
         res.status(200).json({ data: [TaskTakenData, conversationData] });
-      }
+    }
 
     static async getMessages(req: Request, res: Response): Promise<void> {
         const task_taken_id = req.params.task_taken_id
@@ -183,56 +186,73 @@ class ConversationController {
     }
 
     static async markMessagesAsRead(req: Request, res: Response): Promise<void> {
-        const { task_taken_id, user_id, role } = req.body
-        console.log("Marking Messages as Read for Task Taken ID of: ", task_taken_id, "and User ID of: ", user_id, "and Role of: ", role)
+        try{
+            const { task_taken_id, user_id, role } = req.body
+            console.log("Marking Messages as Read for Task Taken ID of: ", task_taken_id, "and User ID of: ", user_id, "and Role of: ", role)
+    
+            let user_role_id = ""
+    
+            if(role == "Tasker") user_role_id = "tasker_id"
+            else if(role == "Client") user_role_id = "client_id"
+            else {
+                res.status(400).json({error: "Invalid User Role"})
+                return
+            }
+    
+            // Verify if task_taken_id exists
+            const { data: taskExists, error: taskError } = await supabase
+                .from("task_taken")
+                .select("task_taken_id, conversation_history!conversation_history_task_taken_id_fkey(user_id)")
+                .eq("task_taken_id", task_taken_id)
+                .single()
+    
+            
+    
+            console.log(taskExists, taskError)
+    
+            if (taskError || !taskExists) {
+                res.status(404).json({ error: "Task taken ID does not exist" })
+                return
+            }
 
-        let user_role_id = ""
-
-        if(role == "Tasker") user_role_id = "tasker_id"
-        else if(role == "Client") user_role_id = "client_id"
-        else {
-            res.status(400).json({error: "Invalid User Role"})
-            return
+            // Get the last user_id from conversation_history
+            const lastUserId = taskExists?.conversation_history?.length != undefined
+            ? taskExists?.conversation_history[taskExists.conversation_history.length - 1].user_id 
+            : 0;
+    
+            console.log("Last user ID from conversation:", lastUserId);
+    
+            // If the lastUserId matches the user_id (meaning they're trying to read their own message), skip
+            if(lastUserId === user_id){
+                console.log("User ID does not match the last user ID in conversation history")
+                res.status(200).json({message: ""})
+                return
+            }
+    
+            const {data, error} = await supabase.from("task_taken").update({
+                unread_count: 0,
+                last_message_id: null
+            }).eq("task_taken_id", task_taken_id).eq(user_role_id, user_id)
+            
+            console.log("Data: ", data, error)
+            
+            if(error) throw new Error(error.message)
+            
+            // Update the unread_count in the conversation_history table
+            const { error: updateError } = await supabase
+                .from("conversation_history")
+                .update({ is_read: true })
+                .eq("task_taken_id", task_taken_id)
+                .eq("user_id", lastUserId) // Only mark messages from the sender as read
+            
+            if (updateError) throw new Error(updateError.message)
+    
+            console.log("successfully marked messages as read")
+            res.status(200).json({message: "Your Messages have been Marked as Read Successfully."})
+        }catch(error){
+            console.error(error instanceof Error ? error.message : "Internal Server Error")
+            res.status(500).json({error: "An Error Occurred while Marking Messages as Read. Please Try Again"})
         }
-
-        // Verify if task_taken_id exists
-        const { data: taskExists, error: taskError } = await supabase
-            .from("task_taken")
-            .select("task_taken_id")
-            .eq("task_taken_id", task_taken_id)
-            .single()
-
-        if (taskError || !taskExists) {
-            res.status(404).json({ error: "Task taken ID does not exist" })
-            return
-        }
-
-        const {data, error} = await supabase.from("task_taken").update({
-            unread_count: 0,
-            last_message_id: null
-        }).eq("task_taken_id", task_taken_id).eq(user_role_id, user_id)
-
-        if(error){
-            console.error(error.message)
-            res.status(500).json({error: "An Error Occurred while Marking Messages as Read"})
-            return
-        }
-
-        // Update the unread_count in the conversation_history table
-        const { error: updateError } = await supabase
-            .from("conversation_history")
-            .update({ is_read: true })
-            .eq("task_taken_id", task_taken_id)
-            .eq("user_id", user_id)
-
-        if (updateError) {
-            console.error(updateError.message)
-            res.status(500).json({ error: "An Error Occurred while Updating Unread Count" })
-            return
-        }
-
-        console.log("successfully marked messages as read")
-        res.status(200).json({message: "Your Messages have been Marked as Read Successfully.", data: data})
     }
 
     static async getUserConversation(req: Request, res: Response): Promise<void>{

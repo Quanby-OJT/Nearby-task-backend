@@ -59,31 +59,31 @@ class AuthenticationController {
         two_fa_code: otp.toString(),
       });
 
-      const otpHtml = `
-      <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-        <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
-        <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
-        <div class="mt-4 text-center">
-          <span class="text-3xl font-bold text-blue-600">${otp}</span>
-        </div>
-        <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
-        <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
-      </div>`;
+    //   const otpHtml = `
+    //   <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+    //     <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
+    //     <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
+    //     <div class="mt-4 text-center">
+    //       <span class="text-3xl font-bold text-blue-600">${otp}</span>
+    //     </div>
+    //     <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
+    //     <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
+    //   </div>`;
 
-    // Send the email
-    await mailer.sendMail({
-      from: "noreply@nearbytask.com",
-      to: verifyLogin.email,
-      subject: "Your OTP Code for NearByTask",
-      html: otpHtml,
-    });
+    // // Send the email
+    // await mailer.sendMail({
+    //   from: "noreply@nearbytask.com",
+    //   to: verifyLogin.email,
+    //   subject: "Your OTP Code for NearByTask",
+    //   html: otpHtml,
+    // });
 
       res.status(200).json({ user_id: verifyLogin.user_id });
     } catch (error) {
       console.error(error);
       res.status(500).json({
         error:
-          "An error occurred while logging in. If the issue persists, contact our team to resolve your issue.",
+          "An error occurred while verifying your email. If the issue persists, contact our team to resolve your issue.",
       });
     }
   }
@@ -109,7 +109,9 @@ class AuthenticationController {
 
       const verificationToken = randomUUID()
 
-      const {error} = await supabase.from("user").update({verification_token: verificationToken}).eq("email", email)
+      const {data, error} = await supabase.from("user").update({verification_token: verificationToken}).eq("email", email)
+
+      console.log(data, error)
 
       if(error) throw new Error(error.message)
 
