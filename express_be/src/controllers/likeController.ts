@@ -9,6 +9,8 @@ class LikeController {
       console.log("Received insert data:", req.body);
       const { user_id, task_id, created_at} = req.body;
 
+      console.log("User ID: " + user_id, "Task ID: " + task_id, "Created At: " + created_at);
+
       // Check for missing fields
       if (!user_id || !task_id || !created_at) {
         res.status(400).json({ error: "Missing required fields" });

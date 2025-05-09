@@ -9,6 +9,6 @@ const router = Router();
 router.post("/likeJob", LikeController.createLike);
 router.delete("/unlikeJob", LikeController.deleteLike);
 router.get("/displayLikedJob/:id", LikeController.getLikedJob);
-router.get("/displayLikedTask/:id", LikeController.getLikedTask);
+// router.get("/displayLikedTask/:id", LikeController.getLikedTask);
 
 export default router;
