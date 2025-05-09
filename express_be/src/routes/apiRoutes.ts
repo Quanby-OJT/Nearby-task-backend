@@ -101,6 +101,7 @@ router.use(isAuthenticated);
 router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
+router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
 router.put("/displayTask/:id", TaskController.disableTask);

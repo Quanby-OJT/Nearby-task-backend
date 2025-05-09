@@ -10,7 +10,7 @@ import authRoutes from "./routes/authRoutes";
 import session from "express-session";
 import likeRoutes from "./routes/likeRoutes";
 import userlogRoutes from "./routes/userlogRoutes";
-import clientRooutes from "./routes/clientRoutes"; 
+import clientRooutes from "./routes/clientRoutes";
 import reportRoutes from "./routes/reportRoutes";
 import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
@@ -31,7 +31,7 @@ app.use(
 );
 
 app.use(express.json());
-app.use(cookieParser()); 
+app.use(cookieParser());
 app.use(
   session({
     secret: session_key,
@@ -63,7 +63,5 @@ app.use("/connect", paymentRoutes);
 const PORT = port || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(
-    "Click this to direct: http://localhost:5000/connect"
-  );
+  console.log("Click this to direct: http://192.168.1.12:5000/connect");
 });
