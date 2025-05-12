@@ -206,25 +206,61 @@ class TaskController {
   }
 
   static async getTaskforClient(req: Request, res: Response): Promise<void> {
-    try {
+   
       const clientId = req.params.clientId;
-      console.log("Client ID:", clientId);
-      const { data, error } = await supabase
+  
+    try {
+      const { data:task, error } = await supabase
         .from("post_task")
-        .select()
-        .eq("client_id", clientId);
-
+        .select(`
+          *,
+          tasker_specialization (
+            specialization
+          ),
+          address (*),
+          clients!client_id!inner (
+            user (
+              user_id,
+              first_name,
+              middle_name,
+              last_name,
+              image_link,
+              birthdate,
+              acc_status,
+              gender,
+              email,
+              contact,
+              verified,
+              user_role
+            )
+          )
+        `)
+        .eq("client_id", clientId)
+        .eq("clients.user.acc_status", "Active")
+        .eq("clients.user.verified", true)
+        .eq("clients.user.user_role", "Client");
+  
+      console.log("Tasks data:", task, "Error:", error);
+  
       if (error) {
-        console.error(error.message);
-        res.status(500).json({ error: "An Error occured while retrieving your tasks. Please try again." });
-      } else {
-        res.status(200).json({ tasks: data });
+        console.error("Error fetching tasks:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
       }
+  
+      if (!task || task.length === 0) {
+        res.status(200).json({ error: "No active tasks found." });
+        return;
+      }
+  
+      res.status(200).json({ tasks: task });
     } catch (error) {
+      console.error("Error fetching tasks:", error);
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
+
   }
 
 

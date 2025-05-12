@@ -94,7 +94,7 @@ class ConversationController {
     
         if (!TaskTakenData || TaskTakenData.length === 0) {
             console.log("No Task Taken Data Found");
-            res.status(200).json({ data: [[], []] }); // Return empty task and conversation lists
+            res.status(200).json({ data: [[], []] });
             return;
         }
     
@@ -110,15 +110,15 @@ class ConversationController {
                 `)
                 .eq("task_taken_id", task.task_taken_id)
                 .order("created_at", { ascending: false })
-                .order("convo_id", { ascending: false }) // Tiebreaker: sort by primary key (e.g., 'id') if created_at is the same
+                .order("convo_id", { ascending: false }) 
                 .limit(1)
                 .then(({ data, error }) => {
                     if (error) {
                         console.error(`Error fetching message for task_taken_id ${task.task_taken_id}:`, error.message);
-                        return null; // Return null for failed queries
+                        return null;
                     }
                     if (!data || data.length === 0) {
-                        return null; // Return null if no messages exist
+                        return null;
                     }
                     return {
                         task_taken_id: task.task_taken_id,
@@ -130,7 +130,6 @@ class ConversationController {
     
         const latestMessages = await Promise.all(latestMessagesPromises);
     
-        // Filter out null messages and format conversation data
         const conversationData = latestMessages
             .filter((msg) => msg !== null && msg.user_id !== null && msg.created_at !== null)
             .map((msg) => ({
@@ -139,13 +138,11 @@ class ConversationController {
                 created_at: msg?.created_at,
             }));
     
-        // Return task and conversation data as separate sublists
         res.status(200).json({ data: [TaskTakenData, conversationData] });
     }
 
     static async getMessages(req: Request, res: Response): Promise<void> {
         const task_taken_id = req.params.task_taken_id
-        //console.log("Retrieving Messages for Task Taken ID of: ", task_taken_id)
 
         const {data, error} = await supabase
             .from("conversation_history")
