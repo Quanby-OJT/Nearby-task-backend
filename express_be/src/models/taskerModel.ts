@@ -6,7 +6,7 @@ class TaskerModel {
       user_id: number;
       bio: Text;
       specialization_id: number;
-      skills: string;
+      skills: string; 
       availability: boolean;
       wage_per_hour: number;
       tesda_documents_id: number;
