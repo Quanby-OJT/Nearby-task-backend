@@ -101,7 +101,7 @@ class UserAccount {
     return data;
     } else if (userexists.user_role == "Tasker") {
       const { data, error } = await supabase
-      .from("tasker_documents")
+      .from("user_documents")
       .select("*")
       .eq("tasker_id", user_id)
       .single();
@@ -144,8 +144,8 @@ class UserAccount {
     }
 
     const { data: taskerDocument, error: taskerDocumentError } = await supabase
-      .from("tasker_documents")
-      .select("tesda_document_link")
+      .from("user_documents")
+      .select("user_document_link")
       .eq("tasker_id", user_id);
     console.log(tasker, taskerError, taskerDocument, taskerDocumentError);
 

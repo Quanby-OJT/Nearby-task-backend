@@ -207,7 +207,7 @@ router.put(
 
 
 // updating tasker with PDF only
-router.put(
+router.put( 
   "/update-tasker-with-pdf/:id",
   upload.fields([
     { name: "file", maxCount: 1 }
@@ -255,5 +255,39 @@ router.put(
 );
 
 router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
+
+// Submit user verification to the user_verify table
+router.post(
+  "/submit-user-verification/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },      // ID image
+    { name: "selfieImage", maxCount: 1 },  // Selfie image
+    { name: "documents", maxCount: 1 }     // Certificates file
+  ]),
+  UserAccountController.submitUserVerification
+);
+
+// Get user verification status
+router.get(
+  "/user-verification-status/:id",
+  UserAccountController.getUserVerificationStatus
+);
+
+// Keep old routes for backward compatibility
+router.post(
+  "/submit-tasker-verification/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },      // ID image
+    { name: "selfieImage", maxCount: 1 },  // Selfie image
+    { name: "documents", maxCount: 1 }     // Certificates file
+  ]),
+  UserAccountController.submitUserVerification
+);
+
+// Get tasker verification status (kept for backward compatibility)
+router.get(
+  "/tasker-verification-status/:id",
+  UserAccountController.getUserVerificationStatus
+);
 
 export default router;
