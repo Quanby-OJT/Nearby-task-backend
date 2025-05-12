@@ -67,9 +67,88 @@ class AuthenticationController {
       console.error(error);
       res.status(500).json({
         error:
-          "An error occurred while logging in. If the issue persists, contact our team to resolve your issue.",
+          "An error occurred while verifying your email. If the issue persists, contact our team to resolve your issue.",
       });
     }
+  }
+
+  static async forgotPassword(req: Request, res: Response): Promise<void> {
+    const {email} = req.body;
+
+    try {
+      const verifyEmail = await Auth.getUserEmail(email);
+
+      if (!verifyEmail) {
+        res.status(404).json({
+          error:
+            "Sorry, your email does not exist. Maybe you can sign up to find your clients/taskers.",
+        });
+        return;
+      }
+
+      if (verifyEmail.acc_status === "Ban" || verifyEmail.acc_status === "Block") {
+        res.status(401).json({error: "You are banned/blocked for using this application. Please contact our team to appeal to your ban.", });
+        return;
+      }
+
+      const verificationToken = randomUUID()
+
+      const {data, error} = await supabase.from("user").update({verification_token: verificationToken}).eq("email", email)
+
+      console.log(data, error)
+
+      if(error) throw new Error(error.message)
+
+
+      const verificationLink = `myapp://verify?token=${verificationToken}&email=${email}`;
+      console.log(verificationLink);
+
+      const html = `
+      <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+        <h2 class="text-xl font-bold text-gray-800">Your Reset Password Link</h2>
+        <p class="text-gray-700 mt-4">Do you request to reset your password? If not, please ignore this message. If so, please click this link here: </p>
+        <div class="mt-4 text-center">
+          <span class="text-3xl font-bold text-blue-600">${verificationLink}</span>
+        </div>
+        <p class="text-red-500 mt-4">Note: This verification link will expire 30 minutes from now.</p>
+        <p class="text-gray-500 mt-6 text-sm">Should you have any concerns, please don't hesitate to contact us.</p>
+        <p class="text-gray-500 mt-6 text-sm">Cheers.</p>
+        <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
+      </div>`;
+
+      await mailer.sendMail({
+        from: "noreply@nearbytask.com",
+        to: verifyEmail.email,
+        subject: "Rest IMONALICK Password",
+        html: html,
+      });
+
+      
+      res.redirect(verificationLink);
+
+    }catch(error){
+      console.error(error instanceof Error ? error.message : "Internal Server Error")
+      res.status(500).json({error: "An error occured while verifying your email. Please Try Again. If the problem persists. Contact us."})
+    }
+  }
+
+  static async resetPassword(req: Request, res: Response): Promise<void> {
+    const {email, password, verification_token} = req.body
+
+    try {
+      const {error} = await supabase.from("user").update({hashed_password: password}).eq("verification_token", verification_token).eq("email", email)
+  
+        if(error) throw new Error(error.message)
+  
+        const {error: errorDelete} = await supabase.from("user").update({verification_token: null}).eq("email", email).eq("verification_token", verification_token)
+  
+        if(errorDelete) throw new Error(errorDelete.message)
+  
+        res.status(200).json({message: "Password has been reset successfully. Please login to your account."})
+      }catch(error){
+        console.error(error instanceof Error ? error.message : "Internal Server Error")
+        res.status(500).json({error: "An error occured while resetting your password. Please Try Again. If the problem persists. Contact us."})
+      }
   }
 
   static async generateOTP(req: Request, res: Response): Promise<void> {

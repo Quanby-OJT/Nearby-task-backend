@@ -15,6 +15,10 @@ import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
+import AuthorityAccountController from "../controllers/authorityAccountController";
+import SettingController from "../controllers/settingController";
+import PaymentController from "../controllers/paymentController";
+import { Auth } from "../models/authenticationModel";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -47,8 +51,13 @@ router.post(
   UserAccountController.registerUser
 );
 
+// New routes for forgot password (for AngularJS only)
+router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
+router.post("/forgot-password/verify-otp", UserAccountController.verifyOtp);
+router.post("/forgot-password/reset-password", UserAccountController.resetPassword);
 
-
+// New route for forget password (for Flutter Only)
+router.post("/forgot-password", AuthenticationController.forgotPassword);
 router.post("/verify", UserAccountController.verifyEmail)
 // router.use(isAuthenticated);
 
@@ -80,6 +89,10 @@ router.post(
 router.post("/verify", UserAccountController.verifyEmail);
 router.put("/update-client-user/:id", UserAccountController.updateUser);
 
+router.post("/authority/forgot-password/send-otp", AuthorityAccountController.sendOtp);
+router.post("/authority/forgot-password/verify-otp", AuthorityAccountController.verifyOtp);
+router.post("/authority/forgot-password/reset-password", AuthorityAccountController.resetPassword);
+
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
 });
@@ -88,6 +101,7 @@ router.use(isAuthenticated);
 router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
 router.post("/addTask", TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
+router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
 router.put("/displayTask/:id", TaskController.disableTask);
@@ -95,12 +109,6 @@ router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient
 router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
-
-//All COnversation Messages
-router.post("/send-message", ConversationController.sendMessage);
-router.get("/all-messages/:user_id", ConversationController.getAllMessages);
-router.get("/messages/:task_taken_id", ConversationController.getMessages);
-router.delete("/delete-message/:messageId", ConversationController.deleteConversation);
 
 //Tasker Status Update
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
@@ -125,9 +133,9 @@ router.post("/banUser/:id", ConversationController.banUser);
 router.post("/warnUser/:id", ConversationController.warnUser); 
 
 //Payment Routes
-router.post("/deposit-escrow-payment", TaskController.depositEscrowAmount);
-router.put("/webhook/paymongo", TaskController.handlePayMongoWebhook);
-router.put("/update-payment-status/:taskTakenId", TaskController.updateTask);
+router.post("/deposit-escrow-payment", PaymentController.depositEscrowAmount);
+router.put("/webhook/paymongo", PaymentController.handlePayMongoWebhook);
+router.put("/withdraw-escrow-amount", PaymentController.depositEscrowAmount);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
@@ -156,7 +164,12 @@ router.put(
   ]),
   NotificationController.updateRequest
 );
-router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
+router.put("/set-location/:user_id", SettingController.setLocation);
+router.get("/get-location/:user_id", SettingController.getLocation);
+router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
+router.put("/update-distance/:user_id", SettingController.updateDistance);
+
+// User Location
 
 //User CRUD
 router.put(
@@ -226,14 +239,7 @@ router.put(
   UserAccountController.updateTaskerWithProfileImage
 );
 
-
-
-
-
-
-
-
-
+router.post("/generate-ai-text", FeedbackController.generateAIText);
 
 // updating client with profile image only
 router.put(

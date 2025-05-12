@@ -838,7 +838,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .eq("task_status", "Dispute Settled");
+          .eq("task_status", "Disputed");
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -1373,7 +1373,7 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
   res.status(200).json({ success: true, message: "Successfully Updated the Task Status." });
 }
 
-static async  updateNotification(req: Request, res: Response): Promise<void> {
+static async    updateNotification(req: Request, res: Response): Promise<void> {
   const taskTakenId = req.params.taskTakenId;
 
   if (!taskTakenId) {

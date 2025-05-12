@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
+import { Xendit, Payout as PayoutClient } from "xendit-node";
 
 // Supabase Configuration
 dotenv.config();
@@ -26,6 +27,8 @@ export const session_key = process.env.SESSION_KEY as string;
 export const port = process.env.PORT;
 
 export const url = process.env.URL;
+
+export const xenditPayoutClient = new PayoutClient({secretKey: process.env.XENDIT_API_KEY ?? ''})
 
 const authString = `${process.env.ESCROW_EMAIL}:${process.env.ESCROW_API}`;
 export const authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;

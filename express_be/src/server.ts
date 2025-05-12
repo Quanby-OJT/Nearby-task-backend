@@ -10,15 +10,26 @@ import authRoutes from "./routes/authRoutes";
 import session from "express-session";
 import likeRoutes from "./routes/likeRoutes";
 import userlogRoutes from "./routes/userlogRoutes";
-import clientRooutes from "./routes/clientRoutes"; 
+import clientRooutes from "./routes/clientRoutes";
 import reportRoutes from "./routes/reportRoutes";
 import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
 import TaskerModel from "./models/taskerModel";
+import ConversationRoutes from "./routes/conversationRoutes";
+import UserAccountController from "./controllers/userAccountController";
+import http from "http";
+import { Server } from "socket.io";
 dotenv.config();
 const app: Application = express();
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(
   cors({
@@ -30,7 +41,7 @@ app.use(
 );
 
 app.use(express.json());
-app.use(cookieParser()); 
+app.use(cookieParser());
 app.use(
   session({
     secret: session_key,
@@ -50,6 +61,7 @@ app.use("/connect", authRoutes);
 app.use("/connect", userAccountRoute);
 app.use("/connect", disputeRoute);
 app.use("/connect", taskRoutes);
+app.use("/connect", ConversationRoutes);
 app.use("/connect", likeRoutes);
 app.use("/connect", userlogRoutes);
 app.use("/connect", clientRooutes);
@@ -58,23 +70,50 @@ app.use("/connect", authorityAccountRoutes);
 app.use("/connect", reportANDanalysisRoute);
 app.use("/connect", paymentRoutes);
 
+// // Start server
+// const PORT = port || 5000;
+
+// // Server startup logic
+// async function startServer() {
+//   try {
+//     // Start the server
+//     app.listen(PORT, () => {
+//       console.log(`Server is running on port ${PORT}`);
+//       console.log(
+//         "Click this to direct: http://localhost:5000/connect"
+//       );
+//     });
+//   } catch (error) {
+//     console.error("Error starting server:", error);
+//     process.exit(1);
+//   }
+// }
+
+// startServer();
+// Socket.IO event handlers
+io.on("connection", (socket) => {
+  console.log("A user connected: " + socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected: " + socket.id);
+  });
+
+  // Handle new message event
+  socket.on("send_message", (data) => {
+    // Broadcast the message to all connected clients
+    io.emit("new_message", data);
+  });
+
+  // Handle message read event
+  socket.on("mark_as_read", (data) => {
+    io.emit("message_read", data);
+  });
+});
+
 // Start server
 const PORT = port || 5000;
-
-// Server startup logic
-async function startServer() {
-  try {
-    // Start the server
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-      console.log(
-        "Click this to direct: http://localhost:5000/connect"
-      );
-    });
-  } catch (error) {
-    console.error("Error starting server:", error);
-    process.exit(1);
-  }
-}
-
-startServer();
+httpServer.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log("Click this to direct: http://192.168.1.12:5000/connect");
+  console.log("Socket.IO server running at http://192.168.1.12:5000");
+});

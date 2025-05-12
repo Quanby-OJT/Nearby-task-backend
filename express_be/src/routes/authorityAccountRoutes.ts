@@ -17,6 +17,14 @@ router.get("/getAuthorityUserData/:id", AuthorityAccountController.getUserData);
 
 router.get("/getAuthorityUserDocuments/:id", AuthorityAccountController.getUserDocs);
 
-router.get("/viewDocument/:fileName", AuthorityAccountController.viewDocument); 
+router.get("/viewDocument/:fileName", AuthorityAccountController.viewDocument);
+
+router.post("/update-password", AuthorityAccountController.updatePassword);
+
+router.post("/add-address", AuthorityAccountController.addAddress);
+
+router.put("/update-address/:addressId", AuthorityAccountController.updateAddress);
+
+router.get("/get-addresses/:userId", AuthorityAccountController.getAddresses);
 
 export default router;

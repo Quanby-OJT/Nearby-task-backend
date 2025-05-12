@@ -5,119 +5,144 @@ import ClientTaskerModeration  from "../models/moderationModel"
 
 class ConversationController {
     static async sendMessage(req: Request, res: Response): Promise<void> {
-        const {task_taken_id, user_id, conversation} = req.body
-        console.log(req.body)
-
-        console.log("Sending Message for Task Taken ID of: ", task_taken_id)
-
-        // Verify if task_taken_id exists
-        const { data: taskExists, error: taskError } = await supabase
-            .from("task_taken")
-            .select("task_taken_id")
-            .eq("task_taken_id", task_taken_id)
-            .single()
-
-        if (taskError || !taskExists) {
-            res.status(404).json({ error: "Task taken ID does not exist" })
-            return
+        try{
+            const {task_taken_id, user_id, role, conversation} = req.body
+            console.log(req.body)
+    
+            console.log("Sending Message for Task Taken ID of: ", task_taken_id)
+    
+            await ConversationModel.sendMessage(task_taken_id, user_id, conversation)
+    
+            await ConversationModel.updateMessageNotification(task_taken_id, role)
+    
+            res.status(200).json({message: "Your Message has been Sent Successfully."})
+        }catch(error){
+            console.error(error instanceof Error ? error.message : "Internal Server Error")
+            res.status(500).json({error: "An Error Occurred while Sending Your Message. Please Try Again"})
         }
-
-        const {data, error} = await supabase.from("conversation_history").insert({
-            task_taken_id, 
-            user_id, 
-            conversation,
-            reported: false
-        })
-
-        if(error){
-            console.error(error.message)
-            res.status(500).json({error: "An Error Occured while Sending a New Message"})
-            return
-        }
-
-        res.status(200).json({message: "Your Message has been Sent Successfully.", data: data})
     }
 
     static async getAllMessages(req: Request, res: Response): Promise<void> {
-        const user_id = req.params.user_id
-        //console.log("Retrieving Messages for User ID of: ", user_id)
-
-        const {data, error} = await supabase.from("user").select("user_role").eq("user_id", user_id).single()
-        if(error){
-            console.error(error.message)
-            res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})
-            return
-        }
-        const role = data.user_role
-        // console.log(role)
-        if(role === "Tasker"){
+        const user_id = req.params.user_id;
+    
+        // Retrieve user role
         const { data, error } = await supabase
+            .from("user")
+            .select("user_role")
+            .eq("user_id", user_id)
+            .single();
+    
+        if (error) {
+            console.error(error.message);
+            res.status(500).json({ error: "An Error Occurred while Retrieving Your Messages. Please Try Again" });
+            return;
+        }
+    
+        const role = data.user_role;
+        let user_role_id = "";
+    
+        if (role === "Tasker") user_role_id = "tasker_id";
+        else if (role === "Client") user_role_id = "client_id";
+        else {
+            res.status(400).json({ error: "Invalid User Role" });
+            return;
+        }
+    
+        console.log("User Role ID: ", user_role_id);
+    
+        // Retrieve task taken data
+        const { data: TaskTakenData, error: TaskTakenError } = await supabase
             .from("task_taken")
             .select(`
                 task_taken_id,
                 task_status::text,
+                unread_count,
                 post_task!task_id (
                     task_id,
                     task_title
                 ),
+                tasker_id,
+                client_id,
                 clients!client_id (
                     user!user_id (
+                        user_id,
                         first_name,
                         middle_name,
-                        last_name
+                        last_name,
+                        image_link
                     )
                 ),
                 tasker!tasker_id (
                     user!user_id (
+                        user_id,
                         first_name,
                         middle_name,
-                        last_name
+                        last_name,
+                        image_link
                     )
                 )
             `)
-            .eq("tasker_id", user_id)
+            .eq(user_role_id, user_id)
             .eq("is_deleted", false)
-                
-            console.log(data, error)
+            .order("task_taken_id", { ascending: false });
     
-            if(error){
-                console.error(error.message)
-                res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})
-                return
-            }
-            res.status(200).json({data: data})
-        }else if(role === "Client"){
-            const { data, error } = await supabase.from("task_taken").select(`
-                task_taken_id,
-                task_status,
-                post_task!task_id (
-                    task_id,
-                    task_title
-                ),
-                clients!client_id (
-                    user!user_id (first_name, middle_name, last_name)
-                ),
-                tasker!tasker_id (
-                    user!user_id (first_name, middle_name, last_name)
-                )
-            `).eq("client_id", user_id)
-            .eq("is_deleted", false)
-                    
-            console.log(data, error)
-        
-            if(error){
-                console.error(error.message)
-                res.status(500).json({error: "An Error Occurred while Retrieving Your Messages. Please Try Again"})
-                return
-            }
-        
-            res.status(200).json({data: data})
+        if (TaskTakenError) {
+            console.error("Error while retrieving tasks" + TaskTakenError.message);
+            res.status(500).json({ error: "An Error Occurred while Retrieving Your Messages. Please Try Again" });
+            return;
         }
+    
+        if (!TaskTakenData || TaskTakenData.length === 0) {
+            console.log("No Task Taken Data Found");
+            res.status(200).json({ data: [[], []] });
+            return;
+        }
+    
+        console.log("Task Taken IDs: ", TaskTakenData.map((item: any) => item.task_taken_id));
+    
+        // Fetch latest message for each task_taken_id
+        const latestMessagesPromises = TaskTakenData.map((task: any) =>
+            supabase
+                .from("conversation_history")
+                .select(`
+                    user_id,
+                    created_at
+                `)
+                .eq("task_taken_id", task.task_taken_id)
+                .order("created_at", { ascending: false })
+                .order("convo_id", { ascending: false }) 
+                .limit(1)
+                .then(({ data, error }) => {
+                    if (error) {
+                        console.error(`Error fetching message for task_taken_id ${task.task_taken_id}:`, error.message);
+                        return null;
+                    }
+                    if (!data || data.length === 0) {
+                        return null;
+                    }
+                    return {
+                        task_taken_id: task.task_taken_id,
+                        user_id: data[0].user_id || null,
+                        created_at: data[0].created_at || null,
+                    };
+                })
+        );
+    
+        const latestMessages = await Promise.all(latestMessagesPromises);
+    
+        const conversationData = latestMessages
+            .filter((msg) => msg !== null && msg.user_id !== null && msg.created_at !== null)
+            .map((msg) => ({
+                task_taken_id: msg?.task_taken_id,
+                user_id: msg?.user_id,
+                created_at: msg?.created_at,
+            }));
+    
+        res.status(200).json({ data: [TaskTakenData, conversationData] });
     }
 
     static async getMessages(req: Request, res: Response): Promise<void> {
         const task_taken_id = req.params.task_taken_id
-        //console.log("Retrieving Messages for Task Taken ID of: ", task_taken_id)
 
         const {data, error} = await supabase
             .from("conversation_history")
@@ -157,6 +182,76 @@ class ConversationController {
         res.status(200).json({data: formattedData})
     }
 
+    static async markMessagesAsRead(req: Request, res: Response): Promise<void> {
+        try{
+            const { task_taken_id, user_id, role } = req.body
+            console.log("Marking Messages as Read for Task Taken ID of: ", task_taken_id, "and User ID of: ", user_id, "and Role of: ", role)
+    
+            let user_role_id = ""
+    
+            if(role == "Tasker") user_role_id = "tasker_id"
+            else if(role == "Client") user_role_id = "client_id"
+            else {
+                res.status(400).json({error: "Invalid User Role"})
+                return
+            }
+    
+            // Verify if task_taken_id exists
+            const { data: taskExists, error: taskError } = await supabase
+                .from("task_taken")
+                .select("task_taken_id, conversation_history!conversation_history_task_taken_id_fkey(user_id)")
+                .eq("task_taken_id", task_taken_id)
+                .single()
+    
+            
+    
+            console.log(taskExists, taskError)
+    
+            if (taskError || !taskExists) {
+                res.status(404).json({ error: "Task taken ID does not exist" })
+                return
+            }
+
+            // Get the last user_id from conversation_history
+            const lastUserId = taskExists?.conversation_history?.length != undefined
+            ? taskExists?.conversation_history[taskExists.conversation_history.length - 1].user_id 
+            : 0;
+    
+            console.log("Last user ID from conversation:", lastUserId);
+    
+            // If the lastUserId matches the user_id (meaning they're trying to read their own message), skip
+            if(lastUserId === user_id){
+                console.log("User ID does not match the last user ID in conversation history")
+                res.status(200).json({message: ""})
+                return
+            }
+    
+            const {data, error} = await supabase.from("task_taken").update({
+                unread_count: 0,
+                last_message_id: null
+            }).eq("task_taken_id", task_taken_id).eq(user_role_id, user_id)
+            
+            console.log("Data: ", data, error)
+            
+            if(error) throw new Error(error.message)
+            
+            // Update the unread_count in the conversation_history table
+            const { error: updateError } = await supabase
+                .from("conversation_history")
+                .update({ is_read: true })
+                .eq("task_taken_id", task_taken_id)
+                .eq("user_id", lastUserId) // Only mark messages from the sender as read
+            
+            if (updateError) throw new Error(updateError.message)
+    
+            console.log("successfully marked messages as read")
+            res.status(200).json({message: "Your Messages have been Marked as Read Successfully."})
+        }catch(error){
+            console.error(error instanceof Error ? error.message : "Internal Server Error")
+            res.status(500).json({error: "An Error Occurred while Marking Messages as Read. Please Try Again"})
+        }
+    }
+
     static async getUserConversation(req: Request, res: Response): Promise<void>{
         try {
             const conversation = await ConversationModel.getUserConversation();
@@ -177,7 +272,6 @@ class ConversationController {
             }
         }
     }
-
 
     static async banUser(req: Request, res: Response): Promise<void> {
         try {
@@ -224,8 +318,6 @@ class ConversationController {
             }
         }
     }
-
-
 
     static async deleteConversation(req: Request, res: Response): Promise<void> {
         try {
