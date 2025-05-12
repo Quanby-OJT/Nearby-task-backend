@@ -2,89 +2,176 @@ import { supabase } from "../config/configuration";
 import { Request, Response } from "express";
 
 class SettingController {
-    static async setLocation(req: Request, res: Response): Promise<void> {
-        const { latitude, longitude } = req.body;
-        const { user_id } = req.params;
+  static async setLocation(req: Request, res: Response): Promise<void> {
+    const { latitude, longitude, city, province } = req.body;
+    const { user_id } = req.params;
 
-        console.log(user_id);
-        console.log(latitude);
-        console.log(longitude);
-    
-        if (!latitude || !longitude) {
-            res.status(400).json({ error: "latitude and longitude are required" });
+    console.log(user_id);
+    console.log(latitude);
+    console.log(longitude);
+    console.log(city);
+    console.log(province);
+
+    if (!latitude || !longitude) {
+        res.status(400).json({ error: "latitude and longitude are required" });
+        return;
+    }
+
+    try {
+
+        const { data: existingData, error: fetchError } = await supabase
+        .from("address")
+        .select("*")
+        .eq("user_id", user_id)
+        .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') { 
+            console.error(fetchError.message);
+            res.status(500).json({ error: "An Error Occurred while Checking Location" });
             return;
         }
-    
-        try {
 
-            const { data: existingData, error: fetchError } = await supabase
+        if (existingData) {
+
+            const { data: updateData, error: updateError } = await supabase
+                .from("address")
+                .update({ latitude, longitude, city, province, updated_at: new Date() })
+                .eq("user_id", user_id)
+                .select();
+
+        if (updateError) {
+                console.error(updateError.message);
+                res.status(500).json({ error: "An Error Occurred while Updating Location" });
+                return;
+        }
+
+        } else {
+            const { data: insertData, error: insertError } = await supabase
+                .from("address")
+                .insert({ latitude, longitude, city, province, default: true, user_id })
+                .select();
+
+        if (insertError) {
+            console.error(insertError.message);
+            res.status(500).json({ error: "An Error Occurred while Inserting Location" });
+            return;
+        }
+    }
+
+    const {data: userAddressDefault, error: userAddressDefaultError} = await supabase
+    .from("address")
+    .select("*")
+    .eq("user_id", user_id).eq("default", true)
+    .single();
+
+    if (userAddressDefaultError) {
+        console.error(userAddressDefaultError.message);
+        res.status(500).json({ error: "An Error Occurred while Setting Default Address" });
+        return;
+    }
+
+    if (userAddressDefault) {
+
+      const { data: existingData, error: fetchError } = await supabase
+        .from("user_preference")
+        .select("*")
+        .eq("user_id", user_id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error(fetchError.message);
+        res.status(500).json({ error: "An Error Occurred while Checking User Preferences" });
+        return;
+      }
+
+      if (existingData) {
+        const { data: updateDefaultAddress, error: updateDefaultAddressError } = await supabase
             .from("user_preference")
-            .select("*")
+            .update({ user_address: userAddressDefault.id })
             .eq("user_id", user_id)
-            .single();
+            .select();
 
-            if (fetchError && fetchError.code !== 'PGRST116') { 
-                console.error(fetchError.message);
-                res.status(500).json({ error: "An Error Occurred while Checking Location" });
-                return;
-            }
-
-            if (existingData) {
-
-                const { data: updateData, error: updateError } = await supabase
-                    .from("user_preference")
-                    .update({ latitude, longitude, updated_at: new Date() })
-                    .eq("user_id", user_id)
-                    .select();
-
-            if (updateError) {
-                    console.error(updateError.message);
-                    res.status(500).json({ error: "An Error Occurred while Updating Location" });
-                    return;
-            }
-
-            } else {
-                const { data: insertData, error: insertError } = await supabase
-                    .from("user_preference")
-                    .insert({ latitude, longitude, user_id })
-                    .select();
-
-            if (insertError) {
-                console.error(insertError.message);
-                res.status(500).json({ error: "An Error Occurred while Inserting Location" });
-                return;
-            }
+        if (updateDefaultAddressError) {
+            console.error(updateDefaultAddressError.message);
+            res.status(500).json({ error: "An Error Occurred while Updating Default Address" });
+            return;
         }
+      } else {
+        const { data: insertData, error: insertError } = await supabase
+            .from("user_preference")
+            .insert({ user_address: userAddressDefault.id,latitude, longitude, user_id })
+          .select();
 
-            res.status(200).json({ message: "Location has been Set Successfully." });
-        } catch (e) {
-            console.error(e);
-            res.status(500).json({ error: "An Error Occurred while Setting the Location" });
-        }
+      if (insertError) {
+        console.error(insertError.message);
+        res.status(500).json({ error: "An Error Occurred while Inserting Location" });
+        return;
+      }
+    }
+  }
+
+    res.status(200).json({ message: "Location has been Set Successfully." });
+} catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "An Error Occurred while Setting the Location" });
+}
+}
+
+static async getLocation(req: Request, res: Response): Promise<void> {
+  const { user_id } = req.params;
+
+  try {
+    const { data: preference, error: preferenceError } = await supabase
+      .from("user_preference")
+      .select("*")
+      .eq("user_id", user_id)
+      .maybeSingle();
+
+    if (preferenceError) {
+      console.error("Supabase preference error:", preferenceError);
+      res.status(500).json({ error: "Failed to retrieve user preferences" });
+      return;
     }
 
-    static async getLocation(req: Request, res: Response): Promise<void> {
-        const { user_id } = req.params;
-    
-        try {
-            const { data, error } = await supabase
-                .from("user_preference")
-                .select("*")
-                .eq("user_id", user_id);
-    
-            if (error) {
-                console.error(error);
-                res.status(500).json({ error: "An Error Occurred while Getting the Location" });
-                return;
-            }
-            console.log(data);
-    
-            res.status(200).json({ message: "Location has been retrieved successfully", data });
-        } catch (e) {
-            console.error(e);
-            res.status(500).json({ error: "An Error Occurred while Getting the Location" });
-        }
+    if (!preference) {
+      res.status(404).json({ error: "User preferences not found" });
+      return;
     }
+
+    const { data: address, error: addressError } = await supabase
+      .from("address")
+      .select("*")
+      .eq("user_id", user_id)
+      .eq("default", true)
+      .maybeSingle();
+
+    if (addressError) {
+      console.error("Supabase address error:", addressError);
+      res.status(500).json({ error: "Failed to retrieve default address" });
+      return;
+    }
+
+    if (!address) {
+      res.status(404).json({ error: "No default address found for user" });
+      return;
+    }
+
+  console.log(address, preference);
+
+    res.status(200).json({
+      message: "Location retrieved successfully",
+      data: {
+        ...preference,
+        address,
+      },
+    });
+    
+  } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "An Error Occurred while Getting the Location" });
+  }
+
+}
 
     static async updateSpecialization(req: Request, res: Response): Promise<void> {
         const { user_id } = req.params;

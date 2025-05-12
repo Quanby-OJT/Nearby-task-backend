@@ -101,6 +101,173 @@ class ClientModel {
     }
   }
 
+  static async getMyDataTasker(req: Request, res: Response): Promise<void> {
+    const userId = req.params.userId;
+
+    try {
+      const { data, error } = await supabase
+        .from("tasker")
+        .select(
+          `
+        *,
+        user!inner (
+          user_id,
+          first_name,
+          middle_name,
+          last_name,
+          image_link,
+          birthdate,
+          acc_status,
+          gender,
+          email,
+          contact,
+          verified,
+          user_role,
+          user_preference!inner(*, address(*))
+        ) 
+      `
+        )
+        .eq("user.user_id", userId)
+        .single();
+      
+      console.log("User ID:", userId);
+
+      console.log("Client data:", data, "Error:", error);
+
+      if (error) {
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        res.status(200).json({ error: "No active client found." });
+        return;
+      }
+
+      res.status(200).json({ client: data });
+    } catch (error) {
+      console.error("Error fetching client:", error);
+      res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  }
+
+  static async getAllFilteredTaskers(
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from("tasker")
+        .select(
+          `
+          *,
+          tasker_specialization (
+            specialization
+          ),
+          user!inner (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            image_link,
+            birthdate,
+            acc_status,
+            gender,
+            email,
+            contact,
+            verified,
+            user_role,
+            user_preference!inner(*, address(*))
+          ) 
+        `
+        )
+        .not("user", "is", null)
+        .eq("user.acc_status", "Active")
+        .eq("user.verified", true)
+        .eq("user.user_role", "Tasker");
+
+      console.log("Taskers data:", data, "Error:", error);
+
+      if (error) {
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        res.status(200).json({ error: "No active taskers found." });
+        return;
+      }
+
+      res.status(200).json({ taskers: data });
+    } catch (error) {
+      console.error("Error fetching taskers:", error);
+      res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  }
+
+
+  static async getMyDataClient(req: Request, res: Response): Promise<void> {
+    const userId = req.params.userId;
+
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select(
+          `
+        *,
+        user!inner (
+          user_id,
+          first_name,
+          middle_name,
+          last_name,
+          image_link,
+          birthdate,
+          acc_status,
+          gender,
+          email,
+          contact,
+          verified,
+          user_role,
+          user_preference!inner(*, address(*))
+        ) 
+      `
+        )
+        .eq("user.user_id", userId)
+        .single();
+      
+      console.log("User ID:", userId);
+
+      console.log("Client data:", data, "Error:", error);
+
+      if (error) {
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        res.status(200).json({ error: "No active client found." });
+        return;
+      }
+
+      res.status(200).json({ client: data });
+    } catch (error) {
+      console.error("Error fetching client:", error);
+      res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  }
+
   static async getAllClients(req: Request, res: Response): Promise<void> {
     console.log("Fetching all desired Taskers...");
     try {

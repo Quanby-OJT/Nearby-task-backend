@@ -126,6 +126,60 @@ class TaskController {
     }
   }
 
+  static async fetchAllTasks(req: Request, res: Response): Promise<void> {
+    try {
+      const { data:task, error } = await supabase
+        .from("post_task")
+        .select(`
+          *,
+          tasker_specialization (
+            specialization
+          ),
+          address (*),
+          clients!client_id!inner (
+            user (
+              user_id,
+              first_name,
+              middle_name,
+              last_name,
+              image_link,
+              birthdate,
+              acc_status,
+              gender,
+              email,
+              contact,
+              verified,
+              user_role
+            )
+          )
+        `)
+        .not("clients", "is", null)
+        .eq("clients.user.acc_status", "Active")
+        .eq("clients.user.verified", true)
+        .eq("clients.user.user_role", "Client");
+  
+      console.log("Taskers data:", task, "Error:", error);
+  
+      if (error) {
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+  
+      if (!task || task.length === 0) {
+        res.status(200).json({ error: "No active taskers found." });
+        return;
+      }
+  
+      res.status(200).json({ taskers: task });
+    } catch (error) {
+      console.error("Error fetching taskers:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  }
+
   static async getTaskById(req: Request, res: Response): Promise<void> {
     try {
       const jobPostId = parseInt(req.params.id);
