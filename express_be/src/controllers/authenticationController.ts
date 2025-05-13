@@ -52,33 +52,17 @@ class AuthenticationController {
         specialChars: false,
       });
 
-      // For testing purposes, we will use a fixed OTP
-
+      // Save OTP in database
       await Auth.createOTP({
         user_id: verifyLogin.user_id,
         two_fa_code: otp.toString(),
       });
 
-    //   const otpHtml = `
-    //   <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-    //     <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
-    //     <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
-    //     <div class="mt-4 text-center">
-    //       <span class="text-3xl font-bold text-blue-600">${otp}</span>
-    //     </div>
-    //     <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
-    //     <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
-    //   </div>`;
-
-    // // Send the email
-    // await mailer.sendMail({
-    //   from: "noreply@nearbytask.com",
-    //   to: verifyLogin.email,
-    //   subject: "Your OTP Code for NearByTask",
-    //   html: otpHtml,
-    // });
-
-      res.status(200).json({ user_id: verifyLogin.user_id });
+      // Return the OTP directly in the response instead of sending email
+      res.status(200).json({ 
+        user_id: verifyLogin.user_id,
+        otp: otp // Include OTP directly in response
+      });
     } catch (error) {
       console.error(error);
       res.status(500).json({
@@ -200,8 +184,10 @@ class AuthenticationController {
 
       await Auth.createOTP({ user_id: user_id, two_fa_code: otp });
 
+      // Return OTP directly in response instead of sending email
       res.status(200).json({
-        message: "Successfully Regenerated OTP. Please Check Your Email.",
+        message: "Successfully Generated OTP",
+        otp: otp
       });
     } catch (error) {
       console.error(error);
@@ -289,16 +275,10 @@ class AuthenticationController {
       }
 
       // Get the user's email using the user_id
-      // We need to fetch the user's email from the database using the user_id
-      // This will depend on your database structure and model methods
-
-      // Assuming you have a method to get user by ID that returns user with email
       const user = await Auth.getUserById(user_id);
 
-      if (!user || !user.email) {
-        res
-          .status(404)
-          .json({ error: "User not found or email not available" });
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
         return;
       }
 
@@ -310,37 +290,17 @@ class AuthenticationController {
         specialChars: false,
       });
 
-      // Calculate expiration time (5 minutes from now)
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
       // Update the OTP in the database
       await Auth.createOTP({
         user_id,
         two_fa_code: otp,
-        //two_fa_code_expires_at: expiresAt
       });
 
-      // Create email template for OTP
-      const otpHtml = `
-        <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-          <h2 class="text-xl font-bold text-gray-800">🔒 Your OTP Code</h2>
-          <p class="text-gray-700 mt-4">In order to use the application, enter the following OTP:</p>
-          <div class="mt-4 text-center">
-            <span class="text-3xl font-bold text-blue-600">${otp}</span>
-          </div>
-          <p class="text-red-500 mt-4">Note: This OTP will expire 5 minutes from now.</p>
-          <p class="text-gray-500 mt-6 text-sm">If you didn't request this code, please ignore this email.</p>
-        </div>`;
-
-      // Send the email
-      await mailer.sendMail({
-        from: "noreply@nearbytask.com",
-        to: user.email,
-        subject: "Your OTP Code for NearByTask",
-        html: otpHtml,
+      // Return OTP directly in response instead of sending email
+      res.status(200).json({ 
+        message: "OTP reset successfully", 
+        otp: otp 
       });
-
-      res.status(200).json({ message: "OTP reset and sent successfully" });
     } catch (error) {
       console.error("Error in resetOTP:", error);
       res.status(500).json({

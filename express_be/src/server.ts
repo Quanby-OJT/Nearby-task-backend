@@ -16,10 +16,20 @@ import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
+import TaskerModel from "./models/taskerModel";
 import ConversationRoutes from "./routes/conversationRoutes";
 import UserAccountController from "./controllers/userAccountController";
+import http from "http";
+import { Server } from "socket.io";
 dotenv.config();
 const app: Application = express();
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(
   cors({
@@ -59,9 +69,51 @@ app.use("/connect", reportRoutes);
 app.use("/connect", authorityAccountRoutes);
 app.use("/connect", reportANDanalysisRoute);
 app.use("/connect", paymentRoutes);
+
+// // Start server
+// const PORT = port || 5000;
+
+// // Server startup logic
+// async function startServer() {
+//   try {
+//     // Start the server
+//     app.listen(PORT, () => {
+//       console.log(`Server is running on port ${PORT}`);
+//       console.log(
+//         "Click this to direct: http://localhost:5000/connect"
+//       );
+//     });
+//   } catch (error) {
+//     console.error("Error starting server:", error);
+//     process.exit(1);
+//   }
+// }
+
+// startServer();
+// Socket.IO event handlers
+io.on("connection", (socket) => {
+  console.log("A user connected: " + socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected: " + socket.id);
+  });
+
+  // Handle new message event
+  socket.on("send_message", (data) => {
+    // Broadcast the message to all connected clients
+    io.emit("new_message", data);
+  });
+
+  // Handle message read event
+  socket.on("mark_as_read", (data) => {
+    io.emit("message_read", data);
+  });
+});
+
 // Start server
 const PORT = port || 5000;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log("Click this to direct: http://192.168.1.12:5000/connect");
+  console.log("Socket.IO server running at http://192.168.1.12:5000");
 });
