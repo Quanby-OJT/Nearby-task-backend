@@ -92,6 +92,5 @@ io.on("connection", (socket) => {
 const PORT = port || 5000;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log("Click this to direct: http://192.168.1.12:5000/connect");
-  console.log("Socket.IO server running at http://192.168.1.12:5000");
+  console.log("Click this to direct: http://192.168.43.15:5000/connect");
 });
