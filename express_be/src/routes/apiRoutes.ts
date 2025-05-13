@@ -130,7 +130,7 @@ router.post("/warnUser/:id", ConversationController.warnUser);
 //Payment Routes
 router.post("/deposit-escrow-payment", PaymentController.depositEscrowAmount);
 router.put("/webhook/paymongo", PaymentController.handlePayMongoWebhook);
-router.put("/withdraw-escrow-amount", PaymentController.depositEscrowAmount);
+router.post("/withdraw-escrow-amount", PaymentController.releaseEscrowPayment);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
