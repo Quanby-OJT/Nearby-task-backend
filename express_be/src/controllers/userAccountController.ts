@@ -269,23 +269,52 @@ class UserAccountController {
       console.log("Retrieving User Data for..." + userID);
 
       const userData = await UserAccount.showUser(userID);
+      
+      // Use type assertion to allow adding properties
+      const userDataWithExtras: any = { ...userData };
 
-      if (userData.user_role.toLowerCase() === "client") {
+      // Fetch bio and social_media_links from user_verify table
+      const { data: verifyData, error: verifyError } = await supabase
+        .from("user_verify")
+        .select("bio, social_media_links")
+        .eq("user_id", userID)
+        .maybeSingle();
+        
+      // Add bio and social_media_links to userData if they exist in user_verify
+      if (!verifyError && verifyData) {
+        userDataWithExtras.bio = verifyData.bio || null;
+        userDataWithExtras.social_media_links = verifyData.social_media_links || null;
+      }
+
+      if (userDataWithExtras.user_role.toLowerCase() === "client") {
         const clientData = await UserAccount.showClient(userID);
         if(!clientData) {
           res.status(404).json({ error: "Please Verify Your Account First." });
-          return
+          return;
         }
-        res.status(200).json({ user: userData, client: clientData });
+        res.status(200).json({ user: userDataWithExtras, client: clientData });
         console.log("Client Data: " + clientData);
-      } else if (userData.user_role.toLowerCase() === "tasker") {
+      } else if (userDataWithExtras.user_role.toLowerCase() === "tasker") {
         const taskerData = await UserAccount.showTasker(userID);
 
         if(!taskerData) {
           res.status(404).json({ error: "Please Verify Your Account First." });
-          return
+          return;
         }
-        res.status(200).json({ user: userData, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
+        
+        // For taskers, prioritize bio and social_media_links from tasker table
+        if (taskerData.tasker) {
+          // Only override if tasker has these fields
+          if (taskerData.tasker.bio) {
+            userDataWithExtras.bio = taskerData.tasker.bio;
+          }
+          
+          if (taskerData.tasker.social_media_links) {
+            userDataWithExtras.social_media_links = taskerData.tasker.social_media_links;
+          }
+        }
+        
+        res.status(200).json({ user: userDataWithExtras, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Unknown error");
@@ -1525,9 +1554,13 @@ class UserAccountController {
         email,
         birthdate,
         user_role,
+        // Flag to indicate if this is an update to existing verification
+        is_update,
       } = req.body;
 
+      const isUpdateMode = is_update === 'true';
       console.log("Received User Verification Data:", req.body);
+      console.log("Is update mode:", isUpdateMode);
 
       // Check if email already exists for another user
       if (email) {
@@ -1550,7 +1583,7 @@ class UserAccountController {
       // Get the user's current role to determine storage paths
       const { data: userData, error: userError } = await supabase
         .from("user")
-        .select("user_role")
+        .select("user_role, acc_status")
         .eq("user_id", userId)
         .single();
         
@@ -1658,8 +1691,10 @@ class UserAccountController {
       if (phone_number) updateUser.contact = phone_number;
       if (birthdate) updateUser.birthdate = birthdate;
       
-      // Set verification status
-      updateUser.acc_status = "Pending Verification";
+      // Set verification status - only for new submissions, not updates
+      if (!isUpdateMode) {
+        updateUser.acc_status = "Pending Verification";
+      }
       
       // Use selfie as profile image if available
       if (selfieImageUrl) {
@@ -1729,7 +1764,8 @@ class UserAccountController {
         const idImageData = {
           user_id: userId,
           id_image: idImageUrl,
-          created_at: currentDate
+          created_at: existingVerification ? undefined : currentDate,
+          updated_at: existingVerification ? currentDate : undefined
         };
         
         // Note: There might be a foreign key constraint issue if the database schema
@@ -1760,7 +1796,8 @@ class UserAccountController {
             user_id: userId,
             document_type: 'id',
             document_url: idImageUrl,
-            created_at: currentDate
+            created_at: existingVerification ? undefined : currentDate,
+            updated_at: existingVerification ? currentDate : undefined
           };
           
           const { error: clientDocError } = await supabase
@@ -1780,7 +1817,8 @@ class UserAccountController {
         const faceImageData = {
           user_id: userId,
           face_image: selfieImageUrl,
-          created_at: currentDate
+          created_at: existingVerification ? undefined : currentDate,
+          updated_at: existingVerification ? currentDate : undefined
         };
         
         // Note: There might be a foreign key constraint issue if the database schema
@@ -1812,7 +1850,8 @@ class UserAccountController {
         const documentData = {
           tasker_id: userId,
           user_document_link: documentsUrl,
-          created_at: currentDate
+          created_at: existingVerification ? undefined : currentDate,
+          updated_at: existingVerification ? currentDate : undefined
         };
         
         // Note: There might be a foreign key constraint issue if the database schema
@@ -1840,10 +1879,14 @@ class UserAccountController {
 
       // Determine the appropriate response message
       let message;
-      if (verificationSuccess) {
-        message = "Verification submitted successfully! Your information will be reviewed shortly.";
+      if (isUpdateMode) {
+        message = verificationSuccess 
+          ? "Your information has been updated successfully!" 
+          : `Your information was partially updated. There were problems with: ${failedTables.join(', ')}. Please contact support if you continue to have issues.`;
       } else {
-        message = `Verification submitted with some issues. Your basic information was saved, but there were problems with: ${failedTables.join(', ')}. Please contact support if verification fails.`;
+        message = verificationSuccess 
+          ? "Verification submitted successfully! Your information will be reviewed shortly." 
+          : `Verification submitted with some issues. Your basic information was saved, but there were problems with: ${failedTables.join(', ')}. Please contact support if verification fails.`;
       }
 
       // Return success response
@@ -1935,7 +1978,7 @@ class UserAccountController {
         return res.status(500).json({ error: userError.message });
       }
 
-      // Fetch verification record
+      // Fetch verification record from user_verify table (contains bio and social_media_links)
       const { data: verification, error: verificationError } = await supabase
         .from("user_verify")
         .select("*")
@@ -1948,7 +1991,7 @@ class UserAccountController {
       }
 
       // Get additional documents based on user type
-      let additionalData = {};
+      let additionalData: any = {};
       
       // Fetch ID image data
       const { data: idData, error: idError } = await supabase
@@ -1993,6 +2036,63 @@ class UserAccountController {
         if (!taskerDocsError && taskerDocs) {
           additionalData = { ...additionalData, taskerDocuments: taskerDocs };
         }
+        
+        // For taskers, also check the tasker table for bio and social_media_links
+        const { data: taskerData, error: taskerError } = await supabase
+          .from("tasker")
+          .select("bio, social_media_links")
+          .eq("tasker_id", userId)
+          .maybeSingle();
+          
+        if (!taskerError && taskerData) {
+          // Add tasker-specific bio and social_media_links to the verification data
+          if (verification) {
+            // Only override if these fields don't exist in verification or are empty
+            if (!verification.bio && taskerData.bio) {
+              verification.bio = taskerData.bio;
+            }
+            if (!verification.social_media_links && taskerData.social_media_links) {
+              verification.social_media_links = taskerData.social_media_links;
+            }
+          } else {
+            // If no verification record exists, add tasker data to additionalData
+            additionalData = { 
+              ...additionalData, 
+              taskerBio: taskerData.bio,
+              taskerSocialMediaLinks: taskerData.social_media_links 
+            };
+          }
+        }
+      }
+
+      // Prepare the verification data with image URLs
+      let verificationData = verification;
+      if (verification) {
+        // Add ID image URL to verification data if available
+        if (idData && idData.id_image) {
+          verificationData = {
+            ...verificationData,
+            idImageUrl: idData.id_image
+          };
+        }
+        
+        // Add selfie image URL to verification data if available
+        if (faceData && faceData.face_image) {
+          verificationData = {
+            ...verificationData,
+            selfieImageUrl: faceData.face_image
+          };
+        }
+        
+        // Add document URL to verification data if available
+        if (userData.user_role.toLowerCase() === 'tasker' && 
+            additionalData.taskerDocuments && 
+            additionalData.taskerDocuments.user_document_link) {
+          verificationData = {
+            ...verificationData,
+            documentUrl: additionalData.taskerDocuments.user_document_link
+          };
+        }
       }
 
       if (!verification) {
@@ -2006,7 +2106,7 @@ class UserAccountController {
 
       return res.status(200).json({
         exists: true,
-        verification,
+        verification: verificationData,
         user: userData,
         ...additionalData,
         message: "Verification record found"
