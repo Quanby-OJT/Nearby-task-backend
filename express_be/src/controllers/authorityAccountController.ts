@@ -244,29 +244,27 @@ class AuthorityAccountController {
       if (!fileName) {
         return res.status(400).json({ error: "File name is required" });
       }
-  
+
       const bucketName = "crud_bucket";
-  
-  
-      const fileUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucketName}/${fileName}`;
-      console.log("Fetching file from:", fileUrl);
-  
-      // Fetch the file from Supabase
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        if (response.status === 404) {
+
+      // Fetch the file from Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(fileName);
+
+      if (error) {
+        if (error.message.includes("404")) {
           return res.status(404).json({ error: "File not found in Supabase Storage" });
         }
-        throw new Error(`Failed to fetch the document from Supabase Storage: ${response.statusText}`);
+        throw new Error(`Failed to fetch the document from Supabase Storage: ${error.message}`);
       }
-  
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-  
+
+      const buffer = Buffer.from(await data.arrayBuffer());
+
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Content-Disposition", "inline; filename=\"document.pdf\"");
       res.setHeader("Content-Length", buffer.length);
-  
+
       res.send(buffer);
     } catch (error) {
       console.error("Error serving document:", error);
