@@ -61,8 +61,6 @@ class ConversationController {
                     task_id,
                     task_title
                 ),
-                tasker_id,
-                client_id,
                 clients!client_id (
                     user!user_id (
                         user_id,
@@ -138,7 +136,7 @@ class ConversationController {
                 created_at: msg?.created_at,
             }));
     
-        res.status(200).json({ data: [TaskTakenData, conversationData] });
+        res.status(200).json({ task_taken: TaskTakenData, conversation: conversationData });
     }
 
     static async getMessages(req: Request, res: Response): Promise<void> {

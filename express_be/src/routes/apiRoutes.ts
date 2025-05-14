@@ -15,10 +15,8 @@ import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
-import AuthorityAccountController from "../controllers/authorityAccountController";
 import SettingController from "../controllers/settingController";
 import PaymentController from "../controllers/paymentController";
-import { Auth } from "../models/authenticationModel";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -59,6 +57,7 @@ router.post("/forgot-password/reset-password", UserAccountController.resetPasswo
 // New route for forget password (for Flutter Only)
 router.post("/forgot-password", AuthenticationController.forgotPassword);
 router.post("/verify", UserAccountController.verifyEmail)
+router.post("/reset-password", AuthenticationController.resetPassword)
 // router.use(isAuthenticated);
 
 /**
@@ -88,10 +87,6 @@ router.post(
 
 router.post("/verify", UserAccountController.verifyEmail);
 router.put("/update-client-user/:id", UserAccountController.updateUser);
-
-router.post("/authority/forgot-password/send-otp", AuthorityAccountController.sendOtp);
-router.post("/authority/forgot-password/verify-otp", AuthorityAccountController.verifyOtp);
-router.post("/authority/forgot-password/reset-password", AuthorityAccountController.resetPassword);
 
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
@@ -135,7 +130,7 @@ router.post("/warnUser/:id", ConversationController.warnUser);
 //Payment Routes
 router.post("/deposit-escrow-payment", PaymentController.depositEscrowAmount);
 router.put("/webhook/paymongo", PaymentController.handlePayMongoWebhook);
-router.put("/withdraw-escrow-amount", PaymentController.depositEscrowAmount);
+router.post("/withdraw-escrow-amount", PaymentController.releaseEscrowPayment);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
