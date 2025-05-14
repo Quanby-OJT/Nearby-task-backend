@@ -99,7 +99,7 @@ router.get("/displayTask", TaskController.getAllTasks);
 router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
-router.put("/displayTask/:id", TaskController.disableTask);
+// router.put("/displayTask/:id", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
@@ -164,7 +164,9 @@ router.get("/get-location/:user_id", SettingController.getLocation);
 router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
 
-// User Location
+// User Task
+router.get("/fetchTasks/:userId", TaskController.getTasks);
+router.get("/tasker/taskinformation/:taskId", TaskController.getTaskInformation);
 
 //User CRUD
 router.put(
