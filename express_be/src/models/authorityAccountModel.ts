@@ -108,7 +108,9 @@ class AuthorityAccount {
       .select(`
         user_role,
         client_documents!client_documents_user_id_fkey (document_url),
-        user_documents!user_documents_tasker_id_fkey (doc_name, user_document_link)
+        user_documents!user_documents_tasker_id_fkey (doc_name, user_document_link),
+        user_id!user_id_user_id_fkey (id_image),
+        user_face_identity!user_face_identity_user_id_fkey (face_image)  -- Added join to fetch face_image from user_face_identity table
       `)
       .eq("user_id", user_id)
       .single();

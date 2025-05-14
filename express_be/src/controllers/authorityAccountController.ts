@@ -229,7 +229,7 @@ class AuthorityAccountController {
       const userID = req.params.id;
       console.log("Retrieving User Document for..." + userID);
       const userDocs = await AuthorityAccount.getUserDocs(userID);
-      console.log("User Document: " + userDocs);
+      console.log("User Document (including face_image):", userDocs); 
       res.status(200).json({ user: userDocs });
     } catch (error) {
       res.status(500).json({
