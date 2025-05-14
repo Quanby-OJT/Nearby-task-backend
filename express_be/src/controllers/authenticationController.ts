@@ -148,7 +148,8 @@ class AuthenticationController {
       if (user) {
         const isSamePassword = await bcrypt.compare(password, user.hashed_password);
         if (isSamePassword) {
-          throw new Error("New password cannot be the same as the current password");
+          res.status(400).json("New password cannot be the same as the current password");
+          return
         }
       }
 
