@@ -15,10 +15,8 @@ import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
-import AuthorityAccountController from "../controllers/authorityAccountController";
 import SettingController from "../controllers/settingController";
 import PaymentController from "../controllers/paymentController";
-import { Auth } from "../models/authenticationModel";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -59,6 +57,7 @@ router.post("/forgot-password/reset-password", UserAccountController.resetPasswo
 // New route for forget password (for Flutter Only)
 router.post("/forgot-password", AuthenticationController.forgotPassword);
 router.post("/verify", UserAccountController.verifyEmail)
+router.post("/reset-password", AuthenticationController.resetPassword)
 // router.use(isAuthenticated);
 
 /**
@@ -89,10 +88,6 @@ router.post(
 router.post("/verify", UserAccountController.verifyEmail);
 router.put("/update-client-user/:id", UserAccountController.updateUser);
 
-router.post("/authority/forgot-password/send-otp", AuthorityAccountController.sendOtp);
-router.post("/authority/forgot-password/verify-otp", AuthorityAccountController.verifyOtp);
-router.post("/authority/forgot-password/reset-password", AuthorityAccountController.resetPassword);
-
 router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
 });
@@ -104,7 +99,7 @@ router.get("/displayTask", TaskController.getAllTasks);
 router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
-router.put("/displayTask/:id", TaskController.disableTask);
+// router.put("/displayTask/:id", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
@@ -135,7 +130,7 @@ router.post("/warnUser/:id", ConversationController.warnUser);
 //Payment Routes
 router.post("/deposit-escrow-payment", PaymentController.depositEscrowAmount);
 router.put("/webhook/paymongo", PaymentController.handlePayMongoWebhook);
-router.put("/withdraw-escrow-amount", PaymentController.depositEscrowAmount);
+router.post("/withdraw-escrow-amount", PaymentController.releaseEscrowPayment);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
@@ -169,7 +164,9 @@ router.get("/get-location/:user_id", SettingController.getLocation);
 router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
 
-// User Location
+// User Task
+router.get("/fetchTasks/:userId", TaskController.getTasks);
+router.get("/tasker/taskinformation/:taskId", TaskController.getTaskInformation);
 
 //User CRUD
 router.put(
@@ -220,7 +217,7 @@ router.put(
 
 
 // updating tasker with PDF only
-router.put(
+router.put( 
   "/update-tasker-with-pdf/:id",
   upload.fields([
     { name: "file", maxCount: 1 }
@@ -261,5 +258,39 @@ router.put(
 );
 
 router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
+
+// Submit user verification to the user_verify table
+router.post(
+  "/submit-user-verification/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },      // ID image
+    { name: "selfieImage", maxCount: 1 },  // Selfie image
+    { name: "documents", maxCount: 1 }     // Certificates file
+  ]),
+  UserAccountController.submitUserVerification
+);
+
+// Get user verification status
+router.get(
+  "/user-verification-status/:id",
+  UserAccountController.getUserVerificationStatus
+);
+
+// Keep old routes for backward compatibility
+router.post(
+  "/submit-tasker-verification/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },      // ID image
+    { name: "selfieImage", maxCount: 1 },  // Selfie image
+    { name: "documents", maxCount: 1 }     // Certificates file
+  ]),
+  UserAccountController.submitUserVerification
+);
+
+// Get tasker verification status (kept for backward compatibility)
+router.get(
+  "/tasker-verification-status/:id",
+  UserAccountController.getUserVerificationStatus
+);
 
 export default router;

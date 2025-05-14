@@ -16,9 +16,4 @@ router.get("/users", isAuthenticated, UserAccountController.getPaginationUsers);
 router.put("/updateUserInfo/:id/", isAuthenticated, upload.single("image"), UserAccountController.updateUser);
 router.post("/verify-otp", isAuthenticated, AuthenticationController.otpAuthentication);
 
-// Routes not requiring authentication (forgot password)
-router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
-router.post("/forgot-password/verify-otp", UserAccountController.verifyOtp);
-router.post("/forgot-password/reset-password", UserAccountController.resetPassword);
-
 export default router;

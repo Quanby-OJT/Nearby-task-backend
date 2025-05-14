@@ -275,9 +275,6 @@ class TaskController {
         });
         return;
       }
-
-      // Query task_taken table with join to get task details
-      // Using task_id as the identifier since 'id' doesn't exist
       const { data, error } = await supabase
         .from("task_taken")
         .select(`
@@ -1050,6 +1047,94 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     } catch (error) {
       console.error("Error fetching completed tasks:", error);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+
+  static async getTasks(req: Request, res: Response): Promise<void> {
+    const { userId } = req.params;
+  
+    try {
+      const { data, error } = await supabase
+      .from("task_taken")
+      .select(`
+        task_id,
+        task_status,
+        created_at,
+        client_id,
+        tasker_id,
+        task:post_task (
+          task_id,
+          task_title,
+          task_description,
+          duration,
+          proposed_price,
+          urgent,
+          location,
+          specialization,
+          status,
+          address:address (*)
+        ),
+        client:clients (
+          client_id,
+          user:user_id (*)
+        )
+      `)
+      .eq("tasker_id", userId);
+
+    if (error) {
+      console.error("Supabase error:", error.message);
+      res.status(500).json({ error: "Failed to retrieve tasks. Please try again." });
+      return;
+    }
+  
+      res.status(200).json({ data: data || [] });
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  static async getTaskInformation(req: Request, res: Response): Promise<void> {
+    const { taskId } = req.params;
+    try {
+      const { data, error } = await supabase
+      .from("task_taken")
+      .select(`
+        task_id,
+        task_status,
+        created_at,
+        client_id,
+        tasker_id,
+        task:post_task(
+          task_id,
+          task_title,
+          task_description,
+          duration,
+          proposed_price,
+          urgent,
+          location,
+          specialization,
+          status
+        ),
+        client:clients(
+          client_id,
+          user:user_id(*),
+          client_address
+        )
+      `)
+      .eq("task_id", taskId)
+      .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching task information:", error.message);
+        res.status(500).json({ error: "Failed to retrieve task information. Please try again." });
+        return;
+      }
+
+      res.status(200).json({ data: data });
+    } catch (error) {
+      console.error("Error fetching task information:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 } 

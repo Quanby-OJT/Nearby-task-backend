@@ -117,20 +117,19 @@ class PaymentController {
 
   static async releaseEscrowPayment(req: Request, res: Response): Promise<void> {
     try {
-      const { tasker_id, amount } = req.body;
-      const result = await PayMongoPayment.releasePayment({
+      const { tasker_id, amount, payment_method } = req.body;
+      await PayMongoPayment.releasePayment({
         tasker_id,
         amount,
         withdraw_date: new Date().toISOString(),
         payment_type: "Amount Withdraw for Tasker",
+        payment_method
       });
-      res.json(result);
+
+      res.status(200).json({message: "Payment Released Successfully"});
     } catch (error) {
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "An unknown error occurred" });
-      }
+      console.error("Error in releaseEscrowPayment:", error instanceof Error ? error.message : error);
+      res.status(500).json({ error: "An unknown error occurred" });
     }
   }
 }

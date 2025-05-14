@@ -114,9 +114,12 @@ class Auth {
   static async getUserEmail(email: string) {
     const {data, error} = await supabase.from("user").select("email, acc_status").eq("email", email).single()
 
-    if(error) throw new Error("Error while retrieving email " + error.message)
-
-    if(!data) return null
+    if(error) {
+      if (error.code === "PGRST116") {
+        return null;
+      }
+      throw new Error("Error while retrieving email: " + error.message)
+    }
 
     return data
   }
