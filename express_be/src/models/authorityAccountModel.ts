@@ -78,11 +78,11 @@ class AuthorityAccount {
 
   static async showTasker(user_id: string) {
     const { data: tasker, error: taskerError } = await supabase
-      .from("tasker")
+      .from("user")
       .select(
-        "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
+        "user_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
       )
-      .eq("tasker_id", user_id)
+      .eq("user_id", user_id)
       .maybeSingle();
     console.log(tasker, taskerError);
 
@@ -92,8 +92,8 @@ class AuthorityAccount {
     }
 
     const { data: taskerDocument, error: taskerDocumentError } = await supabase
-      .from("tasker_documents")
-      .select("tesda_document_link")
+      .from("user_documents")
+      .select("user_document_link")
       .eq("tasker_id", user_id);
     console.log(tasker, taskerError, taskerDocument, taskerDocumentError);
 
@@ -105,14 +105,13 @@ class AuthorityAccount {
   static async getUserDocs(user_id: string) {
     const { data, error } = await supabase
       .from("user")
-      .select(`
+      .select(
+        `
         user_role,
         client_documents!client_documents_user_id_fkey (document_url),
-        tasker!tasker_user_id_fkey (
-          tasker_id,
-          tasker_documents!tasker_documents_tasker_id_fkey (tesda_document_link)
-        )
-      `)
+        user_documents!user_documents_tasker_id_fkey (user_document_link)
+        `
+      )
       .eq("user_id", user_id)
       .single();
 
@@ -123,8 +122,8 @@ class AuthorityAccount {
 
   static async updateTaskerDocumentsValid(user_id: string, valid: boolean) {
     const { data: tasker, error: taskerError } = await supabase
-      .from("tasker")
-      .select("tasker_id")
+      .from("user")
+      .select("user_id")
       .eq("user_id", user_id)
       .maybeSingle();
 
@@ -134,24 +133,23 @@ class AuthorityAccount {
     }
 
     if (!tasker) {
-      console.log(`No tasker found for user_id: ${user_id}`);
+      console.log(`No user found for user_id: ${user_id}`);
       return;
     }
 
-    const taskerId = tasker.tasker_id;
-
+    const taskerId = tasker.user_id;
 
     const { error: updateError } = await supabase
-      .from("tasker_documents")
+      .from("user_documents")
       .update({ valid: valid })
       .eq("tasker_id", taskerId);
 
     if (updateError) {
-      console.error("Tasker Documents Update Error:", updateError);
-      throw new Error("Tasker Documents Update Error: " + updateError.message);
+      console.error("User Documents Update Error:", updateError);
+      throw new Error("User Documents Update Error: " + updateError.message);
     }
 
-    console.log(`Updated tasker_documents for tasker_id ${taskerId}: valid set to ${valid}`);
+    console.log(`Updated user_documents for tasker_id ${taskerId}: valid set to ${valid}`);
   }
 }
 
