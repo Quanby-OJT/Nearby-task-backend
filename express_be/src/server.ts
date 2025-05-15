@@ -90,7 +90,7 @@ io.on("connection", (socket) => {
 });
 
 // Start server
-const PORT = port || 5000;
+const PORT = port || 7000;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log("Click this to direct: http://localhost:5000/connect");

@@ -12,7 +12,7 @@ import PayMongoPayment from "../models/paymentModel";
 import ClientModel from "./clientController";
 import { WebSocketServer } from "ws";
 
-const ws = new WebSocketServer({ port: 8080 });
+const ws = new WebSocketServer({ port: 6000 });
 
 
 class TaskController {
