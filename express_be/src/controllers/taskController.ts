@@ -1062,7 +1062,7 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
         created_at,
         client_id,
         tasker_id,
-        task:post_task(
+        task:post_task (
           task_id,
           task_title,
           task_description,
@@ -1071,21 +1071,21 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
           urgent,
           location,
           specialization,
-          status
+          status,
+          address:address (*)
         ),
-        client:clients(
+        client:clients (
           client_id,
-          user:user_id(*),
-          client_address
+          user:user_id (*)
         )
       `)
       .eq("tasker_id", userId);
-  
-      if (error) {
-        console.error("Supabase error:", error.message);
-        res.status(500).json({ error: "Failed to retrieve tasks. Please try again." });
-        return;
-      }
+
+    if (error) {
+      console.error("Supabase error:", error.message);
+      res.status(500).json({ error: "Failed to retrieve tasks. Please try again." });
+      return;
+    }
   
       res.status(200).json({ data: data || [] });
     } catch (error) {
