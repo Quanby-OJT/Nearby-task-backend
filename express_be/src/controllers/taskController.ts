@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
-import { error } from "console";
+import console from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
 import TaskAssignment from "../models/taskAssignmentModel";
@@ -18,68 +18,121 @@ const ws = new WebSocketServer({ port: 8080 });
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
-      console.log("Received insert data:", req.body);
+      const photo = req.file;
+      console.log("Received photo:", photo);
+      console.log("Received task data:", req.body);
 
       const {
         client_id,
         task_title,
-        specialization,
+        specialization_id,
+        related_specializations,
         task_description,
-        location,
-        duration,
-        num_of_days,
-        urgency,
+        addressID,
+        urgent,
         proposed_price,
         remarks,
-        task_begin_date,
-        user_id,
         work_type,
+        scope,
+        is_verified_document,
+        user_id,
+        status,
       } = req.body;
 
-      let urgent = false;
-      if (urgency === "Urgent") urgent = true;
-      else if (urgency === "Non-Urgent") urgent = false;
-
-      if (!client_id || !task_title || !task_begin_date) {
-        res.status(400).json({ error: "Missing required fields" });
-        return;
-      }
-
-      // Convert duration and proposed_price to numbers
-      const parsedDuration = Number(duration);
+      // Validate and parse price
       const parsedPrice = Number(proposed_price);
-
-      if (isNaN(parsedDuration) || isNaN(parsedPrice)) {
-        res.status(400).json({ error: "Invalid duration or contact_price" });
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        res.status(400).json({ success: false, error: 'Invalid proposed price' });
         return;
       }
 
-      const newTask = await taskModel.createNewTask(
-        client_id,
-        task_description,
-        parsedDuration,
-        task_title,
-        urgent,
-        location,
-        num_of_days,
-        specialization,
-        parsedPrice,
-        remarks,
-        task_begin_date,
-        user_id,
-        work_type,
-      );
+      // Parse urgent as boolean
+      const isUrgent = urgent === 'true' || urgent === true;
 
-      res.status(201).json({ success: true, message: "Task posted successfully", task: newTask });
+      // Parse is_verified_document as boolean
+      const isVerified = is_verified_document === 'true' || is_verified_document === true;
+
+      // Parse related_specializations (expecting JSON string like '[5,7,3,2]')
+      let parsedRelatedSpecializations: number[] | null = null;
+      if (related_specializations) {
+        try {
+          parsedRelatedSpecializations = JSON.parse(related_specializations);
+          if (!Array.isArray(parsedRelatedSpecializations)) {
+            res.status(400).json({ success: false, error: 'Invalid related specializations format' });
+            return;
+          }
+        } catch (e) {
+          res.status(400).json({ success: false, error: 'Failed to parse related specializations' });
+          return;
+        }
+      }
+
+      // Handle photo upload to Supabase Storage
+      let image_url: string | null = null;
+      if (photo) {
+        const fileName = `tasks/image_${user_id}_${Date.now()}_${photo.originalname}`;
+        console.log("Uploading Image File:", fileName);
+
+        const { error } = await supabase.storage
+          .from("crud_bucket")
+          .upload(fileName, photo.buffer, {
+            contentType: photo.mimetype,
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (error) {
+          res.status(500).json({ success: false, error: `Error uploading image: ${error.message}` });
+          return;
+        }
+
+        image_url = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
+      }
+
+      // Insert task into Supabase
+      const { data, error } = await supabase
+        .from("post_task")
+        .insert([
+          {
+            client_id: Number(client_id),
+            task_title,
+            specialization_id: Number(specialization_id),
+            task_description,
+            address:addressID,
+            urgent: isUrgent,
+            proposed_price: parsedPrice,
+            remarks,
+            status,
+            work_type,
+            related_specializations: parsedRelatedSpecializations,
+            scope,
+            is_verified: isVerified,
+            image_url,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase insert error:", error);
+        res.status(500).json({ success: false, error: `Failed to create task: ${error.message}` });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Task posted successfully",
+        task: data,
+      });
     } catch (error) {
       console.error("Error creating task:", error);
       res.status(500).json({
         success: false,
-        message: "Task posted successfully",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
+
 
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
