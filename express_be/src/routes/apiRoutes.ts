@@ -163,7 +163,9 @@ router.put("/set-location/:user_id", SettingController.setLocation);
 router.get("/get-location/:user_id", SettingController.getLocation);
 router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
+router.get("/get-address/:user_id", SettingController.getAddress);
 router.get("/get-addresses/:user_id", SettingController.getAddresses);
+router.put("/set-address/:user_id", SettingController.setAddress);
 
 
 // User Task

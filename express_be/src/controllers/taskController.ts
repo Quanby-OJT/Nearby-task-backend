@@ -28,7 +28,7 @@ class TaskController {
         specialization_id,
         related_specializations,
         task_description,
-        addressID,
+        address_id,
         urgent,
         proposed_price,
         remarks,
@@ -98,7 +98,7 @@ class TaskController {
             task_title,
             specialization_id: Number(specialization_id),
             task_description,
-            address:addressID,
+            address:address_id,
             urgent: isUrgent,
             proposed_price: parsedPrice,
             remarks,
@@ -182,35 +182,33 @@ class TaskController {
   static async fetchAllTasks(req: Request, res: Response): Promise<void> {
     try {
       const { data:task, error } = await supabase
-        .from("post_task")
-        .select(`
-          *,
-          tasker_specialization (
-            specialization
-          ),
-          address (*),
-          clients!client_id!inner (
-            user (
-              user_id,
-              first_name,
-              middle_name,
-              last_name,
-              image_link,
-              birthdate,
-              acc_status,
-              gender,
-              email,
-              contact,
-              verified,
-              user_role
-            )
+      .from("post_task")
+      .select(`
+        *,
+        tasker_specialization:specialization_id (specialization),
+        address (*),
+        clients!client_id (
+          user (
+          user_id,
+          first_name,
+          middle_name,
+          last_name,
+          email,
+          contact,
+          gender,
+          birthdate,
+          user_role,
+          acc_status,
+          verified,
+          image_link
           )
-        `)
+        )
+      `)
         .not("clients", "is", null)
-        .eq("clients.user.acc_status", "Active")
-        .eq("clients.user.verified", true)
         .eq("clients.user.user_role", "Client");
   
+
+      console.log("This is fetchTask");
       console.log("Taskers data:", task, "Error:", error);
   
       if (error) {
@@ -258,63 +256,59 @@ class TaskController {
     }
   }
 
-  static async getTaskforClient(req: Request, res: Response): Promise<void> {
-   
-      const clientId = req.params.clientId;
-  
-    try {
-      const { data:task, error } = await supabase
-        .from("post_task")
-        .select(`
-          *,
-          tasker_specialization (
-            specialization
-          ),
-          address (*),
-          clients!client_id!inner (
-            user (
+    static async getTaskforClient(req: Request, res: Response): Promise<void> {
+    
+        const clientId = req.params.clientId;
+    
+      try {
+        const { data:task, error } = await supabase
+          .from("post_task")
+          .select(`
+            *,
+            tasker_specialization:specialization_id (specialization),
+            address (*),
+            clients!client_id (
+              user (
               user_id,
               first_name,
               middle_name,
               last_name,
-              image_link,
-              birthdate,
-              acc_status,
-              gender,
               email,
               contact,
+              gender,
+              birthdate,
+              user_role,
+              acc_status,
               verified,
-              user_role
+              image_link
+              )
             )
-          )
-        `)
-        .eq("client_id", clientId)
-        .eq("clients.user.acc_status", "Active")
-        .eq("clients.user.verified", true)
-        .eq("clients.user.user_role", "Client");
-  
-      console.log("Tasks data:", task, "Error:", error);
-  
-      if (error) {
-        console.error("Error fetching tasks:", error.message);
-        res.status(500).json({ error: error.message });
-        return;
+          `)
+          .eq("client_id", clientId)
+          .eq("clients.user.user_role", "Client");
+    
+        console.log("Tasks data:", task, "Error:", error);
+    
+        if (error) {
+          console.error("Error fetching tasks:", error.message);
+          res.status(500).json({ error: error.message });
+          return;
+        }
+    
+        if (!task || task.length === 0) {
+          res.status(200).json({ error: "No active tasks found." });
+          return;
+        }
+    
+        res.status(200).json({ tasks: task });
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        res.status(500).json({
+          error: error instanceof Error ? error.message : "Unknown error occurred",
+        });
       }
-  
-      if (!task || task.length === 0) {
-        res.status(200).json({ error: "No active tasks found." });
-        return;
-      }
-  
-      res.status(200).json({ tasks: task });
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-      });
-    }
 
-  }
+    }
 
 
   static async getTaskforTasker(req: Request, res: Response): Promise<void> {
@@ -1109,29 +1103,7 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     try {
       const { data, error } = await supabase
       .from("task_taken")
-      .select(`
-        task_id,
-        task_status,
-        created_at,
-        client_id,
-        tasker_id,
-        task:post_task (
-          task_id,
-          task_title,
-          task_description,
-          duration,
-          proposed_price,
-          urgent,
-          location,
-          specialization,
-          status,
-          address:address (*)
-        ),
-        client:clients (
-          client_id,
-          user:user_id (*)
-        )
-      `)
+      .select("*")
       .eq("tasker_id", userId);
 
     if (error) {
