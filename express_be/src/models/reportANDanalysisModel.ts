@@ -161,6 +161,7 @@ class ReportANDAnalysisModel {
         tasker_id,
         specialization_id,
         user_id,
+        rating,
         user!user_id (
           first_name,
           middle_name,
@@ -168,7 +169,6 @@ class ReportANDAnalysisModel {
         ),
         tasker_specialization!specialization_id (specialization)
       `);
-
     if (taskerError || !taskers) {
       console.error("Error fetching taskers:", taskerError);
       return { taskers: [] };
@@ -198,7 +198,8 @@ class ReportANDAnalysisModel {
       return {
         userName: fullName,
         specialization: tasker.tasker_specialization?.specialization || "Unknown",
-        taskCount: taskCounts[tasker.tasker_id] || 0
+        taskCount: taskCounts[tasker.tasker_id] || 0,
+        rating: tasker.rating || 0
       };
     }).sort((a: any, b: any) => b.taskCount - a.taskCount);
 
@@ -212,6 +213,7 @@ class ReportANDAnalysisModel {
       .select(`
         client_id,
         user_id,
+        rating,
         client_address,
         user!user_id (
           first_name,
@@ -251,7 +253,8 @@ class ReportANDAnalysisModel {
         userName: fullName,
         address: client.client_address || "Unknown",
         taskCount: taskCounts[client.client_id] || 0,
-        gender: user.gender || "Unknown"
+        gender: user.gender || "Unknown",
+        rating: client.rating || 0
       };
     }).sort((a: any, b: any) => b.taskCount - a.taskCount);
 

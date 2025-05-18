@@ -23,6 +23,7 @@ class ReportAnalysisController {
   }
 
   static async getTopTasker(req: Request, res: Response) {
+    console.log("Tasker data being passed are:" + req.body);
     const { taskers } = await reportANDanalysisModel.getTopTasker();
     res.status(200).json({
       success: true,
@@ -31,6 +32,7 @@ class ReportAnalysisController {
   }
 
   static async getTopClient(req: Request, res: Response) {
+    console.log("Client data being passed are:" + req.body);
     const { clients } = await reportANDanalysisModel.getTopClient();
     res.status(200).json({
       success: true,
