@@ -164,9 +164,12 @@ class ConversationController {
             return
         }
 
-        // Format the created_at field to "hour:minute am/pm" (e.g., "2:53pm")
+        // Format the created_at field to include date and time (e.g., "5/18/2025, 4:10 PM")
         const dateFormatOptions: Intl.DateTimeFormatOptions = {
             timeZone: "Asia/Manila",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
             hour: "numeric",
             minute: "numeric",
             hour12: true,
