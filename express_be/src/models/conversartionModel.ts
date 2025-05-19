@@ -12,7 +12,8 @@ class ConversationModel {
           conversation,
           reported,
           user_id,
-          user!user_id (
+          action_by,
+          user!conversation_history_user_id_fkey (
             first_name,
             middle_name,
             last_name,
@@ -20,6 +21,11 @@ class ConversationModel {
             user_role,
             status,
             acc_status
+          ),
+          action_user:user!conversation_history_action_by_fkey (
+            first_name,
+            middle_name,
+            last_name
           ),
           task_taken!task_taken_id (
             task_taken_id,
@@ -66,7 +72,6 @@ class ConversationModel {
       }
 
       const formattedData = data.map((conversation: any) => {
-        // Define the date format options for consistency
         const dateFormatOptions: Intl.DateTimeFormatOptions = {
           timeZone: "Asia/Manila",
           month: "numeric",
@@ -92,6 +97,9 @@ class ConversationModel {
               ? new Date(conversation.task_taken.created_at).toLocaleString("en-US", dateFormatOptions)
               : null,
           },
+          action_by: conversation.action_user
+            ? `${conversation.action_user.first_name || ''} ${conversation.action_user.middle_name || ''} ${conversation.action_user.last_name || ''}`.trim()
+            : 'No Action Yet',
         };
       });
 
@@ -104,39 +112,42 @@ class ConversationModel {
   }
 
   static async sendMessage(task_taken_id: number, user_id: string, conversation: string) {
-            // Verify if task_taken_id exists
-            const { data: taskExists, error: taskError } = await supabase
-            .from("task_taken")
-            .select("task_taken_id")
-            .eq("task_taken_id", task_taken_id)
-            .single()
+    const { data: taskExists, error: taskError } = await supabase
+      .from("task_taken")
+      .select("task_taken_id")
+      .eq("task_taken_id", task_taken_id)
+      .single();
 
-        if (taskError || !taskExists) throw new Error("Task Taken ID does not exist or an error occurred while checking it.");
+    if (taskError || !taskExists) throw new Error("Task Taken ID does not exist or an error occurred while checking it.");
 
-        const {data: messageData, error: conversationError} = await supabase.from("conversation_history").insert({
-            task_taken_id, 
-            user_id, 
-            conversation,
-            reported: false
-        }).select("convo_id").single()
+    const { data: messageData, error: conversationError } = await supabase
+      .from("conversation_history")
+      .insert({
+        task_taken_id,
+        user_id,
+        conversation,
+        reported: false,
+      })
+      .select("convo_id")
+      .single();
 
-        if(conversationError) throw new Error("An error occurred while sending the message: " + conversationError.message)
-        if(!messageData) throw new Error("An error occurred while sending the message: No data returned.")
+    if (conversationError) throw new Error("An error occurred while sending the message: " + conversationError.message);
+    if (!messageData) throw new Error("An error occurred while sending the message: No data returned.");
 
-        const { error: incrementError } = await supabase.rpc('increment_message_notifs', {
-            p_task_taken_id: task_taken_id,
-            p_message_id: messageData.convo_id,
-          });
+    const { error: incrementError } = await supabase.rpc('increment_message_notifs', {
+      p_task_taken_id: task_taken_id,
+      p_message_id: messageData.convo_id,
+    });
 
-        if(incrementError) throw new Error("An error occurred while incrementing the message notifications: " + incrementError.message)
+    if (incrementError) throw new Error("An error occurred while incrementing the message notifications: " + incrementError.message);
   }
 
   static async deleteConversation(task_taken_id: number) {
     const { error } = await supabase
-        .from("task_taken")
-        .update({is_deleted: true})
-        .eq("task_taken_id", task_taken_id)
-        .single();
+      .from("task_taken")
+      .update({ is_deleted: true })
+      .eq("task_taken_id", task_taken_id)
+      .single();
 
     if (error) {
       console.error("Supabase delete error:", error);
@@ -173,11 +184,11 @@ class ConversationModel {
     }
   }
 
-  static async warnUser(userId: number): Promise<boolean> {
+  static async warnUser(userId: number, loggedInUserId: number): Promise<boolean> {
     try {
       const { data, error } = await supabase
         .from("user")
-        .update({ acc_status: "Warn" })
+        .update({ acc_status: "Warn", action_by: loggedInUserId })
         .eq("user_id", userId)
         .select()
         .single();
@@ -192,7 +203,7 @@ class ConversationModel {
         return false;
       }
 
-      console.log(`User with ID ${userId} has been warned`);
+      console.log(`User with ID ${userId} has been warned by logged-in user ${loggedInUserId}`);
       return true;
     } catch (error) {
       console.error("Error in warnUser:", error);
@@ -200,21 +211,14 @@ class ConversationModel {
     }
   }
 
-  /**
-   * Updates the task_taken on who currently visits.
-   * @param task_taken_id 
-   * @param user_id 
-   * @param role 
-   * @returns 
-   */
   static async updateMessageNotification(task_taken_id: number, role: string) {
-    console.log("Role: ", role)
+    console.log("Role: ", role);
 
     let updateData = {};
     if (role === "Client") {
-      updateData = { visit_client: true, visit_tasker : false };
+      updateData = { visit_client: true, visit_tasker: false };
     } else if (role === "Tasker") {
-      updateData = { visit_tasker: true, visit_client : false };
+      updateData = { visit_tasker: true, visit_client: false };
     } else {
       throw new Error("Invalid role provided. Must be either 'Client' or 'Tasker'.");
     }

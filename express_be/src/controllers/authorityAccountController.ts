@@ -125,6 +125,7 @@ class AuthorityAccountController {
         contact,
         gender,
         acc_status,
+        action_by,
       } = req.body;
       const imageFile = req.file;
 
@@ -168,6 +169,7 @@ class AuthorityAccountController {
         contact,
         gender,
         acc_status,
+        action_by,
         verified: true,
       };
 
@@ -592,6 +594,23 @@ class AuthorityAccountController {
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to retrieve addresses" });
     }
   }
+
+  static async getAllUsers(req: Request, res: Response): Promise<void> {
+    try {
+      const { data, error } = await supabase.from(`user`).select().order("created_at", { ascending: false });;
+
+      if (error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(200).json({ users: data });
+      }
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
 }
 
 export default AuthorityAccountController;

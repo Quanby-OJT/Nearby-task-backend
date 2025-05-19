@@ -297,7 +297,7 @@ class ConversationController {
         }
     }
 
-    static async warnUser(req: Request, res: Response): Promise<void> {
+static async warnUser(req: Request, res: Response): Promise<void> {
         try {
             const userId = parseInt(req.params.id, 10);
             if (isNaN(userId)) {
@@ -305,12 +305,34 @@ class ConversationController {
                 return;
             }
 
-            const result = await ConversationModel.warnUser(userId);
-            if (result) {
-                res.status(200).json({ message: "User has been warned successfully" });
-            } else {
-                res.status(404).json({ error: "User not found" });
+            // Get the logged-in user ID from the request body
+            const { loggedInUserId } = req.body;
+            if (!loggedInUserId || isNaN(loggedInUserId)) {
+                res.status(400).json({ error: "Logged-in user ID is required and must be a valid number" });
+                return;
             }
+
+            // Update the user's acc_status to "Warn" and set action_by
+            const { data, error } = await supabase
+                .from("user")
+                .update({ acc_status: "Warn", action_by: loggedInUserId })
+                .eq("user_id", userId)
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Supabase update error (warnUser):", error);
+                throw error;
+            }
+
+            if (!data) {
+                console.log(`User with ID ${userId} not found`);
+                res.status(404).json({ error: "User not found" });
+                return;
+            }
+
+            console.log(`User with ID ${userId} has been warned by user ${loggedInUserId}`);
+            res.status(200).json({ message: "User has been warned successfully" });
         } catch (error) {
             if (error instanceof Error) {
                 res.status(500).json({ error: error.message });

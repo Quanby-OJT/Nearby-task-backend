@@ -13,6 +13,8 @@ router.post("/authorityAdd", upload.single("image"), AuthorityAccountController.
 
 router.put("/updateAuthorityUser/:id", upload.single("image"), AuthorityAccountController.updateAuthorityUser);
 
+router.get("/userAutherizedDisplay", AuthorityAccountController.getAllUsers);
+
 router.get("/getAuthorityUserData/:id", AuthorityAccountController.getUserData);
 
 router.get("/getAuthorityUserDocuments/:id", AuthorityAccountController.getUserDocs);
