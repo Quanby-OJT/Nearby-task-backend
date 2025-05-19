@@ -96,7 +96,7 @@ router.get("/check-session", (req, res) => {
 
 router.use(isAuthenticated);
 router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
-router.post("/addTask", TaskController.createTask);
+router.post("/addTask", upload.single("photo"), TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
@@ -165,6 +165,8 @@ router.put("/set-location/:user_id", SettingController.setLocation);
 router.get("/get-location/:user_id", SettingController.getLocation);
 router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
+router.get("/get-addresses/:user_id", SettingController.getAddresses);
+
 
 // User Task
 router.get("/fetchTasks/:userId", TaskController.getTasks);

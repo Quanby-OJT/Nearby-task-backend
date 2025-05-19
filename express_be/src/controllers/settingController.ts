@@ -291,6 +291,61 @@ static async getLocation(req: Request, res: Response): Promise<void> {
         }
       }
 
+      static async getAddresses(req: Request, res: Response): Promise<void> {
+        const { user_id } = req.params;
+      
+        try {
+          const { data: preference, error: preferenceError } = await supabase
+            .from("user_preference")
+            .select("*")
+            .eq("user_id", user_id)
+            .maybeSingle();
+      
+          if (preferenceError) {
+            console.error("Supabase preference error:", preferenceError);
+            res.status(500).json({ error: "Failed to retrieve user preferences" });
+            return;
+          }
+      
+          if (!preference) {
+            res.status(404).json({ error: "User preferences not found" });
+            return;
+          }
+      
+          const { data: address, error: addressError } = await supabase
+            .from("address")
+            .select("*")
+            .eq("user_id", user_id)
+            .maybeSingle();
+      
+          if (addressError) {
+            console.error("Supabase address error:", addressError);
+            res.status(500).json({ error: "Failed to retrieve default address" });
+            return;
+          }
+      
+          if (!address) {
+            res.status(404).json({ error: "No default address found for user" });
+            return;
+          }
+      
+        console.log(address, preference);
+      
+          res.status(200).json({
+            message: "Location retrieved successfully",
+            data: {
+              ...preference,
+              address,
+            },
+          });
+          
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "An Error Occurred while Getting the Location" });
+        }
+      
+      }
+
       
 }
 
