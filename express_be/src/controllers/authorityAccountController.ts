@@ -394,6 +394,18 @@ class AuthorityAccountController {
         return;
       }
 
+      // Clear the otp code after successfull verification
+      const { error: updateError } = await supabase
+        .from("two_fa_code")
+        .update({
+          two_fa_code: null
+        })
+        .eq("code_id", otpRecord.code_id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
       res.status(200).json({ message: "OTP verified successfully" });
     } catch (error) {
       console.error("Error in verifyOtp:", error);
@@ -435,8 +447,8 @@ class AuthorityAccountController {
         throw new Error(updateError.message);
       }
 
-      // Delete the used OTP from two_fa_code table
-      await supabase.from("two_fa_code").delete().eq("user_id", user.user_id);
+      // Clear the two_fa_code attribute instead of deleting the record
+      await supabase.from("two_fa_code").update({ two_fa_code: null }).eq("user_id", user.user_id);
 
       res.status(200).json({ message: "Password reset successfully" });
     } catch (error) {
@@ -520,7 +532,7 @@ class AuthorityAccountController {
         updated_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase.from("address").insert([addressData]).select();
+      const { data, error } = await supabase.from("address FOOD").insert([addressData]).select();
 
       if (error) throw new Error(error.message);
 
