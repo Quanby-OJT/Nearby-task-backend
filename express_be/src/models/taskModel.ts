@@ -102,14 +102,20 @@ class TaskModel {
       *,
       clients:client_id (
         client_id,
-          user:user_id (
-            user_id,
-            first_name,
-            middle_name,
-            last_name
-          )
-         )
-      `).order('task_id', { ascending: false });;
+        user:user_id (
+          user_id,
+          first_name,
+          middle_name,
+          last_name
+        )
+      ),
+      action_by_user:user!action_by (
+        user_id,
+        first_name,
+        middle_name,
+        last_name
+      )
+    `).order('task_id', { ascending: false });
     if (error) throw new Error(error.message);
     return data;
   }

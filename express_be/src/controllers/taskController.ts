@@ -188,9 +188,39 @@ class TaskController {
 
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const tasks = await taskModel.getAllTasks();
+      const { data: tasks, error } = await supabase
+        .from("post_task")
+        .select(`
+          *,
+          clients:client_id (
+            client_id,
+            user:user_id (
+              user_id,
+              first_name,
+              middle_name,
+              last_name
+            )
+          ),
+          action_by_user:user!action_by (
+            user_id,
+            first_name,
+            middle_name,
+            last_name
+          )
+        `)
+        .order('task_id', { ascending: false });
+  
+      if (error) {
+        console.error("Supabase error:", error.message);
+        res.status(500).json({
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        return;
+      }
+  
       res.status(200).json({ tasks });
     } catch (error) {
+      console.error("Error fetching tasks:", error);
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });
