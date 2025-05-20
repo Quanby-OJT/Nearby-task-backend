@@ -42,6 +42,9 @@ class DisputeController {
 
           await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Release Full Payment to Tasker", addl_dispute_notes, moderator_id)
           break;
+        case "reject_dispute":
+          await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Reject Dispute", addl_dispute_notes, moderator_id)
+          break;
         default:
           res.status(400).json({message: "Invalid moderator action"})
           return;

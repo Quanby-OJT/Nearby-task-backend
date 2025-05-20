@@ -2,26 +2,18 @@ import { Request, Response } from "express";
 import PayMongoPayment from "../models/paymentModel";
 import ClientModel from "./clientController";
 import { supabase } from "../config/configuration";
+import Crypto from "crypto";
 
 class PaymentController {
-    /**
-   * The contarct price set by the client will be sent first to Escrow and will be released to the Tasker once the task is completed.
-   * 
-   * 
-   * 
-   * How will it work, according to documentation?
-   * 
-   * 1. If the client and tasker come to the final contract price agreement and the tasker "Confirmed", the client will deposit the amount to Escrow.
-   * 2. As the tasker starts the task assigned, the client can monitor it via chat.
-   * 3. Once the task is completed, the client will release the amount to the tasker.
-   * 4. If the tasker did not complete the task, the client can cancel the task and the amount will be returned to the client.
-   * 
-   * -Ces
-   */
   static async depositEscrowAmount(req: Request, res: Response): Promise<void> {
       try {
           console.log("Transaction Data: ", req.body);
           const { client_id, amount, payment_method } = req.body;
+
+          if(!payment_method) {
+            res.status(400).json({ success: false, error: "Payment method is required." });
+            return;
+          }
 
           const fixedPaymentMethod = payment_method.replace(/-/g, "_").toLowerCase();
 
@@ -32,9 +24,7 @@ class PaymentController {
               payment_type: "Client Deposit",
               payment_method: fixedPaymentMethod,
           });
-
-          await ClientModel.addCredits(client_id, amount)
-  
+          
           res.status(200).json({
             success: true,
             payment_url: PaymentInformation.checkout_url,
@@ -68,47 +58,51 @@ class PaymentController {
     }
   }
 
+  static async redirectToApplication(req: Request, res: Response): Promise<void> {
+    try {
+      const { transaction_id, status, amount } = req.body;
+
+      console.log("Redirecting to application with data:", req.body);
+
+      if (!transaction_id || !status) {
+        res.status(400).json({ error: "Transaction ID and status are required." });
+        return;
+      }
+
+      const redirectUrl = `myapp://payment-success?amount=${amount}&transaction_id=${transaction_id}`
+
+
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error("Error in updatePaymentStatus:", error instanceof Error ? error.message : error);
+      res.status(500).json({ error: "An unknown error occurred" });
+    }
+  }
+
   static async handlePayMongoWebhook(req: Request, res: Response): Promise<void> {
     try{
-      const event = req.body.data.attributes
+      const { amount, success } = req.body;
+      const client_id = parseInt(req.params.id);
+      const transaction_id = req.params.transaction_id;
       console.log("Received webhook event:", event);
 
-      if(event.type === "payment.paid") {
-        const payment = event.data.attributes;
-        const transactionId = payment.checkout_session_id;
-        const amount = payment.amount; // Convert to PHP
-        const tokens = amount;
+      if(success) {
 
-        const {data: paymentLog, error: loggingError} = await supabase.from("payment_logs")
-          .select("client_id")
-          .eq("transaction_id", transactionId)
+        const {error: loggingError} = await supabase.from("payment_logs")
+          .update({
+            status: "client_paid"
+          })
+          .eq("transaction_id", transaction_id)
           .single();
         if(loggingError) throw new Error(loggingError.message);
 
-        const { data: clientData, error: fetchError } = await supabase
-          .from("clients")
-          .select("amount")
-          .eq("client_id", paymentLog.client_id)
-          .single();
+        await ClientModel.addCredits(client_id, amount)
 
-        if (fetchError || !clientData) {
-          throw new Error("Error fetching client data: " + (fetchError?.message || "Client not found"));
-        }
+        res.status(200).json({ message: "Your Payment has been Deposited Successfully. You can now create new Tasks." })
+        return;
+      }else{
 
-        const updatedAmount = clientData.amount + tokens;
-
-
-        const { error: tokenError } = await supabase
-          .from("clients")
-          .update({ amount: updatedAmount })
-          .eq("client_id", paymentLog.client_id);
-
-        if (tokenError) {
-          throw new Error("Error updating client amount: " + tokenError.message);
-        }
       }
-
-      res.status(200).json({ message: "Webhook received successfully" })
     }catch(error){
       console.error("Webhook Error:", error);
       res.status(500).json({ error: "Internal Server Error" });
@@ -117,14 +111,37 @@ class PaymentController {
 
   static async releaseEscrowPayment(req: Request, res: Response): Promise<void> {
     try {
-      const { tasker_id, amount, payment_method } = req.body;
+      const { amount, payment_method, account_number } = req.body;
+      const tasker_id = parseInt(req.params.id);
+      console.log("Release Payment Data: ", req.body);
+      console.log("Tasker ID: ", tasker_id);
+
+      if (!tasker_id || !amount || !payment_method || !account_number) {
+        res.status(400).json({ error: "All fields are required." });
+        return;
+      }    
+
+      // Create a signature for the payment
+      const message = JSON.stringify({
+          tasker_id,
+          amount,
+          payment_method,
+          account_number
+      });
+      const hash = Crypto.createHmac("sha256", process.env.NEXTPAY_SECRET_KEY || "")
+          .update(message)
+          .digest("hex");
+
       await PayMongoPayment.releasePayment({
         tasker_id,
         amount,
         withdraw_date: new Date().toISOString(),
         payment_type: "Amount Withdraw for Tasker",
-        payment_method
-      });
+        payment_method,
+        account_no: account_number,
+        signature: hash,
+      }
+    );
 
       res.status(200).json({message: "Payment Released Successfully"});
     } catch (error) {

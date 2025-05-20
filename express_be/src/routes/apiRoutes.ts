@@ -129,8 +129,9 @@ router.post("/warnUser/:id", ConversationController.warnUser);
 
 //Payment Routes
 router.post("/deposit-escrow-payment", PaymentController.depositEscrowAmount);
-router.put("/webhook/paymongo", PaymentController.handlePayMongoWebhook);
-router.post("/withdraw-escrow-amount", PaymentController.releaseEscrowPayment);
+router.get("/payment", PaymentController.redirectToApplication);
+router.put("/webhook/paymongo/:id/:transaction", PaymentController.handlePayMongoWebhook);
+router.post("/withdraw-escrow-amount/:id", PaymentController.releaseEscrowPayment);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);

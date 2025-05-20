@@ -105,3 +105,12 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Your MUST generate your own private key and certificate by doing the following:
+# install mkcert
+# input the following command in your terminal
+# mkcert -install
+# mkcert mkcert 10.0.2.2 localhost 127.0.0.1 ::1
+# This will create your local CA which is vital for PayMongo Redirection.
+10.0.2.2+3-key.pem
+10.0.2.2+3.pem
