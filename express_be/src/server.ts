@@ -18,18 +18,12 @@ import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
 import TaskerModel from "./models/taskerModel";
 import ConversationRoutes from "./routes/conversationRoutes";
-import UserAccountController from "./controllers/userAccountController";
-import http from "http";
+import fs from 'fs';
+import https from "https";
+import path from 'path'
 import { Server } from "socket.io";
 dotenv.config();
 const app: Application = express();
-const httpServer = http.createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
 
 app.use(
   cors({
@@ -39,6 +33,19 @@ app.use(
     allowedHeaders: ["Content-Type", "Accept", "Authorization"],
   })
 );
+
+const sslOptions = {
+  key: fs.readFileSync(path.join(__dirname, '10.0.2.2+3-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '10.0.2.2+3.pem')),
+};
+
+const httpsServer = https.createServer(sslOptions, app);
+const io = new Server(httpsServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(express.json());
 app.use(cookieParser());
@@ -70,25 +77,6 @@ app.use("/connect", authorityAccountRoutes);
 app.use("/connect", reportANDanalysisRoute);
 app.use("/connect", paymentRoutes);
 
-// // Start server
-// const PORT = port || 5000;
-
-// // Server startup logic
-// async function startServer() {
-//   try {
-//     // Start the server
-//     app.listen(PORT, () => {
-//       console.log(`Server is running on port ${PORT}`);
-//       console.log(
-//         "Click this to direct: http://localhost:5000/connect"
-//       );
-//     });
-//   } catch (error) {
-//     console.error("Error starting server:", error);
-//     process.exit(1);
-//   }
-// }
-
 // startServer();
 // Socket.IO event handlers
 io.on("connection", (socket) => {
@@ -112,7 +100,7 @@ io.on("connection", (socket) => {
 
 // Start server
 const PORT = port || 5000;
-httpServer.listen(PORT, () => {
+httpsServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Click this to direct: ${process.env.URL}`);
 });

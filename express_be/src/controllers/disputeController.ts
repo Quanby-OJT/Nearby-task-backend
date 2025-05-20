@@ -33,8 +33,7 @@ class DisputeController {
           const task = await taskModel.getTaskAmount(task_taken_id);
           
           await PayMongoPayment.releasePayment({
-            client_id: task?.post_task.client_id,
-            transaction_id: "Id from Xendit", //Temporary value
+            user_id: task?.post_task.client_id,
             amount: task?.post_task.proposed_price ?? 0,
             payment_type: "Release of Payment to Tasker",
             deposit_date: new Date().toISOString(),
