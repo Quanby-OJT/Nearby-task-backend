@@ -133,19 +133,38 @@ class TaskController {
     }
   }
 
-
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
       const taskId = parseInt(req.params.id);
-  
+      const { loggedInUserId } = req.body;
+
       if (isNaN(taskId)) {
         res.status(400).json({ success: false, message: "Invalid task ID" });
         return;
       }
-  
-      const result = await taskModel.disableTask(taskId);
-  
-      res.status(200).json(result);
+
+      if (!loggedInUserId || isNaN(loggedInUserId)) {
+        res.status(400).json({ success: false, message: "Invalid logged-in user ID" });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("post_task")
+        .update({ status: "Closed", action_by: loggedInUserId })
+        .eq("task_id", taskId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase update error:", error);
+        res.status(500).json({
+          success: false,
+          message: `Failed to close task: ${error.message}`,
+        });
+        return;
+      }
+
+      res.status(200).json({ success: true, message: "Task closed successfully", task: data });
     } catch (error) {
       console.error("Error in disableTask:", error);
       res.status(500).json({
@@ -155,6 +174,7 @@ class TaskController {
       });
     }
   }
+
   static async getTaskWithSpecialization(req: Request, res: Response): Promise<void> {
     try {
       const tasks = await taskModel.getTaskWithSpecialization(req.query.specialization as string);
@@ -166,11 +186,9 @@ class TaskController {
     }
   }
 
-
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
       const tasks = await taskModel.getAllTasks();
-      //console.log("Retrieved tasks:", tasks);
       res.status(200).json({ tasks });
     } catch (error) {
       res.status(500).json({
@@ -259,8 +277,7 @@ class TaskController {
   }
 
   static async getTaskforClient(req: Request, res: Response): Promise<void> {
-   
-      const clientId = req.params.clientId;
+    const clientId = req.params.clientId;
   
     try {
       const { data:task, error } = await supabase
@@ -313,7 +330,6 @@ class TaskController {
         error: error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
-
   }
 
 
@@ -501,35 +517,32 @@ class TaskController {
     }
   }
 
-//Specialization Part Ito
+  static async getAllSpecializations(req: Request, res: Response): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from("tasker_specialization")
+        .select("spec_id, specialization")
+        .order("spec_id", { ascending: true });
 
-static async getAllSpecializations(req: Request, res: Response): Promise<void> {
-  try {
-    const { data, error } = await supabase
-      .from("tasker_specialization")
-      .select("spec_id, specialization")
-      .order("spec_id", { ascending: true });
+      if (error) {
+        console.error(error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+      const formattedSpecialization = (data ?? []).map((specialization: any) => ({
+        ...specialization,
+        created_at: specialization.created_at
+          ? new Date(specialization.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
+          : null,
+      }));
 
-    if (error) {
-      console.error(error.message);
-      res.status(500).json({ error: error.message });
-      return;
+      res.status(200).json({ specializations: formattedSpecialization });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
-// This is for formatting date like formatting yun like date and time na format
-    const formattedSpecialization = (data ?? []).map((specialization: any) => ({
-      ...specialization,
-      created_at: specialization.created_at
-        ? new Date(specialization.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
-        : null,
-    }));
-
-    res.status(200).json({ specializations: formattedSpecialization });
-  } catch (error) {
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
   }
-}
 
   static async createSpecialization(req: Request, res: Response): Promise<void> {
     try {
@@ -559,7 +572,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
       });
     }
   }
-
 
   static async getCreatedTaskByClient(req: Request, res: Response): Promise<void> {
     try {
@@ -619,6 +631,7 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
       });
     }
   }
+
   static async updateTaskStatusforTasker(req: Request, res: Response): Promise<void> {
     try {
       const taskTakenId = parseInt(req.params.requestId);
@@ -690,26 +703,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // static async updateTransactionStatus(req: Request, res: Response): Promise<void> {
-  //   try {
-  //     const { task_taken_id, status, cancellation_reason } = req.body;
-
-  //     if(status == 'cancel'){
-  //       await PayMongoPayment.cancelTransaction(task_taken_id, cancellation_reason);
-  //       res.status(200).json({ message: "You had cancelled your transaction."});
-  //     }else if(status == 'complete'){
-  //       await PayMongoPayment.releasePayment('', task_taken_id);
-  //       res.status(200).json({ message: "Escrow Payment Released to Tasker."});
-  //     }else{
-  //       res.status(400).json({ message: "Invalid status provided."});
-  //     }
-  //   }
-  //   catch (error) {
-  //     console.error(error instanceof Error ? error.message : "Error Unknown.")
-  //     res.status(500).json({ error: "Internal Server error", });
-  //   }
-  // }
-
   static async releasePayment(req: Request, res: Response): Promise<void> {
     try {
       const { task_taken_id, amount, status } = req.body;
@@ -732,7 +725,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
           return
         }
 
-        // Access the nested email properties correctly
         const taskerEmail = userEmail?.tasker
         const clientEmail = userEmail?.clients
 
@@ -818,13 +810,11 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
         case "Tasker":
           const { data: taskerTokens, error: taskerTokensError} = await supabase.from('tasker').select('amount').eq('user_id', userId).single();
           if(taskerTokensError) throw new Error('Error fetching tasker tokens: ' + taskerTokensError.message);
-          //console.log("Tasker Tokens: ", taskerTokens);
           res.status(200).json({ success: true, tokens: taskerTokens.amount });
           break;
         case "Client":
           const { data: clientTokens, error: clientTokensError} = await supabase.from('clients').select('amount').eq('user_id', userId).single();
           if(clientTokensError) throw new Error('Error fetching tasker tokens: ' + clientTokensError.message);
-          //console.log("Client Tokens: ", clientTokens);
           res.status(200).json({ success: true, tokens: clientTokens.amount });
           break;
         default:
@@ -846,7 +836,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
 
   static async getDocumentLink(req: Request, res: Response): Promise<any> {
     try {
-
       const taskerId = parseInt(req.params.id);
       console.log("This is the tasker id: ", taskerId);
       const { data, error } = await supabase
@@ -938,8 +927,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
       if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
 
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
-  // add here profile picture update   profile_picture: profilePicUrl,
-      // Create tasker profile
       await TaskerModel.createTasker({
         address,   
         user_id,
@@ -962,7 +949,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // tasker without email and profile image and file
   static async updateTaskerProfileNoImages(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.params.id;
@@ -997,7 +983,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
           contact,
           gender,
           birthdate
-
         })
         .eq("user_id", userId)
         .select("*")
@@ -1016,8 +1001,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
       if (taskerFetchError && taskerFetchError.code !== "PGRST116") {
         throw new Error("Error fetching tasker data: " + taskerFetchError.message);
       }
-
-      // Update tasker information
 
       console.log("Tasker Specialization:", specialization);
       const { data: updatedTaskerData, error: taskerUpdateError } = await supabase
@@ -1190,7 +1173,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
       res.status(500).json({ error: "Internal server error" });
     }
   }
-} 
-
+}
 
 export default TaskController;
