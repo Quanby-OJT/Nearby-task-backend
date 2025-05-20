@@ -20,6 +20,7 @@ class AuthorityAccountController {
         user_role,
         contact,
         gender,
+        added_by,
       } = req.body;
       const imageFile = req.file;
       console.log("Received authority account data:", req.body);
@@ -73,6 +74,7 @@ class AuthorityAccountController {
         emailVerified: true,
         verified: true,
         verification_token: null,
+        added_by: added_by || null,
       };
 
       if (password) {
@@ -126,6 +128,7 @@ class AuthorityAccountController {
         gender,
         acc_status,
         action_by,
+        added_by,
       } = req.body;
       const imageFile = req.file;
 
@@ -170,6 +173,7 @@ class AuthorityAccountController {
         gender,
         acc_status,
         action_by,
+        added_by,
         verified: true,
       };
 
@@ -534,7 +538,7 @@ class AuthorityAccountController {
         updated_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase.from("address FOOD").insert([addressData]).select();
+      const { data, error } = await supabase.from("address").insert([addressData]).select();
 
       if (error) throw new Error(error.message);
 
