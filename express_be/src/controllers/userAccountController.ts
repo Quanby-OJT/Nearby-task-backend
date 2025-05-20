@@ -1693,7 +1693,7 @@ class UserAccountController {
       
       // Set verification status - only for new submissions, not updates
       if (!isUpdateMode) {
-        updateUser.acc_status = "Pending Verification";
+        updateUser.acc_status = "Review";
       }
       
       // Use selfie as profile image if available

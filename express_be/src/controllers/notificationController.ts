@@ -1178,6 +1178,7 @@ class NotificationController {
       .eq("task_taken_id", requestId)
       .maybeSingle();
 
+    
 
     if (error) {
       console.error(error.message);
@@ -1191,7 +1192,7 @@ class NotificationController {
     }
 
     const updateVisit = await supabase.from("task_taken").update({ visit: true }).eq("task_taken_id", requestId);
-    console.log("Fetched request:", data);
+  console.log("Fetched request:", data);
     res.status(200).json({ request: data });
   }
 

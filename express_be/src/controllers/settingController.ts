@@ -117,6 +117,76 @@ class SettingController {
 }
 }
 
+
+static async setAddress(req: Request, res: Response): Promise<void> {
+  const {
+    latitude,
+    longitude,
+    formatted_Address,
+    region,
+    province,
+    city,
+    barangay,
+    street,
+    postal_code,
+    country,
+  } = req.body;
+  const { user_id } = req.params;
+
+  console.log({
+    user_id,
+    latitude,
+    longitude,
+    formatted_Address,
+    region,
+    province,
+    city,
+    barangay,
+    street,
+    postal_code,
+    country,
+  });
+
+  if (!latitude || !longitude || !city || !province) {
+    res.status(400).json({ error: "latitude, longitude, city, and province are required" });
+    return;
+  }
+
+  try {
+  
+    // Prepare address data
+    const addressData = {
+      latitude,
+      longitude,
+      country,
+      province,
+      barangay,
+      city,
+      postal_code,
+      street,
+      formatted_Address,
+      region,
+     
+    };
+
+    const {error: insertError } = await supabase
+        .from("address")
+        .insert({ ...addressData,default:false, user_id })
+        .select();
+
+      if (insertError) {
+        console.error("Insert error:", insertError.message);
+        res.status(500).json({ error: "An error occurred while inserting address" });
+        return;
+      }
+  
+    res.status(200).json({ message: "Address has been set successfully" });
+  } catch (e) {
+    console.error("Unexpected error:", e);
+    res.status(500).json({ error: "An unexpected error occurred while setting the address" });
+  }
+}
+
 static async getLocation(req: Request, res: Response): Promise<void> {
   const { user_id } = req.params;
 
@@ -143,7 +213,7 @@ static async getLocation(req: Request, res: Response): Promise<void> {
       .select("*")
       .eq("user_id", user_id)
       .eq("default", true)
-      .maybeSingle();
+      .single();
 
     if (addressError) {
       console.error("Supabase address error:", addressError);
@@ -289,6 +359,98 @@ static async getLocation(req: Request, res: Response): Promise<void> {
           console.error('Unexpected error:', e);
           res.status(500).json({ error: 'An unexpected error occurred' });
         }
+      }
+
+      static async getAddresses(req: Request, res: Response): Promise<void> {
+        const { user_id } = req.params;
+      
+        try {
+          
+          const { data: address, error: addressError } = await supabase
+            .from("address")
+            .select("*")
+            .eq("user_id", user_id)
+      
+          if (addressError) {
+            console.error("Supabase address error:", addressError);
+            res.status(500).json({ error: "Failed to retrieve default address" });
+            return;
+          }
+      
+          if (!address) {
+            res.status(404).json({ error: "No default address found for user" });
+            return;
+          }
+      
+        console.log(address);
+      
+          res.status(200).json({
+            message: "Location retrieved successfully",
+            data: {
+              address,
+            },
+          });
+          
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "An Error Occurred while Getting the Location" });
+        }
+      
+      }
+
+      static async getAddress(req: Request, res: Response): Promise<void> {
+        const { user_id } = req.params;
+      
+        try {
+          const { data: preference, error: preferenceError } = await supabase
+            .from("user_preference")
+            .select("*")
+            .eq("user_id", user_id)
+            .maybeSingle();
+      
+          if (preferenceError) {
+            console.error("Supabase preference error:", preferenceError);
+            res.status(500).json({ error: "Failed to retrieve user preferences" });
+            return;
+          }
+      
+          if (!preference) {
+            res.status(404).json({ error: "User preferences not found" });
+            return;
+          }
+      
+          const { data: address, error: addressError } = await supabase
+            .from("address")
+            .select("*")
+            .eq("user_id", user_id)
+            .maybeSingle();
+      
+          if (addressError) {
+            console.error("Supabase address error:", addressError);
+            res.status(500).json({ error: "Failed to retrieve default address" });
+            return;
+          }
+      
+          if (!address) {
+            res.status(404).json({ error: "No default address found for user" });
+            return;
+          }
+      
+        console.log(address, preference);
+      
+          res.status(200).json({
+            message: "Location retrieved successfully",
+            data: {
+              ...preference,
+              address,
+            },
+          });
+          
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "An Error Occurred while Getting the Location" });
+        }
+      
       }
 
       

@@ -77,8 +77,6 @@ app.use("/connect", authorityAccountRoutes);
 app.use("/connect", reportANDanalysisRoute);
 app.use("/connect", paymentRoutes);
 
-// startServer();
-// Socket.IO event handlers
 io.on("connection", (socket) => {
   console.log("A user connected: " + socket.id);
 
