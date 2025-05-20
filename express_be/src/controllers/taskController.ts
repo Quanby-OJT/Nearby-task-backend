@@ -14,7 +14,6 @@ import { WebSocketServer } from "ws";
 
 const ws = new WebSocketServer({ port: 8080 });
 
-
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
@@ -551,7 +550,7 @@ class TaskController {
     try {
       const { data, error } = await supabase
         .from("tasker_specialization")
-        .select("spec_id, specialization")
+        .select("*")
         .order("spec_id", { ascending: true });
 
       if (error) {
