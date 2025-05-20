@@ -361,7 +361,6 @@ class TaskController {
     }
   }
 
-
   static async getTaskforTasker(req: Request, res: Response): Promise<void> {
     try {
       const taskerId = req.params.taskerId || req.query.tasker_id;
@@ -550,7 +549,15 @@ class TaskController {
     try {
       const { data, error } = await supabase
         .from("tasker_specialization")
-        .select("*")
+        .select(`
+          *,
+          action_by_user:user!action_by (
+            user_id,
+            first_name,
+            middle_name,
+            last_name
+          )
+        `)
         .order("spec_id", { ascending: true });
 
       if (error) {
@@ -575,16 +582,21 @@ class TaskController {
 
   static async createSpecialization(req: Request, res: Response): Promise<void> {
     try {
-      const { specialization } = req.body;
+      const { specialization, user_id } = req.body;
   
       if (!specialization) {
         res.status(400).json({ error: "Specialization name is required" });
         return;
       }
+
+      if (!user_id || isNaN(user_id)) {
+        res.status(400).json({ error: "Valid user ID is required" });
+        return;
+      }
   
       const { data, error } = await supabase
         .from("tasker_specialization")
-        .insert({ specialization })
+        .insert({ specialization, action_by: parseInt(user_id) })
         .select();
   
       if (error) {
