@@ -4,13 +4,11 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
-import TaskAssignment from "../models/taskAssignmentModel";
 import fetch from "node-fetch";
-import { User } from "@supabase/supabase-js";
 require("dotenv").config();
-import PayMongoPayment from "../models/paymentModel";
-import ClientModel from "./clientController";
+import QTaskPayment from "../models/paymentModel";
 import { WebSocketServer } from "ws";
+import ClientModel from "./clientController";
 
 const ws = new WebSocketServer({ port: 8080 });
 
@@ -19,6 +17,11 @@ class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
       console.log("Received insert data:", req.body);
+
+      /**
+       * Paki-check muna kung may sufficient balance si Klyente bago gumawa ng bagong task.
+       */
+      
 
       const {
         client_id,
@@ -491,11 +494,11 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      const transactionId = await PayMongoPayment.fetchTransactionId(taskTakenId);
+      const transactionId = await QTaskPayment.fetchTransactionId(taskTakenId);
 
       if(task_status == "Rejected" || task_status == "Cancelled"){
         if(task_status == "Cancelled"){
-          await PayMongoPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
+          await QTaskPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
           res.status(200).json({ message: "You had cancelled your task."});
         }
 
@@ -569,8 +572,8 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
           console.log("Transaction Data: ", req.body);
           const { client_id, amount, status } = req.body;
 
-          const PaymentInformation = await PayMongoPayment.checkoutPayment({
-              client_id,
+          const PaymentInformation = await QTaskPayment.checkoutPayment({
+              user_id: client_id,
               amount,
               deposit_date: new Date().toISOString(),
               payment_type: "Client Deposit"

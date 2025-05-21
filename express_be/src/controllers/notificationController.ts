@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { supabase } from "../config/configuration";
 import { error } from "console";
-import PayMongoPayment from "../models/paymentModel";
+import QTaskPayment from "../models/paymentModel";
 import taskModel from "../models/taskModel";
 import TaskAssignment from "../models/taskAssignmentModel";
 
@@ -1338,7 +1338,7 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
         console.log("Task data:", task);
         console.log("Proposed Price:", task?.post_task.proposed_price);
   
-        // await PayMongoPayment.releasePayment({
+        // await QTaskPayment.releasePayment({
         //   client_id: task?.post_task.client_id,
         //   transaction_id: "Id from Xendit", //Temporary value
         //   amount: task?.post_task.proposed_price ?? 0,

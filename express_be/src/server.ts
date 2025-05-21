@@ -15,6 +15,9 @@ import reportRoutes from "./routes/reportRoutes";
 import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
+import https, { Server } from "https"
+import fs from "fs"
+import path from "path"
 import paymentRoutes from "./routes/paymentRoutes";
 dotenv.config();
 const app: Application = express();
@@ -27,6 +30,19 @@ app.use(
     allowedHeaders: ["Content-Type", "Accept", "Authorization"],
   })
 );
+
+const sslOptions = {
+  key: fs.readFileSync(path.join(__dirname, '10.0.2.2+3-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '10.0.2.2+3.pem')),
+};
+
+const httpsServer = https.createServer(sslOptions, app);
+const io = new Server(httpsServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
 
 app.use(express.json());
 app.use(cookieParser()); 

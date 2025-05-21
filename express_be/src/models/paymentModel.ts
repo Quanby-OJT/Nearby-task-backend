@@ -4,7 +4,7 @@ import taskModel from "./taskModel";
 
 interface Payment {
   payment_history_id?: number;
-  client_id?: number;
+  user_id?: number;
   transaction_id?: string;
   amount: number;
   deposit_date: string;
@@ -37,7 +37,7 @@ interface PayMongoResponse {
 
 //TODO: Implement XENDIT API response structure
 
-class PayMongoPayment {
+class QTaskPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
       user: { 
@@ -51,9 +51,9 @@ class PayMongoPayment {
 
     // Fetch user and task data from Supabase
     const { data: userEmailResponse, error: emailError } = await supabase
-      .from("clients")
-      .select("user(first_name, middle_name, last_name, email, contact)")
-      .eq("client_id", paymentInfo.client_id)
+      .from("user")
+      .select("first_name, middle_name, last_name, email, contact)")
+      .eq("user_id", paymentInfo.user_id)
       .single() as { data: UserEmailResponse | null; error: any };
 
     if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
@@ -202,6 +202,15 @@ class PayMongoPayment {
     return data;
   }
 
+  //Checker is the tasker/client has sufficient Amount before galawin ang kaniyang amount from the database.
+  static async checkBalance(user_id: string, amount: number){
+    const {data, error} = await supabase.from("user").select("user_role").eq("user_id", user_id).single()
+
+    if(error) throw new Error(error.message)
+
+      
+  }
+
   //In Case of Dispute raised by either user/
   static async refundCreditstoClient(task_taken_id: number, task_id: number) {
     const task_amount = await taskModel.getTaskAmount(task_taken_id);
@@ -233,4 +242,4 @@ class PayMongoPayment {
   }
 }
 
-export default PayMongoPayment;
+export default QTaskPayment;

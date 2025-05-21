@@ -1,7 +1,7 @@
 // controllers/userController.ts
 import { Request, Response } from "express";
 import ClientTaskerModeration from "../models/moderationModel";
-import PayMongoPayment from "../models/paymentModel";
+import QTaskPayment from "../models/paymentModel";
 import taskModel from "../models/taskModel";
 class DisputeController {
   static async getAllDisputes(req: Request, res: Response): Promise<void> {
@@ -22,19 +22,18 @@ class DisputeController {
 
       switch(moderator_action){
         case "refund_tokens":
-          await PayMongoPayment.refundCreditstoClient(task_taken_id, task_id)
+          await QTaskPayment.refundCreditstoClient(task_taken_id, task_id)
           await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Refund NearByTask Tokens to Client", addl_dispute_notes, moderator_id)
           break;
         case "release_half":
-          await PayMongoPayment.releaseHalfCredits(task_taken_id, task_status)
+          await QTaskPayment.releaseHalfCredits(task_taken_id, task_status)
           await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Release Half of the Total Payment to Tasker", addl_dispute_notes, moderator_id)
           break;
         case "release_full":
           const task = await taskModel.getTaskAmount(task_taken_id);
           
-          await PayMongoPayment.releasePayment({
-            client_id: task?.post_task.client_id,
-            transaction_id: "Id from Xendit", //Temporary value
+          await QTaskPayment.releasePayment({
+            user_id: task?.post_task.client_id,
             amount: task?.post_task.proposed_price ?? 0,
             payment_type: "Release of Payment to Tasker",
             deposit_date: new Date().toISOString(),
