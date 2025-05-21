@@ -19,12 +19,7 @@ class TaskController {
       const photo = req.file;
       console.log("Received photo:", photo);
       console.log("Received task data:", req.body);
-      console.log("Received insert data:", req.body);
-
-      /**
-       * Paki-check muna kung may sufficient balance si Klyente bago gumawa ng bagong task.
-       */
-      
+      console.log("Received insert data:", req.body);    
 
       const {
         client_id,
@@ -42,6 +37,14 @@ class TaskController {
         user_id,
         status,
       } = req.body;
+
+      const amount = await QTaskPayment.checkBalance(client_id);
+
+      if(proposed_price > amount.amount){
+        const remainingAmount = proposed_price - amount.amount
+        res.status(403).json({error: `You have insufficient funds to create this task. Please Deposit An Additional P${remainingAmount} in order to create this task.`})
+        return
+      }
 
       // Validate and parse price
       const parsedPrice = Number(proposed_price);
@@ -122,6 +125,8 @@ class TaskController {
         res.status(500).json({ success: false, error: `Failed to create task: ${error.message}` });
         return;
       }
+
+      await QTaskPayment.deductAmountfromUser(amount.user_role, amount.amount, user_id)
 
       res.status(201).json({
         success: true,

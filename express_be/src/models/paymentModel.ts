@@ -421,12 +421,10 @@ class QTaskPayment {
         payment_type,
         transaction_date,
         created_at,
-        clients (
-          user (
-            first_name,
-            middle_name,
-            last_name
-          )
+        user (
+          first_name,
+          middle_name,
+          last_name
         )
       `).order('payment_history_id', { ascending: false });;
     if (error) throw new Error(error.message);
@@ -434,12 +432,23 @@ class QTaskPayment {
   }
 
   //Checker is the tasker/client has sufficient Amount before galawin ang kaniyang amount from the database.
-  static async checkBalance(user_id: string, amount: number){
-    const {data, error} = await supabase.from("user").select("user_role").eq("user_id", user_id).single()
+  static async checkBalance(user_id: string){
+    let amount: number = 0
+    const {data: roleData, error: roleError} = await supabase.from("user").select("user_role").eq("user_id", user_id).single()
 
-    if(error) throw new Error(error.message)
+    if(roleError) throw new Error(roleError.message)
 
-      
+    if(roleData.user_role == "Tasker"){
+      const {data: tasker, error: taskerError} = await supabase.from("tasker").select("amount").eq("user_id", user_id).single()
+      if(taskerError) throw new Error(taskerError.message)
+      amount = tasker.amount
+    }else if(roleData.user_role == "Client"){
+      const {data: client, error: clientError} = await supabase.from("clients").select("amount").eq("user_id", user_id).single()
+      if(clientError) throw new Error(clientError.message)
+      amount = client.amount
+    }
+
+    return {amount, user_role: roleData.user_role};
   }
 
   //In Case of Dispute raised by either user/
