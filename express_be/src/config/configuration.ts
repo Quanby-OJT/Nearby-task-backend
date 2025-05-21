@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
+import Crypto from "crypto";
 
 // Supabase Configuration
 dotenv.config();
@@ -27,5 +28,10 @@ export const port = process.env.PORT;
 
 export const url = process.env.URL;
 
-const authString = `${process.env.ESCROW_EMAIL}:${process.env.ESCROW_API}`;
-export const authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+//Paymongo Configuration
+const authString = `${process.env.PAYMONGO_SECRET_KEY?.trim()}:`;
+export const authHeader = `Basic ${Buffer.from(authString).toString("base64")}`;
+
+//NextPay Configuration
+export const nextpay_api_key = process.env.NEXTPAY_API_KEY as string;
+export const nextpay_secret_key = process.env.NEXTPAY_SECRET_KEY as string;

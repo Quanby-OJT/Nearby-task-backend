@@ -18,6 +18,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
+    "ejs": "^3.1.10",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "express-validator": "^7.2.1",
@@ -26,14 +27,16 @@
     "ngx-cookie-service": "^19.1.2",
     "node-fetch": "^2.7.0",
     "nodemailer": "^6.10.1",
+    "openai": "^4.96.2",
     "otp-generator": "^4.0.1",
+    "postcss-cli": "^11.0.1",
     "postgres": "^3.4.5",
-    "xendit-node": "^6.3.0"
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.8",
-    "@types/cors": "^2.8.17",
+    "@types/cors": "^2.8.18",
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.1",
     "@types/express-session": "^1.18.1",
@@ -43,8 +46,10 @@
     "@types/node-fetch": "^2.6.12",
     "@types/nodemailer": "^6.4.17",
     "@types/otp-generator": "^4.0.2",
-    "autoprefixer": "^10.4.20",
+    "@types/socket.io": "^3.0.1",
+    "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },

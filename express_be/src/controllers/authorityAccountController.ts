@@ -1,8 +1,10 @@
-import { supabase } from "../config/configuration";
+import { mailer, supabase } from "../config/configuration";
 import { Request, Response } from "express";
 import { AuthorityAccount } from "../models/authorityAccountModel";
 import bcrypt from "bcrypt";
 import path from "path"; 
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 class AuthorityAccountController {
   static async addAuthorityUser(req: Request, res: Response): Promise<any> {
@@ -69,6 +71,7 @@ class AuthorityAccountController {
         image_link: imageUrl,
         acc_status: acc_status || "Review",
         emailVerified: true,
+        verified: true,
         verification_token: null,
       };
 
@@ -270,6 +273,313 @@ class AuthorityAccountController {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to serve the document",
       });
+    }
+  }
+
+  static async sendOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      // Check if email exists in the user table
+      const { data: user, error: userError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("email", email)
+        .single();
+
+      if (userError || !user) {
+        res.status(404).json({ error: "Email not found" });
+        return;
+      }
+
+      // Generate a 6-digit OTP
+      const otp = crypto.randomInt(100000, 999999).toString();
+
+      // Set expiration time (10 minutes from now)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      // Check if an OTP record already exists for this user
+      const { data: existingOtpRecord, error: fetchError } = await supabase
+        .from("two_fa_code")
+        .select("code_id")
+        .eq("user_id", user.user_id)
+        .single();
+
+      if (fetchError && fetchError.code !== "PGRST116") { 
+        throw new Error(fetchError.message);
+      }
+
+      if (existingOtpRecord) {
+        // Update the existing OTP record
+        const { error: updateError } = await supabase
+          .from("two_fa_code")
+          .update({
+            two_fa_code: otp,
+            two_fa_code_expires_at: expiresAt,
+          })
+          .eq("user_id", user.user_id);
+
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+      } else {
+        // Insert a new OTP record if none exists
+        const { error: insertError } = await supabase
+          .from("two_fa_code")
+          .insert({
+            user_id: user.user_id,
+            two_fa_code: otp,
+            two_fa_code_expires_at: expiresAt,
+          });
+
+        if (insertError) {
+          throw new Error(insertError.message);
+        }
+      }
+
+      // Send OTP via email using the existing mailer configuration
+      await mailer.sendMail({
+        from: process.env.MAIL_USERNAME,
+        to: email,
+        subject: "Your OTP for Password Reset",
+        text: `Your OTP is: ${otp}. It will expire in 10 minutes.`,
+      });
+
+      res.status(200).json({ message: "OTP sent to your email" });
+    } catch (error) {
+      console.error("Error in sendOtp:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to send OTP" });
+    }
+  }
+
+  static async verifyOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, otp } = req.body;
+
+      // Log the received OTP for debugging
+      console.log("Received OTP:", otp, "Type:", typeof otp);
+
+      // Ensure OTP is treated as a string and trim any whitespace
+      const otpString = String(otp).trim();
+
+      // Get user
+      const { data: user, error: userError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("email", email)
+        .single();
+
+      if (userError || !user) {
+        res.status(404).json({ error: "Email not found" });
+        return;
+      }
+
+      // Check OTP in two_fa_code table
+      const { data: otpRecord, error: otpError } = await supabase
+        .from("two_fa_code")
+        .select("*")
+        .eq("user_id", user.user_id)
+        .eq("two_fa_code", otpString)
+        .single();
+
+      if (otpError || !otpRecord) {
+        console.log("OTP verification failed. Error:", otpError, "Record:", otpRecord);
+        res.status(400).json({ error: "Invalid OTP" });
+        return;
+      }
+
+      // Check if OTP is expired
+      const now = new Date();
+      const expiresAt = new Date(otpRecord.two_fa_code_expires_at);
+      if (now > expiresAt) {
+        res.status(400).json({ error: "OTP has expired" });
+        return;
+      }
+
+      res.status(200).json({ message: "OTP verified successfully" });
+    } catch (error) {
+      console.error("Error in verifyOtp:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to verify OTP" });
+    }
+  }
+
+  static async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, newPassword, confirmPassword } = req.body;
+
+      if (newPassword !== confirmPassword) {
+        res.status(400).json({ error: "Passwords do not match" });
+        return;
+      }
+
+      // Get user
+      const { data: user, error: userError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("email", email)
+        .single();
+
+      if (userError || !user) {
+        res.status(404).json({ error: "Email not found" });
+        return;
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password in user table
+      const { error: updateError } = await supabase
+        .from("user")
+        .update({ hashed_password: hashedPassword })
+        .eq("user_id", user.user_id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      // Delete the used OTP from two_fa_code table
+      await supabase.from("two_fa_code").delete().eq("user_id", user.user_id);
+
+      res.status(200).json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Error in resetPassword:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to reset password" });
+    }
+  }
+
+  static async updatePassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, newPassword } = req.body;
+
+      // Validate input
+      if (!email || !newPassword) {
+        res.status(400).json({ error: "Email and new password are required" });
+        return;
+      }
+
+      // Get user
+      const { data: user, error: userError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("email", email)
+        .single();
+
+      if (userError || !user) {
+        res.status(404).json({ error: "Email not found" });
+        return;
+      }
+
+      // Validate password requirements
+      const passwordRegex = /^(?!.*\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()]).{8,}$/;
+      if (!passwordRegex.test(newPassword)) {
+        res.status(400).json({
+          error: "Password must be at least 8 characters long, contain at least one lowercase letter, one uppercase letter, one number, one special character (!@#$%^&*()), and no spaces."
+        });
+        return;
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password in user table
+      const { error: updateError } = await supabase
+        .from("user")
+        .update({ hashed_password: hashedPassword })
+        .eq("user_id", user.user_id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error in updatePassword:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to update password" });
+    }
+  }
+
+  static async addAddress(req: Request, res: Response): Promise<void> {
+    try {
+      const { user_id, street, barangay, city, province, postal_code, country, latitude, longitude, default: isDefault } = req.body;
+
+      if (!user_id || !street || !barangay || !city || !province || !postal_code || !country) {
+        res.status(400).json({ error: "Required fields (user_id, street, barangay, city, province, postal_code, country) are missing" });
+        return;
+      }
+
+      const addressData = {
+        user_id,
+        street,
+        barangay,
+        city,
+        province,
+        postal_code,
+        country,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        default: isDefault || false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase.from("address").insert([addressData]).select();
+
+      if (error) throw new Error(error.message);
+
+      res.status(201).json({ message: "Address added successfully", addresses: data });
+    } catch (error) {
+      console.error("Error in addAddress:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to add address" });
+    }
+  }
+
+  static async updateAddress(req: Request, res: Response): Promise<void> {
+    try {
+      const addressId = req.params.addressId;
+      const { user_id, street, barangay, city, province, postal_code, country, latitude, longitude, default: isDefault } = req.body;
+
+      if (!addressId || !user_id || !street || !barangay || !city || !province || !postal_code || !country) {
+        res.status(400).json({ error: "Required fields (addressId, user_id, street, barangay, city, province, postal_code, country) are missing" });
+        return;
+      }
+
+      const addressData = {
+        user_id,
+        street,
+        barangay,
+        city,
+        province,
+        postal_code,
+        country,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        default: isDefault || false,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase.from("address").update(addressData).eq("id", addressId).select();
+
+      if (error) throw new Error(error.message);
+
+      res.status(200).json({ message: "Address updated successfully", addresses: data });
+    } catch (error) {
+      console.error("Error in updateAddress:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to update address" });
+    }
+  }
+
+  static async getAddresses(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.params.userId;
+
+      const { data, error } = await supabase.from("address").select("*").eq("user_id", userId);
+
+      if (error) throw new Error(error.message);
+
+      res.status(200).json({ message: "Addresses retrieved successfully", addresses: data });
+    } catch (error) {
+      console.error("Error in getAddresses:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to retrieve addresses" });
     }
   }
 }

@@ -1,33 +1,101 @@
 import {Request, Response} from "express";
-import { supabase } from "../config/configuration";
+import { authHeader, supabase, nextpay_api_key, nextpay_secret_key } from "../config/configuration";
 import taskModel from "./taskModel";
+import Crypto from "crypto";
 
 interface Payment {
   payment_history_id?: number;
   user_id?: number;
   transaction_id?: string;
   amount: number;
-  deposit_date: string;
+  deposit_date?: string;
+  withdraw_date?: string;
   payment_type: string;
   task_taken_id?: number;
+  payment_method?: string;
+  status?: string;
+  account_no?: string;
 }
 
-// Updated to match PayMongo's checkout_sessions response structure
-interface PayMongoResponse {
+interface PaymentMethodResponse {
   data: {
     id: string;
     type: string;
     attributes: {
-      billing: object;
+      billing: {
+        name: string;
+        phone: string;
+        email: string;
+      };
+      type: string;
+      created_at: string;
+      updated_at: string;
+      status: string;
+      brand: string;
+      last4: string;
+      exp_month: number;
+      exp_year: number;
+    };
+  };
+  errors?: Array<{ detail: string }>; // For error cases
+}
+
+interface AttachedPaymentResponse {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      amount: number;
+      capture_type: string;
+      client_key: string;
+      currency: string;
+      description: string;
+      livemode: boolean;
+      original_amount: number;
+      statement_descriptor: string;
+      last_payment_error: null | object;
+      payment_method_allowed: string[];
+      payments: Array<object>;
+      next_action: {
+        type: string;
+        redirect: {
+          url: string;
+          return_url: string;
+        }
+      }
+      payment_method_options: null | object;
+      metadata: object | null;
+      setup_future_usage: null | string;
+      created_at: number;
+      updated_at: number;
+    };
+  };
+  errors?: Array<{ detail: string }>; // For error cases
+}
+
+// Updated to match PayMongo's checkout_sessions response structure
+interface PayMongoIntentResponse {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      amount: number,
+      capture_type: string;
+      currency: string;
       checkout_url: string;
       client_key: string;
       description: string;
-      line_items: Array<object>;
-      payment_method_types: string[];
+      livemode: boolean;
+      original_amount: number;
+      statement_descriptor: string;
+      last_payment_error: null | object;
+      payment_method_allowed: string[];
+      payments: Array<object>;
+      next_action: null | object;
       status: string; 
       send_email_receipt: boolean;
-      show_description: boolean;
-      show_line_items: boolean;
+      metadata: object | null;
+      setup_future_usage: null | string;
       created_at: number;
       updated_at: number;
     };
@@ -40,13 +108,11 @@ interface PayMongoResponse {
 class QTaskPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
-      user: { 
-        first_name: string, 
-        middle_name: string, 
-        last_name: string 
-        email: string,
-        contact: string
-      }
+      first_name: string, 
+      middle_name: string, 
+      last_name: string 
+      email: string,
+      contact: string
     }
 
     // Fetch user and task data from Supabase
@@ -59,90 +125,148 @@ class QTaskPayment {
     if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
     console.log("User Email Response:", userEmailResponse);
 
-    const clientName = `${userEmailResponse.user.first_name} ${userEmailResponse.user.middle_name} ${userEmailResponse.user.last_name}`;
-
-    // PayMongo auth (only secret key needed, not duplicated)
-    const authString = `${process.env.PAYMONGO_SECRET_KEY}:`;
-    const authHeader = `Basic ${Buffer.from(authString).toString("base64")}`;
-
-    // PayMongo checkout session payload
-    const options = {
-      method: "POST",
+    const clientName = `${userEmailResponse.first_name} ${userEmailResponse.middle_name} ${userEmailResponse.last_name}`;
+    /**
+     * Creating PaymewntIntent
+     */
+      const paymentIntentOptions = {
+      method: 'POST',
       headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: authHeader,
+      accept: 'application/json',
+      'content-type': 'application/json',
+      authorization: authHeader
       },
       body: JSON.stringify({
-        data: {
-          attributes: {
-            billing: {
-              address: {
-                line1: "4th Floor, Landco Business Park",
-                city: "Legazpi",
-                postal_code: "4500",
-                country: "PH",
-                state: "Albay",
-              },
-              name: clientName,
-              email: userEmailResponse.user.email,
-              phone: userEmailResponse.user.contact,
-            },
-            send_email_receipt: true,
-            show_description: true,
-            show_line_items: true,
-            payment_method_types: ["gcash", "paymaya", "qrph"], // Add more payment methods as needed
-            description: `NearByTask Escrow Deposit`,
-            line_items: [
-              {
-                currency: "PHP",
-                amount: paymentInfo.amount * 100, 
-                name: `NearByTask Escrow Tokens for ${clientName}`,
-                description: `This is a deposit for the task assigned to you`,
-                quantity: 1,
-              },
-            ],
-          },
-        },
-      }),
+      data: {
+        attributes: {
+        amount: paymentInfo.amount * 100,
+        payment_method_allowed: ['paymaya', 'gcash'],
+        payment_method_options: {card: {request_three_d_secure: 'any'}},
+        currency: 'PHP',
+        capture_type: 'automatic',
+        description: `Amount to be Deposited:\n` +
+          `• Amount: PHP ${paymentInfo.amount}\n` +
+          `• Client: ${clientName}\n` +
+          `• Purpose: Deposit Amount to QTask\n` +
+          `• Description: Your Deposited Amount will be only used to:\n` +
+          `  - Create and post new tasks\n` +
+          `  - Set task budgets\n` +
+          `  - Secure task payments`,
+        statement_descriptor: 'QTask Escrow Deposit'
+        }
+      }
+      })
     };
 
-    // Create PayMongo checkout session
-    const paymongoResponse = await fetch(`${process.env.PAYMONGO_URL}/checkout_sessions`, options);
-    if (!paymongoResponse.ok) {
-      const errorData = await paymongoResponse.json();
-      console.error("PayMongo API Error:", errorData);
-      if (paymongoResponse.status === 401) {
-        throw new Error("Unauthorized: Invalid PayMongo credentials");
-      } else if (paymongoResponse.status === 422) {
-        throw new Error(`Invalid payment data: ${JSON.stringify(errorData.errors)}`);
-      } else {
-        throw new Error(`PayMongo API failed: ${paymongoResponse.statusText}`);
-      }
+    const intentData = await fetch(`${process.env.PAYMONGO_URL}/payment_intents`, paymentIntentOptions);
+    if (!intentData.ok) {
+      const errorData = await intentData.json();
+      this.handlePayMongoErrors(errorData);
+      throw new Error(`PayMongo API failed: ${errorData.message}`);
     }
 
-    const paymongoData = await paymongoResponse.json() as PayMongoResponse;
-    console.log("PayMongo Response:", paymongoData);
+    const paymongoIntentData = await intentData.json() as PayMongoIntentResponse;
+    console.log("PayMongo Response:", paymongoIntentData);
 
     // Assign transaction_id and payment_date *after* successful response
-    paymentInfo.transaction_id = paymongoData.data.id;
-
-
-    console.log("Updated Payment Info:", paymentInfo);
+    paymentInfo.transaction_id = paymongoIntentData.data.id;
 
     // Insert into Supabase
-    const { error: insertError } = await supabase.from("payment_logs").insert([paymentInfo]);
+    const { error: insertError } = await supabase.from("payment_logs").insert({
+      user_id: paymentInfo.user_id,
+      payment_type: paymentInfo.payment_type,
+      transaction_id: paymongoIntentData.data.id,
+      amount: paymentInfo.amount,
+      transaction_date: paymentInfo.deposit_date,
+      payment_method: paymentInfo.payment_method,
+      status: paymongoIntentData.data.attributes.status,
+    });
+
     if (insertError) {
       console.error("Supabase Insert Error:", insertError);
       throw new Error(`Failed to log payment: ${insertError.message}`);
     }
 
+    /**
+     * Creating Payment Methods from the client-side
+     */
+    const payment_method = {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'Content-Type': 'application/json',
+        authorization: authHeader
+      },
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            billing: {
+              name: clientName,
+              phone: userEmailResponse.contact,
+              email: userEmailResponse.email
+            },
+            type: paymentInfo.payment_method,
+          }
+        }
+      })
+    };
+    
+    const paymentData = await fetch(`${process.env.PAYMONGO_URL}/payment_methods`, payment_method);
+    if (!paymentData.ok) {
+      const errorData = await paymentData.json();
+      this.handlePayMongoErrors(errorData);
+      throw new Error(`PayMongo API failed: ${errorData.message}`);
+    }
 
+    const paymentMethodData = await paymentData.json() as PaymentMethodResponse;
+    console.log("Payment Method Response:", paymentMethodData);
+
+    /**
+     * Attaching Payment Intent to Payment Method
+     */
+    const payMongoAttachOptions = {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: authHeader
+      },
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            payment_method: paymentMethodData.data.id,
+            client_key: `${paymongoIntentData.data.attributes.client_key}_${paymongoIntentData.data.attributes.client_key}`,
+            return_url: `${process.env.PAYMONGO_PAYMENT_URL}/payment/${paymentInfo.amount}/${paymentInfo.transaction_id}`
+          }
+        }
+      })
+    };
+
+    const attachData = await fetch(`${process.env.PAYMONGO_URL}/payment_intents/${paymongoIntentData.data.id}/attach`, payMongoAttachOptions);
+    if (!attachData.ok) {
+      const errorData = await attachData.json();
+      console.error("Attach Payment Error:", errorData);
+      this.handlePayMongoErrors(errorData);
+    }
+
+    const paymentAttachedData = await attachData.json() as AttachedPaymentResponse;
+    console.log("PayMongo Response:", paymentAttachedData);
 
     return {
-      paymentUrl: paymongoData.data.attributes.checkout_url,
-      transactionId: paymongoData.data.id,
+      checkout_url: paymentAttachedData.data.attributes.next_action.redirect.url,
+      client_key: paymentAttachedData.data.attributes.client_key,
+      amount: paymentInfo.amount
     };
+  }
+
+  private static handlePayMongoErrors(error: any) {
+    if (error.status === 401) {
+      throw new Error("Unauthorized: Invalid PayMongo credentials");
+    } else if (error.status === 422) {
+      throw new Error(`Invalid payment data: ${JSON.stringify(error.errors)}`);
+    } else {
+      throw new Error(`PayMongo API failed: ${error.errors.detail}`);
+    }
   }
 
   static async fetchTransactionId(taskTakenId: number) {
@@ -158,7 +282,7 @@ class QTaskPayment {
 
   //To Refund ALL payment to Client in case of account deletion.
   static async cancelTransaction(transactionId: string, cancellationReason: string) {
-    // TODO: Utilize Xendit API for refunds (or other payment processor)
+    // TODO: Utilize NextPay API for refunds (or other payment processor)
 
     const { error } = await supabase
       .from("payment_logs")
@@ -171,12 +295,119 @@ class QTaskPayment {
 
   static async releasePayment(paymentInfo: Payment) {
     if (paymentInfo.amount <= 0) throw new Error("Invalid Amount to be released. Please Try Again.");
-    
-    const finalAmount = paymentInfo.amount * 0.9;
-    paymentInfo.amount = finalAmount
+
+    interface UserEmailResponse {
+      first_name: string, 
+      middle_name: string, 
+      last_name: string 
+      email: string,
+      contact: string
+    }
+
+    // Fetch user and task data from Supabase
+    const { data: userEmailResponse, error: emailError } = await supabase
+      .from("user")
+      .select("first_name, middle_name, last_name, email, contact")
+      .eq("user_id", paymentInfo.user_id)
+      .single() as { data: UserEmailResponse | null; error: any };
+
+    if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
+    console.log("User Email Response:", userEmailResponse);
+
+    const taskerName = `${userEmailResponse.first_name} ${userEmailResponse.middle_name} ${userEmailResponse.last_name}`;
+  
+    const payment_method = paymentInfo.payment_method?.toLowerCase()
+
+    /**
+     * Implement NextPay API for release of Payment
+     */
+
+    //Getting a specific bank based on the bank id
+    let bankId = 0;
+    if(payment_method == "gcash") bankId = 40
+    else if(payment_method == "paymaya") bankId = 57
+
+    /**
+     * Creating a Disbursement
+     */
+    const nextPayOptions = {
+      name: `Escrow Withdrawal - ${paymentInfo.withdraw_date}`,
+      private_notes: "QTask Escrow Withdrawal", 
+      require_authorization: false,
+      recipients: [
+        {
+          amount: paymentInfo.amount,
+          currency: "PHP",
+          name: "string",
+          first_name: userEmailResponse.first_name,
+          last_name: userEmailResponse.last_name,
+          email: userEmailResponse.email,
+          phone_number: userEmailResponse.contact,
+          private_notes: "QTask Escrow Withdrawal",
+          recipient_notes: `This is a withdrawal amounting to PHP ${paymentInfo.amount} to be released to ${taskerName}.`,
+          destination: {
+          method: "instapay",  
+          bank: bankId,            
+          account_name: taskerName,
+          account_number: paymentInfo.account_no
+          }
+        }
+      ],
+      nonce: Date.now() // Current UNIX epoch timestamp in milliseconds
+    }
+
+    const rawPayload = JSON.stringify(nextPayOptions)
+    const signature = Crypto.createHmac("sha256", process.env.NEXTPAY_SECRET_KEY!).update(rawPayload).digest("hex")
+
+    console.log(nextPayOptions)
+    console.log("NextPay URL:", process.env.NEXTPAY_URL);
+    console.log("Client ID:", process.env.NEXTPAY_API_KEY?.slice(0, 10)); // should start with `np_test_`
+    console.log("Secret Key:", process.env.NEXTPAY_SECRET_KEY?.slice(0, 10));
+
+
+    // Verify signature matches payload
+    const computedSignature = Crypto.createHmac("sha256", process.env.NEXTPAY_SECRET_KEY!)
+      .update(rawPayload)
+      .digest("hex");
+
+    console.log(signature === computedSignature)
+
+    // if (signature !== computedSignature) {
+    //   throw new Error("Invalid signature - payload may have been tampered with");
+    // }
+
+    const nextPayData = await fetch(`${process.env.NEXTPAY_URL}/disbursements`, {
+      method: "POST",
+      headers: {
+        "client-id": process.env.NEXTPAY_API_KEY!,
+        signature: signature,
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: rawPayload
+    });
+
+    if (!nextPayData.ok) {
+      const errorData = await nextPayData.json();
+      console.error("NextPay API Error:", errorData);
+      throw new Error(`NextPay API failed: ${errorData.message.message}`);
+    }
+
+    const nextPayResponse = await nextPayData.json();
+    console.log("NextPay Response:", nextPayResponse);
+
     const { error } = await supabase
           .from("payment_logs")
-          .insert([paymentInfo])
+          .insert({
+            user_id: paymentInfo.user_id,
+            payment_type: paymentInfo.payment_type,
+            transaction_id: nextPayResponse.id,
+            amount: paymentInfo.amount,
+            transaction_date: paymentInfo.withdraw_date,
+            payment_method: paymentInfo.payment_method,
+            status: nextPayResponse.status,
+            reference_id: nextPayResponse.reference_id
+          })
     console.log("Errors:", error);
     if (error) throw new Error(error.message);
   }
@@ -188,7 +419,7 @@ class QTaskPayment {
         transaction_id,
         amount,
         payment_type,
-        deposit_date,
+        transaction_date,
         created_at,
         clients (
           user (
@@ -239,6 +470,16 @@ class QTaskPayment {
     });
 
     if(updateTaskerCreditsError) throw new Error(updateTaskerCreditsError.message)
+  }
+
+  static async deductAmountfromUser(role: string, amount: number, user_id: number) {
+    const { error: deductionError } = await supabase.rpc('decrement_user_credits_by_role', {
+      subtract_credits: amount,
+      inp_user_id: user_id,
+      user_role: role // Ensure this is passed in from frontend or retrieved
+    });
+
+    if(deductionError) throw new Error(deductionError.message)
   }
 }
 

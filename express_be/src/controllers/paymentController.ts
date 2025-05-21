@@ -45,7 +45,7 @@ class PaymentController {
         amount: log.amount,
         payment_type: log.payment_type,
         created_at: new Date(log.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" }),
-        deposit_date: new Date(log.deposit_date).toLocaleString("en-US", { timeZone: "Asia/Manila" }),
+        transaction_date: new Date(log.deposit_date).toLocaleString("en-US", { timeZone: "Asia/Manila" }),
       }));
 
       res.json(formattedLogs);
@@ -53,16 +53,24 @@ class PaymentController {
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
       } else {
-        res.status(500).json({ error: "An unknown error occurred" });
+        res.status(500).json({ error: "An error occured while processing your request. Please Try Again." });
       }
     }
   }
 
-  static async releaseEscrowPayment(req: Request, res: Response): Promise<void> {
+  static async redirectToApplication(req: Request, res: Response): Promise<void> {
     try {
-      const { task_taken_id, task_id } = req.body;
-      const result = await PaymentModel.releaseHalfCredits(task_taken_id, task_id);
-      res.json(result);
+      const { amount, payment_intent_id } = req.params;
+      const queryIntentId = req.query.payment_intent_id as string;
+
+      if (payment_intent_id !== queryIntentId) {
+        res.status(400).json({ error: "Mismatched payment_intent_id." });
+        return;
+      }
+
+      const redirectUrl = `myapp://paymongo?amount=${amount}&transaction_id=${payment_intent_id}`;
+
+      res.redirect(redirectUrl);
     } catch (error) {
       console.error("Error in redirectToApplication:", error instanceof Error ? error.message : error);
       res.status(500).json({ error: "An error occured while processing your request. Please Try Again." });

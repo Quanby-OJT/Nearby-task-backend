@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
-import { error } from "console";
+import console from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
 import fetch from "node-fetch";
@@ -16,6 +16,9 @@ const ws = new WebSocketServer({ port: 8080 });
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
+      const photo = req.file;
+      console.log("Received photo:", photo);
+      console.log("Received task data:", req.body);
       console.log("Received insert data:", req.body);
 
       /**
@@ -26,63 +29,114 @@ class TaskController {
       const {
         client_id,
         task_title,
-        specialization,
+        specialization_id,
+        related_specializations,
         task_description,
-        location,
-        duration,
-        num_of_days,
-        urgency,
+        address_id,
+        urgent,
         proposed_price,
         remarks,
-        task_begin_date,
-        user_id,
         work_type,
+        scope,
+        is_verified_document,
+        user_id,
+        status,
       } = req.body;
 
-      let urgent = false;
-      if (urgency === "Urgent") urgent = true;
-      else if (urgency === "Non-Urgent") urgent = false;
-
-      if (!client_id || !task_title || !task_begin_date) {
-        res.status(400).json({ error: "Missing required fields" });
-        return;
-      }
-
-      // Convert duration and proposed_price to numbers
-      const parsedDuration = Number(duration);
+      // Validate and parse price
       const parsedPrice = Number(proposed_price);
-
-      if (isNaN(parsedDuration) || isNaN(parsedPrice)) {
-        res.status(400).json({ error: "Invalid duration or contact_price" });
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        res.status(400).json({ success: false, error: 'Invalid proposed price' });
         return;
       }
 
-      const newTask = await taskModel.createNewTask(
-        client_id,
-        task_description,
-        parsedDuration,
-        task_title,
-        urgent,
-        location,
-        num_of_days,
-        specialization,
-        parsedPrice,
-        remarks,
-        task_begin_date,
-        user_id,
-        work_type,
-      );
+      // Parse urgent as boolean
+      const isUrgent = urgent === 'true' || urgent === true;
 
-      res.status(201).json({ success: true, message: "Task posted successfully", task: newTask });
+      // Parse is_verified_document as boolean
+      const isVerified = is_verified_document === 'true' || is_verified_document === true;
+
+      // Parse related_specializations (expecting JSON string like '[5,7,3,2]')
+      let parsedRelatedSpecializations: number[] | null = null;
+      if (related_specializations) {
+        try {
+          parsedRelatedSpecializations = JSON.parse(related_specializations);
+          if (!Array.isArray(parsedRelatedSpecializations)) {
+            res.status(400).json({ success: false, error: 'Invalid related specializations format' });
+            return;
+          }
+        } catch (e) {
+          res.status(400).json({ success: false, error: 'Failed to parse related specializations' });
+          return;
+        }
+      }
+
+      // Handle photo upload to Supabase Storage
+      let image_url: string | null = null;
+      if (photo) {
+        const fileName = `tasks/image_${user_id}_${Date.now()}_${photo.originalname}`;
+        console.log("Uploading Image File:", fileName);
+
+        const { error } = await supabase.storage
+          .from("crud_bucket")
+          .upload(fileName, photo.buffer, {
+            contentType: photo.mimetype,
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (error) {
+          res.status(500).json({ success: false, error: `Error uploading image: ${error.message}` });
+          return;
+        }
+
+        image_url = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
+      }
+
+      // Insert task into Supabase
+      const { data, error } = await supabase
+        .from("post_task")
+        .insert([
+          {
+            client_id: Number(client_id),
+            task_title,
+            specialization_id: Number(specialization_id),
+            task_description,
+            address:address_id,
+            urgent: isUrgent,
+            proposed_price: parsedPrice,
+            remarks,
+            status,
+            work_type,
+            related_specializations: parsedRelatedSpecializations,
+            scope,
+            is_verified: isVerified,
+            image_url,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase insert error:", error);
+        res.status(500).json({ success: false, error: `Failed to create task: ${error.message}` });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Task posted successfully",
+        task: data,
+      });
     } catch (error) {
       console.error("Error creating task:", error);
       res.status(500).json({
         success: false,
-        message: "Task posted successfully",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
+
 
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
@@ -129,6 +183,58 @@ class TaskController {
     }
   }
 
+  static async fetchAllTasks(req: Request, res: Response): Promise<void> {
+    try {
+      const { data:task, error } = await supabase
+      .from("post_task")
+      .select(`
+        *,
+        tasker_specialization:specialization_id (specialization),
+        address (*),
+        clients!client_id (
+          user (
+          user_id,
+          first_name,
+          middle_name,
+          last_name,
+          email,
+          contact,
+          gender,
+          birthdate,
+          user_role,
+          acc_status,
+          verified,
+          image_link
+          )
+        )
+      `)
+        .not("clients", "is", null)
+        .eq("clients.user.user_role", "Client");
+  
+
+      console.log("This is fetchTask");
+      console.log("Taskers data:", task, "Error:", error);
+  
+      if (error) {
+        console.error("Error fetching taskers:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
+      }
+  
+      if (!task || task.length === 0) {
+        res.status(200).json({ error: "No active taskers found." });
+        return;
+      }
+  
+      res.status(200).json({ taskers: task });
+    } catch (error) {
+      console.error("Error fetching taskers:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  }
+
   static async getTaskById(req: Request, res: Response): Promise<void> {
     try {
       const jobPostId = parseInt(req.params.id);
@@ -154,27 +260,59 @@ class TaskController {
     }
   }
 
-  static async getTaskforClient(req: Request, res: Response): Promise<void> {
-    try {
-      const clientId = req.params.clientId;
-      console.log("Client ID:", clientId);
-      const { data, error } = await supabase
-        .from("post_task")
-        .select()
-        .eq("client_id", clientId);
-
-      if (error) {
-        console.error(error.message);
-        res.status(500).json({ error: "An Error occured while retrieving your tasks. Please try again." });
-      } else {
-        res.status(200).json({ tasks: data });
+    static async getTaskforClient(req: Request, res: Response): Promise<void> {
+    
+        const clientId = req.params.clientId;
+    
+      try {
+        const { data:task, error } = await supabase
+          .from("post_task")
+          .select(`
+            *,
+            tasker_specialization:specialization_id (specialization),
+            address (*),
+            clients!client_id (
+              user (
+              user_id,
+              first_name,
+              middle_name,
+              last_name,
+              email,
+              contact,
+              gender,
+              birthdate,
+              user_role,
+              acc_status,
+              verified,
+              image_link
+              )
+            )
+          `)
+          .eq("client_id", clientId)
+          .eq("clients.user.user_role", "Client");
+    
+        console.log("Tasks data:", task, "Error:", error);
+    
+        if (error) {
+          console.error("Error fetching tasks:", error.message);
+          res.status(500).json({ error: error.message });
+          return;
+        }
+    
+        if (!task || task.length === 0) {
+          res.status(200).json({ error: "No active tasks found." });
+          return;
+        }
+    
+        res.status(200).json({ tasks: task });
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        res.status(500).json({
+          error: error instanceof Error ? error.message : "Unknown error occurred",
+        });
       }
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+
     }
-  }
 
 
   static async getTaskforTasker(req: Request, res: Response): Promise<void> {
@@ -188,9 +326,6 @@ class TaskController {
         });
         return;
       }
-
-      // Query task_taken table with join to get task details
-      // Using task_id as the identifier since 'id' doesn't exist
       const { data, error } = await supabase
         .from("task_taken")
         .select(`
@@ -370,7 +505,7 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
   try {
     const { data, error } = await supabase
       .from("tasker_specialization")
-      .select("specialization, created_at")
+      .select("spec_id, specialization")
       .order("spec_id", { ascending: true });
 
     if (error) {
@@ -434,6 +569,8 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
       }
 
       const tasks = await taskModel.getTasksByClientId(clientId);
+
+      console.log("Tasks data:", tasks);
 
       res.status(200).json({
         success: true,
@@ -553,65 +690,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     }
   }
 
-    /**
-   * The contarct price set by the client will be sent first to Escrow and will be released to the Tasker once the task is completed.
-   * 
-   * 
-   * 
-   * How will it work, according to documentation?
-   * 
-   * 1. If the client and tasker come to the final contract price agreement and the tasker "Confirmed", the client will deposit the amount to Escrow.
-   * 2. As the tasker starts the task assigned, the client can monitor it via chat.
-   * 3. Once the task is completed, the client will release the amount to the tasker.
-   * 4. If the tasker did not complete the task, the client can cancel the task and the amount will be returned to the client.
-   * 
-   * -Ces
-   */
-    static async depositEscrowAmount(req: Request, res: Response): Promise<void> {
-      try {
-          console.log("Transaction Data: ", req.body);
-          const { client_id, amount, status } = req.body;
-
-          const PaymentInformation = await QTaskPayment.checkoutPayment({
-              user_id: client_id,
-              amount,
-              deposit_date: new Date().toISOString(),
-              payment_type: "Client Deposit"
-          });
-
-          await ClientModel.addCredits(client_id, amount)
-  
-          res.status(200).json({
-              success: true,
-              payment_url: PaymentInformation.paymentUrl,
-              transaction_id: PaymentInformation.transactionId,
-          });
-      } catch (error) {
-          console.error("Error in depositTaskPayment:", error instanceof Error ? error.message : error);
-          res.status(500).json({ error: "Internal Server Error" });
-      }
-  }
-
-  // static async updateTransactionStatus(req: Request, res: Response): Promise<void> {
-  //   try {
-  //     const { task_taken_id, status, cancellation_reason } = req.body;
-
-  //     if(status == 'cancel'){
-  //       await PayMongoPayment.cancelTransaction(task_taken_id, cancellation_reason);
-  //       res.status(200).json({ message: "You had cancelled your transaction."});
-  //     }else if(status == 'complete'){
-  //       await PayMongoPayment.releasePayment('', task_taken_id);
-  //       res.status(200).json({ message: "Escrow Payment Released to Tasker."});
-  //     }else{
-  //       res.status(400).json({ message: "Invalid status provided."});
-  //     }
-  //   }
-  //   catch (error) {
-  //     console.error(error instanceof Error ? error.message : "Error Unknown.")
-  //     res.status(500).json({ error: "Internal Server error", });
-  //   }
-  // }
-
   static async releasePayment(req: Request, res: Response): Promise<void> {
     try {
       const { task_taken_id, amount, status } = req.body;
@@ -697,53 +775,6 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     }
   }
 
-  static async handlePayMongoWebhook(req: Request, res: Response): Promise<void> {
-    try{
-      const event = req.body.data.attributes
-      console.log("Received webhook event:", event);
-
-      if(event.type === "payment.paid") {
-        const payment = event.data.attributes;
-        const transactionId = payment.checkout_session_id;
-        const amount = payment.amount; // Convert to PHP
-        const tokens = amount;
-
-        const {data: paymentLog, error: loggingError} = await supabase.from("payment_logs")
-          .select("client_id")
-          .eq("transaction_id", transactionId)
-          .single();
-        if(loggingError) throw new Error(loggingError.message);
-
-        const { data: clientData, error: fetchError } = await supabase
-          .from("clients")
-          .select("amount")
-          .eq("client_id", paymentLog.client_id)
-          .single();
-
-        if (fetchError || !clientData) {
-          throw new Error("Error fetching client data: " + (fetchError?.message || "Client not found"));
-        }
-
-        const updatedAmount = clientData.amount + tokens;
-
-
-        const { error: tokenError } = await supabase
-          .from("clients")
-          .update({ amount: updatedAmount })
-          .eq("client_id", paymentLog.client_id);
-
-        if (tokenError) {
-          throw new Error("Error updating client amount: " + tokenError.message);
-        }
-      }
-
-      res.status(200).json({ message: "Webhook received successfully" })
-    }catch(error){
-      console.error("Webhook Error:", error);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  }
-
   static async getTokenBalance(req: Request, res: Response): Promise<void> {
     try {
       const userId = parseInt(req.params.userId); // Assume authenticated client ID
@@ -767,13 +798,13 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
         case "Tasker":
           const { data: taskerTokens, error: taskerTokensError} = await supabase.from('tasker').select('amount').eq('user_id', userId).single();
           if(taskerTokensError) throw new Error('Error fetching tasker tokens: ' + taskerTokensError.message);
-          console.log("Tasker Tokens: ", taskerTokens);
+          //console.log("Tasker Tokens: ", taskerTokens);
           res.status(200).json({ success: true, tokens: taskerTokens.amount });
           break;
         case "Client":
           const { data: clientTokens, error: clientTokensError} = await supabase.from('clients').select('amount').eq('user_id', userId).single();
           if(clientTokensError) throw new Error('Error fetching tasker tokens: ' + clientTokensError.message);
-          console.log("Client Tokens: ", clientTokens);
+          //console.log("Client Tokens: ", clientTokens);
           res.status(200).json({ success: true, tokens: clientTokens.amount });
           break;
         default:
@@ -1049,6 +1080,137 @@ static async getAllSpecializations(req: Request, res: Response): Promise<void> {
     } catch (error) {
       console.error("Error fetching completed tasks:", error);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+
+  static async getTasks(req: Request, res: Response): Promise<void> {
+    const { userId } = req.params;
+  
+    // Validate userId
+    if (!userId || isNaN(Number(userId))) {
+      res.status(400).json({ error: "Invalid or missing userId" });
+      return;
+    }
+  
+    try {
+      const { data, error } = await supabase
+        .from("task_taken")
+        .select(`
+          task_taken_id,
+          task_id,
+          task_status,
+          created_at,
+          client_id,
+          tasker_id,
+          task:post_task (
+            *,
+            tasker_specialization:specialization_id (specialization),
+            address (*),
+            client:clients!client_id (
+              client_id,
+              user (
+                user_id,
+                first_name,
+                middle_name,
+                last_name,
+                email,
+                contact,
+                gender,
+                birthdate,
+                user_role,
+                acc_status,
+                verified,
+                image_link
+              )
+            )
+          )
+        `)
+        .eq("tasker_id", userId);
+  
+      if (error) {
+        console.error("Supabase error:", error.message);
+        res.status(500).json({
+          success: false,
+          error: "Failed to retrieve tasks",
+          details: error.message,
+        });
+        return;
+      }
+  
+      res.status(200).json({
+        success: true,
+        data: data || [],
+      });
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({
+        success: false,
+        error: "Internal server error",
+        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
+      });
+    }
+  }
+
+  static async getTaskInformation(req: Request, res: Response): Promise<void> {
+    const { taskId } = req.params;
+    try {
+      const { data, error } = await supabase
+      .from("task_taken")
+      .select(`
+        task_id,
+        task_status,
+        created_at,
+        client_id,
+        tasker_id,
+        task:post_task(
+          *,
+          tasker_specialization:specialization_id (specialization),
+          address (*),
+          clients!client_id (
+            user (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            email,
+            contact,
+            gender,
+            birthdate,
+            user_role,
+            acc_status,
+            verified,
+            image_link
+            )
+          )
+        ),
+        client:clients(
+          client_id,
+          user:user_id(*),
+          client_address
+        )
+          location,
+          specialization,
+          status
+        ),
+        client:clients(
+          client_id,
+          user:user_id(*),
+          client_address
+        )
+      `)
+      .eq("task_id", taskId)
+      .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching task information:", error.message);
+        res.status(500).json({ error: "Failed to retrieve task information. Please try again." });
+        return;
+      }
+
+      res.status(200).json({ data: data });
+    } catch (error) {
+      console.error("Error fetching task information:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 } 

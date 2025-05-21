@@ -15,6 +15,8 @@ import profileController from "../controllers/profileController";
 import NotificationController from "../controllers/notificationController";
 import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
+import SettingController from "../controllers/settingController";
+import PaymentController from "../controllers/paymentController";
 
 const upload = multer({storage: memoryStorage()})
 
@@ -25,31 +27,22 @@ const router = Router();
 router.post("/login-angular", auth.login);
 
 /** Authentication Routes */
-router.post(
-  "/login-auth",
-  validateLogin,
-  handleValidationErrors,
-  AuthenticationController.loginAuthentication
-);
-router.post(
-  "/otp-auth",
-  validateOTP,
-  handleValidationErrors,
-  AuthenticationController.otpAuthentication
-);
+router.post("/login-auth", validateLogin, handleValidationErrors, AuthenticationController.loginAuthentication);
+router.post( "/otp-auth", validateOTP, handleValidationErrors, AuthenticationController.otpAuthentication);
 router.post("/reset", AuthenticationController.generateOTP);
 
 //Creating a New Account
-router.post( 
-  "/create-new-account", 
-  userValidation, 
-  handleValidationErrors, 
-  UserAccountController.registerUser
-);
+router.post( "/create-new-account", userValidation, handleValidationErrors, UserAccountController.registerUser);
 
+// New routes for forgot password (for AngularJS only)
+router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
+router.post("/forgot-password/verify-otp", UserAccountController.verifyOtp);
+router.post("/forgot-password/reset-password", UserAccountController.resetPassword);
 
-
+// New route for forget password (for Flutter Only)
+router.post("/forgot-password", AuthenticationController.forgotPassword);
 router.post("/verify", UserAccountController.verifyEmail)
+router.post("/reset-password", AuthenticationController.resetPassword)
 // router.use(isAuthenticated);
 
 /**
@@ -84,23 +77,22 @@ router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
 });
 
+//Webhooks
+router.get("/payment/:amount/:payment_intent_id", PaymentController.redirectToApplication);
+router.put("/webhook/paymongo/:id/:transaction_id", PaymentController.handlePayMongoWebhook);
+
 router.use(isAuthenticated);
 router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
-router.post("/addTask", TaskController.createTask);
+router.post("/addTask", upload.single("photo"), TaskController.createTask);
 router.get("/displayTask", TaskController.getAllTasks);
+router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get("/displayTaskWithSpecialization", TaskController.getTaskWithSpecialization);
 router.get("/displayTask/:id", TaskController.getTaskById);
-router.put("/displayTask/:id", TaskController.disableTask);
+// router.put("/displayTask/:id", TaskController.disableTask);
 router.get("/display-task-for-client/:clientId", TaskController.getTaskforClient);
 router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get("/display-assigned-task/:task_taken_id", TaskController.getAssignedTaskbyId);
-
-//All COnversation Messages
-router.post("/send-message", ConversationController.sendMessage);
-router.get("/all-messages/:user_id", ConversationController.getAllMessages);
-router.get("/messages/:task_taken_id", ConversationController.getMessages);
-router.delete("/delete-message/:messageId", ConversationController.deleteConversation);
 
 //Tasker Status Update
 router.put("/update-status-tasker/:requestId",  TaskController.updateTaskStatusforTasker);
@@ -123,11 +115,6 @@ router.get("/get-token-balance/:userId", TaskController.getTokenBalance);
 router.get("/getUserConversation", ConversationController.getUserConversation); 
 router.post("/banUser/:id", ConversationController.banUser); 
 router.post("/warnUser/:id", ConversationController.warnUser); 
-
-//Payment Routes
-router.post("/deposit-escrow-payment", TaskController.depositEscrowAmount);
-router.put("/webhook/paymongo", TaskController.handlePayMongoWebhook);
-router.put("/update-payment-status/:taskTakenId", TaskController.updateTask);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
@@ -156,7 +143,18 @@ router.put(
   ]),
   NotificationController.updateRequest
 );
-router.put("/updateNotification/:taskTakenId", NotificationController.updateNotification);
+router.put("/set-location/:user_id", SettingController.setLocation);
+router.get("/get-location/:user_id", SettingController.getLocation);
+router.put("/update-specialization/:user_id", SettingController.updateSpecialization);
+router.put("/update-distance/:user_id", SettingController.updateDistance);
+router.get("/get-address/:user_id", SettingController.getAddress);
+router.get("/get-addresses/:user_id", SettingController.getAddresses);
+router.put("/set-address/:user_id", SettingController.setAddress);
+
+
+// User Task
+router.get("/fetchTasks/:userId", TaskController.getTasks);
+router.get("/tasker/taskinformation/:taskId", TaskController.getTaskInformation);
 
 //User CRUD
 router.put(
@@ -207,7 +205,7 @@ router.put(
 
 
 // updating tasker with PDF only
-router.put(
+router.put( 
   "/update-tasker-with-pdf/:id",
   upload.fields([
     { name: "file", maxCount: 1 }
@@ -226,14 +224,7 @@ router.put(
   UserAccountController.updateTaskerWithProfileImage
 );
 
-
-
-
-
-
-
-
-
+router.post("/generate-ai-text", FeedbackController.generateAIText);
 
 // updating client with profile image only
 router.put(
@@ -255,5 +246,39 @@ router.put(
 );
 
 router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
+
+// Submit user verification to the user_verify table
+router.post(
+  "/submit-user-verification/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },      // ID image
+    { name: "selfieImage", maxCount: 1 },  // Selfie image
+    { name: "documents", maxCount: 1 }     // Certificates file
+  ]),
+  UserAccountController.submitUserVerification
+);
+
+// Get user verification status
+router.get(
+  "/user-verification-status/:id",
+  UserAccountController.getUserVerificationStatus
+);
+
+// Keep old routes for backward compatibility
+router.post(
+  "/submit-tasker-verification/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },      // ID image
+    { name: "selfieImage", maxCount: 1 },  // Selfie image
+    { name: "documents", maxCount: 1 }     // Certificates file
+  ]),
+  UserAccountController.submitUserVerification
+);
+
+// Get tasker verification status (kept for backward compatibility)
+router.get(
+  "/tasker-verification-status/:id",
+  UserAccountController.getUserVerificationStatus
+);
 
 export default router;

@@ -35,12 +35,11 @@ class LikeController {
 
   static async getLikedJob(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.params.id; // Get userId from URL parameter
+      const userId = req.params.id;
 
-      // Filter likes by user_id
       const { data, error } = await supabase
         .from("likes")
-        .select("*") // Join with tasks/jobs table if needed
+        .select("*")
         .eq("user_id", userId);
 
       console.log("Liked: " + data, "Errors :" + error);
