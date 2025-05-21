@@ -35,8 +35,8 @@ app.use(
 );
 
 const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, '10.0.2.2+3-key.pem')),
-  cert: fs.readFileSync(path.join(__dirname, '10.0.2.2+3.pem')),
+  key: fs.readFileSync(path.join(__dirname, 'mkcert+4-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'mkcert+4.pem')),
 };
 
 const httpsServer = https.createServer(sslOptions, app);
@@ -84,19 +84,15 @@ io.on("connection", (socket) => {
     console.log("User disconnected: " + socket.id);
   });
 
-  // Handle new message event
   socket.on("send_message", (data) => {
-    // Broadcast the message to all connected clients
     io.emit("new_message", data);
   });
 
-  // Handle message read event
   socket.on("mark_as_read", (data) => {
     io.emit("message_read", data);
   });
 });
 
-// Start server
 const PORT = port || 5000;
 httpsServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
