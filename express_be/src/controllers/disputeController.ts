@@ -33,14 +33,16 @@ class DisputeController {
           const task = await taskModel.getTaskAmount(task_taken_id);
           
           await PayMongoPayment.releasePayment({
-            client_id: task?.post_task.client_id,
-            transaction_id: "Id from Xendit", //Temporary value
+            user_id: task?.post_task.client_id,
             amount: task?.post_task.proposed_price ?? 0,
             payment_type: "Release of Payment to Tasker",
             deposit_date: new Date().toISOString(),
           });
 
           await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Release Full Payment to Tasker", addl_dispute_notes, moderator_id)
+          break;
+        case "reject_dispute":
+          await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Reject Dispute", addl_dispute_notes, moderator_id)
           break;
         default:
           res.status(400).json({message: "Invalid moderator action"})

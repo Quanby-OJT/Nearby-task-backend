@@ -27,27 +27,12 @@ const router = Router();
 router.post("/login-angular", auth.login);
 
 /** Authentication Routes */
-router.post(
-  "/login-auth",
-  validateLogin,
-  handleValidationErrors,
-  AuthenticationController.loginAuthentication
-);
-router.post(
-  "/otp-auth",
-  validateOTP,
-  handleValidationErrors,
-  AuthenticationController.otpAuthentication
-);
+router.post("/login-auth", validateLogin, handleValidationErrors, AuthenticationController.loginAuthentication);
+router.post( "/otp-auth", validateOTP, handleValidationErrors, AuthenticationController.otpAuthentication);
 router.post("/reset", AuthenticationController.generateOTP);
 
 //Creating a New Account
-router.post( 
-  "/create-new-account", 
-  userValidation, 
-  handleValidationErrors, 
-  UserAccountController.registerUser
-);
+router.post( "/create-new-account", userValidation, handleValidationErrors, UserAccountController.registerUser);
 
 // New routes for forgot password (for AngularJS only)
 router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
@@ -92,6 +77,10 @@ router.get("/check-session", (req, res) => {
   res.json({ sessionUser: req.session || "No session found" });
 });
 
+//Webhooks
+router.get("/payment/:amount/:payment_intent_id", PaymentController.redirectToApplication);
+router.put("/webhook/paymongo/:id/:transaction_id", PaymentController.handlePayMongoWebhook);
+
 router.use(isAuthenticated);
 router.post("/userAdd", upload.single("image"),UserAccountController.registerUser);
 router.post("/addTask", upload.single("photo"), TaskController.createTask);
@@ -126,11 +115,6 @@ router.get("/get-token-balance/:userId", TaskController.getTokenBalance);
 router.get("/getUserConversation", ConversationController.getUserConversation); 
 router.post("/banUser/:id", ConversationController.banUser); 
 router.post("/warnUser/:id", ConversationController.warnUser); 
-
-//Payment Routes
-router.post("/deposit-escrow-payment", PaymentController.depositEscrowAmount);
-router.put("/webhook/paymongo", PaymentController.handlePayMongoWebhook);
-router.post("/withdraw-escrow-amount", PaymentController.releaseEscrowPayment);
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);

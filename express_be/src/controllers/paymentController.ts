@@ -2,39 +2,29 @@ import { Request, Response } from "express";
 import PayMongoPayment from "../models/paymentModel";
 import ClientModel from "./clientController";
 import { supabase } from "../config/configuration";
+import Crypto from "crypto";
 
 class PaymentController {
-    /**
-   * The contarct price set by the client will be sent first to Escrow and will be released to the Tasker once the task is completed.
-   * 
-   * 
-   * 
-   * How will it work, according to documentation?
-   * 
-   * 1. If the client and tasker come to the final contract price agreement and the tasker "Confirmed", the client will deposit the amount to Escrow.
-   * 2. As the tasker starts the task assigned, the client can monitor it via chat.
-   * 3. Once the task is completed, the client will release the amount to the tasker.
-   * 4. If the tasker did not complete the task, the client can cancel the task and the amount will be returned to the client.
-   * 
-   * -Ces
-   */
   static async depositEscrowAmount(req: Request, res: Response): Promise<void> {
       try {
           console.log("Transaction Data: ", req.body);
           const { client_id, amount, payment_method } = req.body;
 
+          if(!payment_method) {
+            res.status(400).json({ success: false, error: "Payment method is required." });
+            return;
+          }
+
           const fixedPaymentMethod = payment_method.replace(/-/g, "_").toLowerCase();
 
           const PaymentInformation = await PayMongoPayment.checkoutPayment({
-              client_id,
+              user_id: client_id,
               amount,
               deposit_date: new Date().toISOString(),
               payment_type: "Client Deposit",
               payment_method: fixedPaymentMethod,
           });
 
-          await ClientModel.addCredits(client_id, amount)
-  
           res.status(200).json({
             success: true,
             payment_url: PaymentInformation.checkout_url,
@@ -55,7 +45,7 @@ class PaymentController {
         amount: log.amount,
         payment_type: log.payment_type,
         created_at: new Date(log.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" }),
-        deposit_date: new Date(log.deposit_date).toLocaleString("en-US", { timeZone: "Asia/Manila" }),
+        transaction_date: new Date(log.deposit_date).toLocaleString("en-US", { timeZone: "Asia/Manila" }),
       }));
 
       res.json(formattedLogs);
@@ -63,73 +53,85 @@ class PaymentController {
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
       } else {
-        res.status(500).json({ error: "An unknown error occurred" });
+        res.status(500).json({ error: "An error occured while processing your request. Please Try Again." });
       }
+    }
+  }
+
+  static async redirectToApplication(req: Request, res: Response): Promise<void> {
+    try {
+      const { amount, payment_intent_id } = req.params;
+      const queryIntentId = req.query.payment_intent_id as string;
+
+      if (payment_intent_id !== queryIntentId) {
+        res.status(400).json({ error: "Mismatched payment_intent_id." });
+        return;
+      }
+
+      const redirectUrl = `myapp://paymongo?amount=${amount}&transaction_id=${payment_intent_id}`;
+
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error("Error in redirectToApplication:", error instanceof Error ? error.message : error);
+      res.status(500).json({ error: "An error occured while processing your request. Please Try Again." });
     }
   }
 
   static async handlePayMongoWebhook(req: Request, res: Response): Promise<void> {
     try{
-      const event = req.body.data.attributes
-      console.log("Received webhook event:", event);
+      const { amount, success } = req.body;
+      const client_id = parseInt(req.params.id);
+      const transaction_id = req.params.transaction_id;
 
-      if(event.type === "payment.paid") {
-        const payment = event.data.attributes;
-        const transactionId = payment.checkout_session_id;
-        const amount = payment.amount; // Convert to PHP
-        const tokens = amount;
+      console.log("Payment Data: ", client_id, transaction_id)
 
-        const {data: paymentLog, error: loggingError} = await supabase.from("payment_logs")
-          .select("client_id")
-          .eq("transaction_id", transactionId)
-          .single();
+      if(success) {
+        const {error: loggingError} = await supabase.from("payment_logs")
+          .update({
+            status: "client_paid"
+          })
+          .eq("transaction_id", transaction_id)
         if(loggingError) throw new Error(loggingError.message);
 
-        const { data: clientData, error: fetchError } = await supabase
-          .from("clients")
-          .select("amount")
-          .eq("client_id", paymentLog.client_id)
-          .single();
+        await ClientModel.addCredits(client_id, amount)
 
-        if (fetchError || !clientData) {
-          throw new Error("Error fetching client data: " + (fetchError?.message || "Client not found"));
-        }
+        res.status(200).json({ success: true, message: "Your Payment has been Deposited Successfully. You can now create new Tasks." })
+        return;
+      }else{
 
-        const updatedAmount = clientData.amount + tokens;
-
-
-        const { error: tokenError } = await supabase
-          .from("clients")
-          .update({ amount: updatedAmount })
-          .eq("client_id", paymentLog.client_id);
-
-        if (tokenError) {
-          throw new Error("Error updating client amount: " + tokenError.message);
-        }
       }
-
-      res.status(200).json({ message: "Webhook received successfully" })
     }catch(error){
       console.error("Webhook Error:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+      res.status(500).json({ success: false, error: "An error occured while processing your request. Please Try Again." });
     }
   }
 
-  static async releaseEscrowPayment(req: Request, res: Response): Promise<void> {
+  static async withdrawEscrowPayment(req: Request, res: Response): Promise<void> {
     try {
-      const { tasker_id, amount, payment_method } = req.body;
+      const { amount, payment_method, account_number, role } = req.body;
+      const tasker_id = parseInt(req.params.id);
+
+      console.log(req.body, "tasker id: ", tasker_id)
+
+      if (!tasker_id || !amount || !payment_method || !account_number) {
+        res.status(400).json({ error: "All fields are required." });
+        return;
+      }
+
       await PayMongoPayment.releasePayment({
-        tasker_id,
+        user_id: tasker_id,
         amount,
         withdraw_date: new Date().toISOString(),
-        payment_type: "Amount Withdraw for Tasker",
-        payment_method
+        payment_type: "QTask Withdrawal",
+        payment_method,
+        account_no: account_number,
       });
+      await PayMongoPayment.deductAmountfromUser(role, amount, tasker_id);
 
-      res.status(200).json({message: "Payment Released Successfully"});
+      res.status(200).json({ success: true, message: "Payment Has been withdrawn successfully."});
     } catch (error) {
       console.error("Error in releaseEscrowPayment:", error instanceof Error ? error.message : error);
-      res.status(500).json({ error: "An unknown error occurred" });
+      res.status(500).json({ success: false, error: "An error occured while processing your request. Please Try Again." });
     }
   }
 }
