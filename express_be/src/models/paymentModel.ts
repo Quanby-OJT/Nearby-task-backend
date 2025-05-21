@@ -1,14 +1,13 @@
 import {Request, Response} from "express";
-import { supabase, xenditPayoutClient } from "../config/configuration";
+import { authHeader, supabase, nextpay_api_key, nextpay_secret_key } from "../config/configuration";
 import taskModel from "./taskModel";
-import { send } from "process";
-import { CreatePayoutRequest, GetPayouts200ResponseDataInner } from 'xendit-node/payout/models'
+import Crypto from "crypto";
 
 interface Payment {
   payment_history_id?: number;
-  client_id?: number;
+  signature?: string;
   account_no?: string;
-  tasker_id?: number;
+  user_id?: number;
   transaction_id?: string;
   amount: number;
   deposit_date?: string;
@@ -105,43 +104,31 @@ interface AttachedPaymentResponse {
   errors?: Array<{ detail: string }>; // For error cases
 }
 
-//TODO: Implement XENDIT API response structure
-interface XenditResponse {
-  error_message?: string; // For error cases
-}
-
 class PayMongoPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
-      user: { 
-        first_name: string, 
-        middle_name: string, 
-        last_name: string 
-        email: string,
-        contact: string
-      }
+      first_name: string, 
+      middle_name: string, 
+      last_name: string 
+      email: string,
+      contact: string
     }
 
     // Fetch user and task data from Supabase
     const { data: userEmailResponse, error: emailError } = await supabase
-      .from("clients")
-      .select("user(first_name, middle_name, last_name, email, contact)")
-      .eq("client_id", paymentInfo.client_id)
+      .from("user")
+      .select("first_name, middle_name, last_name, email, contact")
+      .eq("user_id", paymentInfo.user_id)
       .single() as { data: UserEmailResponse | null; error: any };
 
     if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
     console.log("User Email Response:", userEmailResponse);
 
-    const clientName = `${userEmailResponse.user.first_name} ${userEmailResponse.user.middle_name} ${userEmailResponse.user.last_name}`;
-    // PayMongo auth (only secret key needed, not duplicated)
-    const authString = `${process.env.PAYMONGO_SECRET_KEY?.trim()}:`;
-    const authHeader = `Basic ${Buffer.from(authString).toString("base64")}`;
-
+    const clientName = `${userEmailResponse.first_name} ${userEmailResponse.middle_name} ${userEmailResponse.last_name}`;
     /**
      * Creating PaymewntIntent
      */
-    
-    const paymentIntentOptions = {
+      const paymentIntentOptions = {
       method: 'POST',
       headers: {
       accept: 'application/json',
@@ -156,15 +143,15 @@ class PayMongoPayment {
         payment_method_options: {card: {request_three_d_secure: 'any'}},
         currency: 'PHP',
         capture_type: 'automatic',
-        description: `IMONALICK Credits Purchase:\n` +
+        description: `Amount to be Deposited:\n` +
           `• Amount: PHP ${paymentInfo.amount}\n` +
           `• Client: ${clientName}\n` +
-          `• Purpose: Credits for Task Creation\n` +
-          `• Usage: These credits will be used to:\n` +
+          `• Purpose: Deposit Amount to QTask\n` +
+          `• Description: Your Deposited Amount will be only used to:\n` +
           `  - Create and post new tasks\n` +
           `  - Set task budgets\n` +
           `  - Secure task payments`,
-        statement_descriptor: 'IMONALICK Task Credits'
+        statement_descriptor: 'QTask Escrow Deposit'
         }
       }
       })
@@ -184,7 +171,16 @@ class PayMongoPayment {
     paymentInfo.transaction_id = paymongoIntentData.data.id;
 
     // Insert into Supabase
-    const { error: insertError } = await supabase.from("payment_logs").insert([paymentInfo]);
+    const { error: insertError } = await supabase.from("payment_logs").insert({
+      user_id: paymentInfo.user_id,
+      payment_type: paymentInfo.payment_type,
+      transaction_id: paymongoIntentData.data.id,
+      amount: paymentInfo.amount,
+      transaction_date: paymentInfo.deposit_date,
+      payment_method: paymentInfo.payment_method,
+      status: paymongoIntentData.data.attributes.status,
+    });
+
     if (insertError) {
       console.error("Supabase Insert Error:", insertError);
       throw new Error(`Failed to log payment: ${insertError.message}`);
@@ -205,8 +201,8 @@ class PayMongoPayment {
           attributes: {
             billing: {
               name: clientName,
-              phone: userEmailResponse.user.contact,
-              email: userEmailResponse.user.email
+              phone: userEmailResponse.contact,
+              email: userEmailResponse.email
             },
             type: paymentInfo.payment_method,
           }
@@ -239,7 +235,7 @@ class PayMongoPayment {
           attributes: {
             payment_method: paymentMethodData.data.id,
             client_key: `${paymongoIntentData.data.attributes.client_key}_${paymongoIntentData.data.attributes.client_key}`,
-            return_url: 'https://imonalick.com/payment/success'
+            return_url: `${process.env.PAYMONGO_PAYMENT_URL}/payment/${paymentInfo.amount}/${paymentInfo.transaction_id}`
           }
         }
       })
@@ -272,43 +268,6 @@ class PayMongoPayment {
     }
   }
 
-  static async verifyPaymentIntent(req: Request, res: Response): Promise<void> {
-    try {
-      const { transaction_id } = req.body;
-  
-      const authHeader = `Basic ${Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString("base64")}`;
-  
-      const response = await fetch(`${process.env.PAYMONGO_URL}/payment_intents/${transaction_id}`, {
-        method: 'GET',
-        headers: {
-          accept: 'application/json',
-          authorization: 'Basic ' + authHeader
-        }
-      });
-  
-      const paymentIntent = await response.json();
-  
-      const status = paymentIntent.data.attributes.status;
-  
-      console.log("Verified Status:", status);
-  
-      // Optional: Update Supabase record status based on this
-      if (status === "succeeded") {
-        // Update credits or payment_logs here
-        await supabase.from("payment_logs")
-          .update({ status: "succeeded", confirmed_date: new Date().toISOString() })
-          .eq("transaction_id", transaction_id);
-  
-        res.status(200).json({ success: true, status });
-      } else {
-        res.status(200).json({ success: false, status });
-      }
-    } catch (err) {
-      console.error("Error verifying payment intent:", err);
-      res.status(500).json({ error: "Verification failed" });
-    }
-  }  
-
   static async fetchTransactionId(taskTakenId: number) {
     const { data, error } = await supabase
       .from("payment_logs")
@@ -322,7 +281,7 @@ class PayMongoPayment {
 
   //To Refund ALL payment to Client in case of account deletion.
   static async cancelTransaction(transactionId: string, cancellationReason: string) {
-    // TODO: Utilize Xendit API for refunds (or other payment processor)
+    // TODO: Utilize NextPay API for refunds (or other payment processor)
 
     const { error } = await supabase
       .from("payment_logs")
@@ -337,55 +296,117 @@ class PayMongoPayment {
     if (paymentInfo.amount <= 0) throw new Error("Invalid Amount to be released. Please Try Again.");
 
     interface UserEmailResponse {
-      user: { 
-        first_name: string, 
-        middle_name: string, 
-        last_name: string 
-        email: string,
-        contact: string
-      }
+      first_name: string, 
+      middle_name: string, 
+      last_name: string 
+      email: string,
+      contact: string
     }
 
     // Fetch user and task data from Supabase
     const { data: userEmailResponse, error: emailError } = await supabase
-      .from("tasker")
-      .select("user(first_name, middle_name, last_name, email, contact)")
-      .eq("tasker_id", paymentInfo.tasker_id)
+      .from("user")
+      .select("first_name, middle_name, last_name, email, contact")
+      .eq("user_id", paymentInfo.user_id)
       .single() as { data: UserEmailResponse | null; error: any };
 
     if (emailError || !userEmailResponse) throw new Error(emailError.message || "Failed to fetch user email data");
     console.log("User Email Response:", userEmailResponse);
 
-    const clientName = `${userEmailResponse.user.first_name} ${userEmailResponse.user.middle_name} ${userEmailResponse.user.last_name}`;
-    
-    const finalAmount = paymentInfo.amount * 0.9; //Will be changed according to the desired amount by the business owner.
-    paymentInfo.amount = finalAmount
+    const taskerName = `${userEmailResponse.first_name} ${userEmailResponse.middle_name} ${userEmailResponse.last_name}`;
+  
+    const payment_method = paymentInfo.payment_method?.toLowerCase()
 
-    const channelCode = `PH_${paymentInfo.payment_method?.toUpperCase()}`;
+    /**
+     * Implement NextPay API for release of Payment
+     */
 
-    const data: CreatePayoutRequest = {
-      amount : paymentInfo.amount * 100,
-      channelProperties : {
-        accountNumber : "000000",
-        accountHolderName : clientName
-      },
-      description : "Cash Withdrawal for ",
-      currency : "PHP",
-      referenceId : "DISB-001",
-      channelCode : channelCode,
+    //Getting a specific bank based on the bank id
+    let bankId = 0;
+    if(payment_method == "gcash") bankId = 40
+    else if(payment_method == "paymaya") bankId = 57
+
+    /**
+     * Creating a Disbursement
+     */
+    const nextPayOptions = {
+      name: `Escrow Withdrawal - ${paymentInfo.withdraw_date}`,
+      private_notes: "QTask Escrow Withdrawal", 
+      require_authorization: false,
+      recipients: [
+        {
+          amount: paymentInfo.amount,
+          currency: "PHP",
+          name: "string",
+          first_name: userEmailResponse.first_name,
+          last_name: userEmailResponse.last_name,
+          email: userEmailResponse.email,
+          phone_number: userEmailResponse.contact,
+          private_notes: "QTask Escrow Withdrawal",
+          recipient_notes: `This is a withdrawal amounting to PHP ${paymentInfo.amount} to be released to ${taskerName}.`,
+          destination: {
+          method: "instapay",  
+          bank: bankId,            
+          account_name: taskerName,
+          account_number: paymentInfo.account_no
+          }
+        }
+      ],
+      nonce: Date.now() // Current UNIX epoch timestamp in milliseconds
     }
-    
-    const response: GetPayouts200ResponseDataInner = await xenditPayoutClient.createPayout({
-        idempotencyKey: "DISB-1234",
-        data
-    })
-    
-    paymentInfo.transaction_id = response.id
-    paymentInfo.withdraw_date = response.created.toISOString()
+
+    const rawPayload = JSON.stringify(nextPayOptions)
+    const signature = Crypto.createHmac("sha256", process.env.NEXTPAY_SECRET_KEY!).update(rawPayload).digest("hex")
+
+    console.log(nextPayOptions)
+    console.log("NextPay URL:", process.env.NEXTPAY_URL);
+    console.log("Client ID:", process.env.NEXTPAY_API_KEY?.slice(0, 10)); // should start with `np_test_`
+    console.log("Secret Key:", process.env.NEXTPAY_SECRET_KEY?.slice(0, 10));
+
+
+    // Verify signature matches payload
+    const computedSignature = Crypto.createHmac("sha256", process.env.NEXTPAY_SECRET_KEY!)
+      .update(rawPayload)
+      .digest("hex");
+
+    console.log(signature === computedSignature)
+
+    // if (signature !== computedSignature) {
+    //   throw new Error("Invalid signature - payload may have been tampered with");
+    // }
+
+    const nextPayData = await fetch(`${process.env.NEXTPAY_URL}/disbursements`, {
+      method: "POST",
+      headers: {
+        "client-id": process.env.NEXTPAY_API_KEY!,
+        signature: signature,
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: rawPayload
+    });
+
+    if (!nextPayData.ok) {
+      const errorData = await nextPayData.json();
+      console.error("NextPay API Error:", errorData);
+      throw new Error(`NextPay API failed: ${errorData.message.message}`);
+    }
+
+    const nextPayResponse = await nextPayData.json();
+    console.log("NextPay Response:", nextPayResponse);
 
     const { error } = await supabase
           .from("payment_logs")
-          .insert([paymentInfo])
+          .insert({
+            user_id: paymentInfo.user_id,
+            payment_type: paymentInfo.payment_type,
+            transaction_id: nextPayResponse.id,
+            amount: paymentInfo.amount,
+            transaction_date: paymentInfo.withdraw_date,
+            payment_method: paymentInfo.payment_method,
+            status: nextPayResponse.status,
+            reference_id: nextPayResponse.reference_id
+          })
     console.log("Errors:", error);
     if (error) throw new Error(error.message);
   }
@@ -397,7 +418,7 @@ class PayMongoPayment {
         transaction_id,
         amount,
         payment_type,
-        deposit_date,
+        transaction_date,
         created_at,
         clients (
           user (
@@ -439,6 +460,16 @@ class PayMongoPayment {
     });
 
     if(updateTaskerCreditsError) throw new Error(updateTaskerCreditsError.message)
+  }
+
+  static async deductAmountfromUser(role: string, amount: number, user_id: number) {
+    const { error: deductionError } = await supabase.rpc('decrement_user_credits_by_role', {
+      subtract_credits: amount,
+      inp_user_id: user_id,
+      user_role: role // Ensure this is passed in from frontend or retrieved
+    });
+
+    if(deductionError) throw new Error(deductionError.message)
   }
 }
 

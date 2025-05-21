@@ -234,7 +234,6 @@ class ConversationController {
     
             const {data, error} = await supabase.from("task_taken").update({
                 unread_count: 0,
-                last_message_id: null
             }).eq("task_taken_id", task_taken_id).eq(user_role_id, user_id)
             
             console.log("Data: ", data, error)

@@ -122,10 +122,30 @@ class TaskModel {
 
   async getTaskById(jobPostId: number) {
     const { data, error } = await supabase
-      .from("post_task")
-      .select("*, clients:client_id (user:user_id (user_id, first_name, middle_name, last_name), preferences, client_address)")
-      .eq("task_id", jobPostId)
-      .single();
+    .from("post_task")
+    .select(`
+      *,
+      tasker_specialization:specialization_id (specialization),
+      address (*),
+      clients!client_id (
+        user (
+        user_id,
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        contact,
+        gender,
+        birthdate,
+        user_role,
+        acc_status,
+        verified,
+        image_link
+        )
+      )
+    `)
+    .eq("task_id", jobPostId)
+    .single();
 
     if (error) throw new Error(error.message);
     return data;

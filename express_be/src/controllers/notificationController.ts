@@ -1178,6 +1178,7 @@ class NotificationController {
       .eq("task_taken_id", requestId)
       .maybeSingle();
 
+    
 
     if (error) {
       console.error(error.message);
@@ -1191,7 +1192,7 @@ class NotificationController {
     }
 
     const updateVisit = await supabase.from("task_taken").update({ visit: true }).eq("task_taken_id", requestId);
-    console.log("Fetched request:", data);
+  console.log("Fetched request:", data);
     res.status(200).json({ request: data });
   }
 
@@ -1284,26 +1285,49 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
       let imageProof: string[] = [];
       if (imageEvidence && imageEvidence.length > 0) {
         for (const file of imageEvidence) {
-          // Validate file mimetype
-          const validImageTypes = ["image/jpeg", "image/png", "image/gif"];
+          // Validate file mimetype or content
+          const validImageTypes = ["image/jpeg", "image/png", "image/gif", "application/octet-stream"];
+          let contentType = file.mimetype;
+
+          // Check file signature for octet-stream
+          if (file.mimetype === "application/octet-stream") {
+            const isJpeg = file.buffer.subarray(0, 4).toString("hex").startsWith("ffd8ff");
+            const isPng = file.buffer.subarray(0, 8).toString("hex").startsWith("89504e470d0a1a0a");
+            const isGif = file.buffer.subarray(0, 6).toString("hex").startsWith("47494638");
+
+            if (isJpeg) {
+              contentType = "image/jpeg";
+            } else if (isPng) {
+              contentType = "image/png";
+            } else if (isGif) {
+              contentType = "image/gif";
+            } else {
+              console.error(`Invalid file content for: ${file.originalname}`);
+              res.status(400).json({
+                success: false,
+                message: `Invalid file content. Only JPEG, PNG, and GIF are allowed.`,
+              });
+              return;
+            }
+          }
+
           if (!validImageTypes.includes(file.mimetype)) {
             console.error(`Invalid file type: ${file.mimetype}`);
             res.status(400).json({
               success: false,
               message: `Invalid file type. Only JPEG, PNG, and GIF are allowed.`,
             });
-            return
+            return;
           }
-          const fileName = `dispute_proof/${Date.now()}_${file.originalname}`;
-          const contentType = "image/jpeg"; 
 
+          const fileName = `dispute_proof/${Date.now()}_${file.originalname}`;
           const { data, error } = await supabase.storage
             .from("documents")
             .upload(fileName, file.buffer, {
               contentType: contentType,
               cacheControl: "3600",
               upsert: false,
-            });           
+            });
 
           if (error) {
             console.error("Error uploading image:", error);
@@ -1322,11 +1346,15 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
 
           imageProof.push(publicUrlData.publicUrl);
         }
-      }
 
-      console.log("Image Proof:", imageProof);
-      await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
-      break;
+        console.log("Image Proof:", imageProof);
+        await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
+        break;
+      } else {
+        console.log("No image evidence provided");
+        await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
+        break;
+      }
     case 'Finish':
       console.log("Hi");
   
