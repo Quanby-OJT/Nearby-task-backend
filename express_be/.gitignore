@@ -114,3 +114,6 @@ dist
 # This will create your local CA which is vital for PayMongo Redirection.
 mkcert+4-key.pem
 mkcert+4.pem
+
+10.0.2.2+3-key.pem
+10.0.2.2+3.pem
