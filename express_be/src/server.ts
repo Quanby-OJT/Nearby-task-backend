@@ -35,15 +35,15 @@ app.use(
 );
 
 const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, '10.0.2.2+3-key.pem')),
-  cert: fs.readFileSync(path.join(__dirname, '10.0.2.2+3.pem')),
+  key: fs.readFileSync(path.join(__dirname, 'mkcert+4-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'mkcert+4.pem')),
 };
 
 const httpsServer = https.createServer(sslOptions, app);
 const io = new Server(httpsServer, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"] 
   }
 });
 
