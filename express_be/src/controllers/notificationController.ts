@@ -3,7 +3,8 @@ import { supabase } from "../config/configuration";
 import { error } from "console";
 import PayMongoPayment from "../models/paymentModel";
 import taskModel from "../models/taskModel";
-import TaskAssignment from "../models/taskAssignmentModel";
+import TaskAssignment from "../models/taskAssignmentModel"; 
+import { DateTime } from "luxon";
 
 class NotificationController {
 
@@ -1199,11 +1200,15 @@ class NotificationController {
 
 static async updateRequest(req: Request, res: Response): Promise<void> {
   const taskTakenId = parseInt(req.params.taskTakenId);
-  const { value, role, reason_for_dispute, dispute_details } = req.body;
+  const { value, role, reason_for_dispute, dispute_details, rejection_reason } = req.body;
   console.log("Role:", req.body);
   console.log("Task Taken ID:", taskTakenId);
   console.log("Value:", value);
   console.log("Role:", role);
+  console.log("Rejection Reason:", rejection_reason);
+  const reason_for_rejection_or_cancellation = rejection_reason;
+
+ 
 
   if (!taskTakenId) {
     res.status(400).json({ error: "Task Taken ID is required." });
@@ -1254,10 +1259,12 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
     }
       break;
     case 'Reject':
-      await TaskAssignment.updateStatus(taskTakenId, "Rejected", visit_client, visit_tasker);
+      await TaskAssignment.updateStatus(taskTakenId, "Rejected", visit_client, visit_tasker, reason_for_rejection_or_cancellation);
       break;
     case 'Review':
-      await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
+      const endDate = DateTime.now().setZone('Asia/Manila');
+      const endDateISO = endDate.toISO();
+      await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker, reason_for_rejection_or_cancellation, undefined, undefined, endDateISO as string);
       break;
     case 'Reject':
       const { error: rejectError } = await supabase
@@ -1274,7 +1281,7 @@ static async updateRequest(req: Request, res: Response): Promise<void> {
         }
         break;
     case 'Cancel':
-      await TaskAssignment.updateStatus(taskTakenId, "Cancelled", visit_client, visit_tasker);
+      await TaskAssignment.updateStatus(taskTakenId, "Cancelled", visit_client, visit_tasker, reason_for_rejection_or_cancellation);
       break;
     case 'Disputed':
       await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
