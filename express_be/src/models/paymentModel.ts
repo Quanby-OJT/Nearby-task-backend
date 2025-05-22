@@ -420,14 +420,14 @@ class PayMongoPayment {
         payment_type,
         transaction_date,
         created_at,
-        clients (
-          user (
-            first_name,
-            middle_name,
-            last_name
-          )
+        user: user_id (
+          first_name,
+          middle_name,
+          last_name
         )
-      `).order('payment_history_id', { ascending: false });;
+      `)
+      .order('payment_history_id', { ascending: false });
+  
     if (error) throw new Error(error.message);
     return data;
   }

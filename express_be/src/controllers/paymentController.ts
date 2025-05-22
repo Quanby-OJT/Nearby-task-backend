@@ -41,11 +41,11 @@ class PaymentController {
       
       const formattedLogs = logs.map((log: any) => ({
         payment_id: log.transaction_id,
-        user_name: `${log.clients.user.first_name} ${log.clients.user.middle_name || ''} ${log.clients.user.last_name}`.trim(),
+        user_name: `${log.user.first_name} ${log.user.middle_name || ''} ${log.user.last_name}`.trim(), // Fixed: log.user instead of log.clients.user
         amount: log.amount,
         payment_type: log.payment_type,
         created_at: new Date(log.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" }),
-        transaction_date: new Date(log.deposit_date).toLocaleString("en-US", { timeZone: "Asia/Manila" }),
+        transaction_date: new Date(log.transaction_date).toLocaleString("en-US", { timeZone: "Asia/Manila" }), // Fixed: log.transaction_date instead of log.deposit_date
       }));
 
       res.json(formattedLogs);
