@@ -454,8 +454,8 @@ class TaskController {
   }
 
   static async assignTask(req: Request, res: Response): Promise<void> {
-    const { tasker_id, task_id, client_id, role } = req.body;
-
+    const { tasker_id, task_id, client_id, role, days_available, available_date } = req.body;
+    
     console.log("Role this is: " + role);
 
     let visit_client = false;
@@ -487,7 +487,9 @@ class TaskController {
       visit_client,
       visit_tasker,
       task_status: "Pending",
-      requested_from
+      requested_from,
+      time_request:days_available,
+      start_date:available_date,
     });
 
     if (error) {
