@@ -3,7 +3,7 @@ import { supabase } from "../config/configuration";
 // Compact type definitions
 interface User { first_name: string | null; middle_name: string | null; last_name: string | null; }
 interface Client { client_id: number; user_id: string; user: User | null; }
-interface PaymentLog { payment_history_id: number; amount: number; created_at: string; client_id: number; clients: Client | null; }
+interface PaymentLog { payment_history_id: number; amount: number; created_at: string; user_id: string; user: { clients: Client | null; first_name: string | null; middle_name: string | null; last_name: string | null; } | null; }
 
 class ReportANDAnalysisModel {
   // Helper to calculate monthly trends (supports sum or max aggregation)
@@ -45,13 +45,13 @@ class ReportANDAnalysisModel {
     const { data: tasksPosted } = await supabase.from("post_task").select("created_at, specialization");
     const { data: taskers } = await supabase.from("tasker").select("created_at, tasker_specialization!specialization_id(specialization)");
 
-    // Map data
-    const allTaskPostedData = (tasksPosted || []).map(task => ({
-      specialization: task.specialization || 'Unknown',
+    // Map data, excluding items without valid specialization
+    const allTaskPostedData = (tasksPosted || []).filter(task => task.specialization).map(task => ({
+      specialization: task.specialization,
       created_at: task.created_at
     }));
-    const allTaskerData = (taskers || []).map(tasker => ({
-      specialization: (tasker.tasker_specialization as any)?.specialization || 'Unknown',
+    const allTaskerData = (taskers || []).filter(tasker => (tasker.tasker_specialization as any)?.specialization).map(tasker => ({
+      specialization: (tasker.tasker_specialization as any).specialization,
       created_at: tasker.created_at
     }));
 
@@ -93,63 +93,93 @@ class ReportANDAnalysisModel {
   }
 
   async getTopDepositors() {
-    // Fetch payment logs with joins
+    // Fetch payment logs with correct joins through user to clients
     const { data: paymentLogs, error } = await supabase
       .from("payment_logs")
       .select(`
         payment_history_id,
         amount,
         created_at,
-        client_id,
-        clients!payment_logs_client_id_fkey (
-          client_id,
-          user_id,
-          user!clients_user_id_fkey (
-            first_name,
-            middle_name,
-            last_name
+        user_id,
+        user!payment_logs_user_id_fkey (
+          first_name,
+          middle_name,
+          last_name,
+          clients!clients_user_id_fkey (
+            client_id,
+            user_id
           )
         )
       `)
       .order('created_at', { ascending: true }) as { data: PaymentLog[] | null, error: any };
+
+    // Log the raw Supabase response for debugging
+    console.log("Supabase Response for getTopDepositors:");
+    console.log("Error:", error);
+    console.log("Data (paymentLogs):", paymentLogs);
 
     if (error || !paymentLogs || paymentLogs.length === 0) {
       console.error("Error fetching payment logs or no data:", error);
       return { rankedDepositors: [], monthlyTrends: {} };
     }
 
-    // Process deposits by user and month
-    const depositsByUserAndMonth: { [userId: string]: { [month: string]: { amount: number; userName: string } } } = {};
+    // Process deposits by user and month, keeping all deposits
+    const depositsByUserAndMonth: { [userId: string]: { [month: string]: { amounts: number[], userName: string } } } = {};
     paymentLogs.forEach(log => {
-      const user = log.clients?.user || null;
-      const userName = user ? [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ') || "Unknown" : "Unknown";
-      const userId = log.client_id?.toString() || "Unknown";
+      // Ensure we have a valid amount and created_at
+      if (!log.amount || !log.created_at) {
+        console.warn("Skipping payment log due to missing amount or created_at:", log);
+        return;
+      }
+
+      const user = log.user || null;
+      const userName = user ? [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ') || "Unknown User" : "Unknown User";
+      const userId = log.user_id?.toString() || "UnknownID";
       const month = new Date(log.created_at).toLocaleString("default", { month: "short" });
 
-      if (!depositsByUserAndMonth[userId]) depositsByUserAndMonth[userId] = {};
-      if (!depositsByUserAndMonth[userId][month] || depositsByUserAndMonth[userId][month].amount < log.amount) {
-        depositsByUserAndMonth[userId][month] = { amount: log.amount, userName };
+      if (!depositsByUserAndMonth[userId]) {
+        depositsByUserAndMonth[userId] = {};
       }
+      if (!depositsByUserAndMonth[userId][month]) {
+        depositsByUserAndMonth[userId][month] = { amounts: [], userName };
+      }
+      depositsByUserAndMonth[userId][month].amounts.push(log.amount);
+
+      // Log each processed log for debugging
+      console.log(`Processed Payment Log - UserID: ${userId}, UserName: ${userName}, Month: ${month}, Amount: ${log.amount}`);
     });
 
-    // Flatten and sort ranked depositors
+    // Log the intermediate data structure
+    console.log("Deposits by User and Month:", depositsByUserAndMonth);
+
+    // Flatten and sort ranked depositors, using the maximum deposit per month
     const rankedDepositors = Object.entries(depositsByUserAndMonth)
       .flatMap(([userId, months]) =>
-        Object.entries(months).map(([month, { amount, userName }]) => ({ userName, amount, month }))
+        Object.entries(months).map(([month, { amounts, userName }]) => {
+          const maxAmount = Math.max(...amounts);
+          return { userName, amount: maxAmount, month };
+        })
       )
       .sort((a, b) => b.amount - a.amount);
 
-    // Calculate monthly trends (use max for highest deposit)
+    // Log the final ranked depositors
+    console.log("Ranked Depositors:", rankedDepositors);
+
+    // Calculate monthly trends using the maximum deposit per month
     const monthlyTrends = this.calculateMonthlyTrends(
       paymentLogs,
       log => log.amount,
       log => {
-        const user = log.clients?.user;
-        return user ? [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ') || "Unknown" : "Unknown";
+        const user = log.user;
+        return user ? [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ') || "Unknown User" : "Unknown User";
       },
       log => new Date(log.created_at).toLocaleString("default", { month: "short" }),
-      'max'
+      'max' // Use 'max' to track the highest deposit per month
     );
+
+    // Log the monthly trends
+    console.log("Monthly Trends:", monthlyTrends);
+
     return { rankedDepositors, monthlyTrends };
   }
 
