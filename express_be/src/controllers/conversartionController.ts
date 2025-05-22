@@ -140,6 +140,11 @@ class ConversationController {
     }
 
     static async getMessages(req: Request, res: Response): Promise<void> {
+        console.log('getMessages Request:', {
+            method: req.method,
+            url: req.url,
+            params: req.params
+        });
         const task_taken_id = req.params.task_taken_id
 
         const {data, error} = await supabase
@@ -164,9 +169,12 @@ class ConversationController {
             return
         }
 
-        // Format the created_at field to "hour:minute am/pm" (e.g., "2:53pm")
+        // Format the created_at field to include date and time (e.g., "5/18/2025, 4:10 PM")
         const dateFormatOptions: Intl.DateTimeFormatOptions = {
             timeZone: "Asia/Manila",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
             hour: "numeric",
             minute: "numeric",
             hour12: true,
@@ -250,6 +258,11 @@ class ConversationController {
     }
 
     static async getUserConversation(req: Request, res: Response): Promise<void>{
+        console.log('getUserConversation Request:', {
+            method: req.method,
+            url: req.url,
+            query: req.query
+        });
         try {
             const conversation = await ConversationModel.getUserConversation();
             console.log("The Record Fetch From Conversation History Are:", conversation);            
@@ -271,6 +284,12 @@ class ConversationController {
     }
 
     static async banUser(req: Request, res: Response): Promise<void> {
+        console.log('banUser Request:', {
+            method: req.method,
+            url: req.url,
+            params: req.params,
+            body: req.body
+        });
         try {
             const userId = parseInt(req.params.id, 10);
             if (isNaN(userId)) {
@@ -278,12 +297,49 @@ class ConversationController {
                 return;
             }
 
-            const result = await ConversationModel.banUser(userId);
-            if (result) {
-                res.status(200).json({ message: "User has been banned successfully" });
-            } else {
-                res.status(404).json({ error: "User not found" });
+            // Get the logged-in user ID and taskTakenId from the request body
+            const { loggedInUserId, taskTakenId } = req.body;
+            if (!loggedInUserId || isNaN(loggedInUserId)) {
+                res.status(400).json({ error: "Logged-in user ID is required and must be a valid number" });
+                return;
             }
+            if (!taskTakenId || isNaN(taskTakenId)) {
+                res.status(400).json({ error: "Task taken ID is required and must be a valid number" });
+                return;
+            }
+
+            // Update the user's acc_status to "Banned" and set action_by in the user table
+            const { data: userData, error: userError } = await supabase
+                .from("user")
+                .update({ acc_status: "Banned", action_by: loggedInUserId })
+                .eq("user_id", userId)
+                .select()
+                .single();
+
+            if (userError) {
+                console.error("Supabase update error (user table):", userError);
+                throw userError;
+            }
+
+            if (!userData) {
+                console.log(`User with ID ${userId} not found`);
+                res.status(404).json({ error: "User not found" });
+                return;
+            }
+
+            const { data: convoData, error: convoError } = await supabase
+                .from("conversation_history")
+                .update({ action_by: loggedInUserId })
+                .eq("task_taken_id", taskTakenId)
+                .eq("user_id", userId);
+
+            if (convoError) {
+                console.error("Supabase update error (conversation_history table):", convoError);
+                throw convoError;
+            }
+
+            console.log(`User with ID ${userId} has been banned by user ${loggedInUserId} for task_taken_id ${taskTakenId}`);
+            res.status(200).json({ message: "User has been banned successfully" });
         } catch (error) {
             if (error instanceof Error) {
                 res.status(500).json({ error: error.message });
@@ -294,6 +350,14 @@ class ConversationController {
     }
 
     static async warnUser(req: Request, res: Response): Promise<void> {
+        console.log('warnUser Request:', 
+            {
+            method: req.method,
+            url: req.url,
+            params: req.params,
+            body: req.body
+            });
+            
         try {
             const userId = parseInt(req.params.id, 10);
             if (isNaN(userId)) {
@@ -301,12 +365,50 @@ class ConversationController {
                 return;
             }
 
-            const result = await ConversationModel.warnUser(userId);
-            if (result) {
-                res.status(200).json({ message: "User has been warned successfully" });
-            } else {
-                res.status(404).json({ error: "User not found" });
+
+            const { loggedInUserId, taskTakenId } = req.body;
+            if (!loggedInUserId || isNaN(loggedInUserId)) {
+                res.status(400).json({ error: "Logged-in user ID is required and must be a valid number" });
+                return;
             }
+            if (!taskTakenId || isNaN(taskTakenId)) {
+                res.status(400).json({ error: "Task taken ID is required and must be a valid number" });
+                return;
+            }
+
+
+            const { data: userData, error: userError } = await supabase
+                .from("user")
+                .update({ acc_status: "Warn", action_by: loggedInUserId })
+                .eq("user_id", userId)
+                .select()
+                .single();
+
+            if (userError) {
+                console.error("Supabase update error (user table):", userError);
+                throw userError;
+            }
+
+            if (!userData) {
+                console.log(`User with ID ${userId} not found`);
+                res.status(404).json({ error: "User not found" });
+                return;
+            }
+
+
+            const { data: convoData, error: convoError } = await supabase
+                .from("conversation_history")
+                .update({ action_by: loggedInUserId })
+                .eq("task_taken_id", taskTakenId)
+                .eq("user_id", userId);
+
+            if (convoError) {
+                console.error("Supabase update error (conversation_history table):", convoError);
+                throw convoError;
+            }
+
+            console.log(`User with ID ${userId} has been warned by user ${loggedInUserId} for task_taken_id ${taskTakenId}`);
+            res.status(200).json({ message: "User has been warned successfully" });
         } catch (error) {
             if (error instanceof Error) {
                 res.status(500).json({ error: error.message });

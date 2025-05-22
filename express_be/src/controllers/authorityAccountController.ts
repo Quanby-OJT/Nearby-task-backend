@@ -20,6 +20,7 @@ class AuthorityAccountController {
         user_role,
         contact,
         gender,
+        added_by,
       } = req.body;
       const imageFile = req.file;
       console.log("Received authority account data:", req.body);
@@ -73,6 +74,7 @@ class AuthorityAccountController {
         emailVerified: true,
         verified: true,
         verification_token: null,
+        added_by: added_by || null,
       };
 
       if (password) {
@@ -125,6 +127,8 @@ class AuthorityAccountController {
         contact,
         gender,
         acc_status,
+        action_by,
+        added_by,
       } = req.body;
       const imageFile = req.file;
 
@@ -168,6 +172,8 @@ class AuthorityAccountController {
         contact,
         gender,
         acc_status,
+        action_by,
+        added_by,
         verified: true,
       };
 
@@ -229,7 +235,7 @@ class AuthorityAccountController {
       const userID = req.params.id;
       console.log("Retrieving User Document for..." + userID);
       const userDocs = await AuthorityAccount.getUserDocs(userID);
-      console.log("User Document: " + userDocs);
+      console.log("User Document (including face_image):", userDocs); 
       res.status(200).json({ user: userDocs });
     } catch (error) {
       res.status(500).json({
@@ -244,29 +250,27 @@ class AuthorityAccountController {
       if (!fileName) {
         return res.status(400).json({ error: "File name is required" });
       }
-  
+
       const bucketName = "crud_bucket";
-  
-  
-      const fileUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucketName}/${fileName}`;
-      console.log("Fetching file from:", fileUrl);
-  
-      // Fetch the file from Supabase
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        if (response.status === 404) {
+
+      // Fetch the file from Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(fileName);
+
+      if (error) {
+        if (error.message.includes("404")) {
           return res.status(404).json({ error: "File not found in Supabase Storage" });
         }
-        throw new Error(`Failed to fetch the document from Supabase Storage: ${response.statusText}`);
+        throw new Error(`Failed to fetch the document from Supabase Storage: ${error.message}`);
       }
-  
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-  
+
+      const buffer = Buffer.from(await data.arrayBuffer());
+
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Content-Disposition", "inline; filename=\"document.pdf\"");
       res.setHeader("Content-Length", buffer.length);
-  
+
       res.send(buffer);
     } catch (error) {
       console.error("Error serving document:", error);
@@ -396,6 +400,18 @@ class AuthorityAccountController {
         return;
       }
 
+      // Clear the otp code after successfull verification
+      const { error: updateError } = await supabase
+        .from("two_fa_code")
+        .update({
+          two_fa_code: null
+        })
+        .eq("code_id", otpRecord.code_id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
       res.status(200).json({ message: "OTP verified successfully" });
     } catch (error) {
       console.error("Error in verifyOtp:", error);
@@ -437,8 +453,8 @@ class AuthorityAccountController {
         throw new Error(updateError.message);
       }
 
-      // Delete the used OTP from two_fa_code table
-      await supabase.from("two_fa_code").delete().eq("user_id", user.user_id);
+      // Clear the two_fa_code attribute instead of deleting the record
+      await supabase.from("two_fa_code").update({ two_fa_code: null }).eq("user_id", user.user_id);
 
       res.status(200).json({ message: "Password reset successfully" });
     } catch (error) {
@@ -582,6 +598,23 @@ class AuthorityAccountController {
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to retrieve addresses" });
     }
   }
+
+  static async getAllUsers(req: Request, res: Response): Promise<void> {
+    try {
+      const { data, error } = await supabase.from(`user`).select().order("created_at", { ascending: false });;
+
+      if (error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(200).json({ users: data });
+      }
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
 }
 
 export default AuthorityAccountController;
