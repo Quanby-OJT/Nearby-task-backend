@@ -43,7 +43,7 @@ const httpsServer = https.createServer(sslOptions, app);
 const io = new Server(httpsServer, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"] 
   }
 });
 

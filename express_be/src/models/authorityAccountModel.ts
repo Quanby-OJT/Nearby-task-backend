@@ -78,11 +78,11 @@ class AuthorityAccount {
 
   static async showTasker(user_id: string) {
     const { data: tasker, error: taskerError } = await supabase
-      .from("user")
+      .from("tasker")
       .select(
-        "user_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
+        "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
       )
-      .eq("user_id", user_id)
+      .eq("tasker_id", user_id)
       .maybeSingle();
     console.log(tasker, taskerError);
 
@@ -91,27 +91,27 @@ class AuthorityAccount {
       throw new Error("Tasker Error: " + taskerError.message);
     }
 
-    const { data: taskerDocument, error: taskerDocumentError } = await supabase
+    const { data: userDocument, error: userDocumentError } = await supabase
       .from("user_documents")
-      .select("user_document_link")
+      .select("doc_name, user_document_link")
       .eq("tasker_id", user_id);
-    console.log(tasker, taskerError, taskerDocument, taskerDocumentError);
+    console.log(tasker, taskerError, userDocument, userDocumentError);
 
-    if (taskerDocumentError) throw new Error("Tasker Document Error: " + taskerDocumentError.message);
+    if (userDocumentError) throw new Error("User Document Error: " + userDocumentError.message);
 
-    return { tasker, taskerDocument };
+    return { tasker, userDocument };
   }
 
   static async getUserDocs(user_id: string) {
     const { data, error } = await supabase
       .from("user")
-      .select(
-        `
+      .select(`
         user_role,
         client_documents!client_documents_user_id_fkey (document_url),
-        user_documents!user_documents_tasker_id_fkey (user_document_link)
-        `
-      )
+        user_documents!user_documents_tasker_id_fkey (doc_name, user_document_link),
+        user_id!user_id_user_id_fkey (id_image),
+        user_face_identity!user_face_identity_user_id_fkey (face_image)  -- Added join to fetch face_image from user_face_identity table
+      `)
       .eq("user_id", user_id)
       .single();
 
@@ -122,8 +122,8 @@ class AuthorityAccount {
 
   static async updateTaskerDocumentsValid(user_id: string, valid: boolean) {
     const { data: tasker, error: taskerError } = await supabase
-      .from("user")
-      .select("user_id")
+      .from("tasker")
+      .select("tasker_id")
       .eq("user_id", user_id)
       .maybeSingle();
 
@@ -133,11 +133,11 @@ class AuthorityAccount {
     }
 
     if (!tasker) {
-      console.log(`No user found for user_id: ${user_id}`);
+      console.log(`No tasker found for user_id: ${user_id}`);
       return;
     }
 
-    const taskerId = tasker.user_id;
+    const taskerId = user_id; // Use user_id directly as tasker_id in user_documents
 
     const { error: updateError } = await supabase
       .from("user_documents")

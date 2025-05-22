@@ -17,6 +17,8 @@ import ScheduleController from "../controllers/scheduleController";
 import FeedbackController from "../controllers/feedbackController";
 import SettingController from "../controllers/settingController";
 import PaymentController from "../controllers/paymentController";
+import AuthorityAccountController from "../controllers/authorityAccountController";
+
 
 const upload = multer({storage: memoryStorage()})
 
@@ -35,9 +37,9 @@ router.post("/reset", AuthenticationController.generateOTP);
 router.post( "/create-new-account", userValidation, handleValidationErrors, UserAccountController.registerUser);
 
 // New routes for forgot password (for AngularJS only)
-router.post("/forgot-password/send-otp", UserAccountController.sendOtp);
-router.post("/forgot-password/verify-otp", UserAccountController.verifyOtp);
-router.post("/forgot-password/reset-password", UserAccountController.resetPassword);
+router.post("/authority/forgot-password/send-otp", AuthorityAccountController.sendOtp);
+router.post("/authority/forgot-password/verify-otp", AuthorityAccountController.verifyOtp);
+router.post("/authority/forgot-password/reset-password", AuthorityAccountController.resetPassword);
 
 // New route for forget password (for Flutter Only)
 router.post("/forgot-password", AuthenticationController.forgotPassword);
