@@ -312,57 +312,139 @@ class TaskController {
     }
   }
 
-    static async getTaskforClient(req: Request, res: Response): Promise<void> {
-       const clientId = req.params.clientId;
+  static async getTaskforClient(req: Request, res: Response): Promise<void> {
     
-      try {
-        const { data:task, error } = await supabase
-          .from("post_task")
+    const clientId = req.params.clientId;
+
+    try {
+      const [taskResult, taskTakenResult] = await Promise.all([
+        supabase
+          .from('post_task')
           .select(`
             *,
             tasker_specialization:specialization_id (specialization),
             address (*),
             clients!client_id (
               user (
-              user_id,
-              first_name,
-              middle_name,
-              last_name,
-              email,
-              contact,
-              gender,
-              birthdate,
-              user_role,
-              acc_status,
-              verified,
-              image_link
+                user_id,
+                first_name,
+                middle_name,
+                last_name,
+                email,
+                contact,
+                gender,
+                birthdate,
+                user_role,
+                acc_status,
+                verified,
+                image_link
               )
             )
           `)
-          .eq("client_id", clientId)
-          .eq("clients.user.user_role", "Client");
-    
-        console.log("Tasks data:", task, "Error:", error);
-    
-        if (error) {
-          console.error("Error fetching tasks:", error.message);
-          res.status(500).json({ error: error.message });
-          return;
-        }
-    
-        if (!task || task.length === 0) {
-          res.status(200).json({ error: "No active tasks found." });
-          return;
-        }
-    
-        res.status(200).json({ tasks: task });
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
+          .eq('client_id', clientId)
+          .eq('clients.user.user_role', 'Client'),
+        
+        supabase
+          .from('task_taken')
+          .select(`
+            task_taken_id,
+            task_id,
+            task_status,
+            created_at,
+            client_id,
+            tasker_id,
+             tasker:tasker!tasker_id (
+                user_id,
+                  user (
+                    user_id,
+                    first_name,
+                    middle_name,
+                    last_name,
+                    email,
+                    contact,
+                    gender,
+                    birthdate,
+                    user_role,
+                    acc_status,
+                    verified,
+                    image_link
+                  )
+                ),
+            
+            task:post_task (
+              *,
+              tasker_specialization:specialization_id (specialization),
+              address (*),
+              client:clients!client_id (
+                client_id,
+                user (
+                  user_id,
+                  first_name,
+                  middle_name,
+                  last_name,
+                  email,
+                  contact,
+                  gender,
+                  birthdate,
+                  user_role,
+                  acc_status,
+                  verified,
+                  image_link
+                )
+              )
+            )
+          `)
+          .eq('client_id', clientId)
+      ]);
+
+      if (taskResult.error) {
+        console.error('Error fetching tasks:', taskResult.error.message);
         res.status(500).json({
-          error: error instanceof Error ? error.message : "Unknown error occurred",
+          success: false,
+          error: 'Failed to fetch tasks',
+          details: taskResult.error.message
         });
+        return;
       }
+
+      if (taskTakenResult.error) {
+        console.error('Error fetching taken tasks:', taskTakenResult.error.message);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to fetch taken tasks',
+          details: taskTakenResult.error.message
+        });
+        return;
+      }
+
+      if (!taskResult.data || taskResult.data.length === 0) {
+        res.status(200).json({
+          success: true,
+          tasks: [],
+          taskTaken: taskTakenResult.data || [],
+          message: 'No active tasks found'
+        });
+        return;
+      }
+
+      console.log("Task data:", taskResult.data);
+      console.log("Task taken data:", taskTakenResult.data);
+
+      res.status(200).json({
+        success: true,
+        tasks: taskResult.data,
+        taskTaken: taskTakenResult.data || []
+      });
+
+    } catch (error) {
+      console.error('Unexpected error fetching tasks:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
     }
+
+}
 
   static async getTaskforTasker(req: Request, res: Response): Promise<void> {
     try {
