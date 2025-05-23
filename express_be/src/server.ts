@@ -18,9 +18,9 @@ import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
 import TaskerModel from "./models/taskerModel";
 import ConversationRoutes from "./routes/conversationRoutes";
-import fs from 'fs';
+import fs from "fs";
 import https from "https";
-import path from 'path'
+import path from "path";
 import { Server } from "socket.io";
 dotenv.config();
 const app: Application = express();
@@ -35,16 +35,16 @@ app.use(
 );
 
 const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, 'mkcert+4-key.pem')),
-  cert: fs.readFileSync(path.join(__dirname, 'mkcert+4.pem')),
+  key: fs.readFileSync(path.join(__dirname, "mkcert+4-key.pem")),
+  cert: fs.readFileSync(path.join(__dirname, "mkcert+4.pem")),
 };
 
 const httpsServer = https.createServer(sslOptions, app);
 const io = new Server(httpsServer, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"] 
-  }
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  },
 });
 
 app.use(express.json());
