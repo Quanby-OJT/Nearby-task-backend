@@ -86,6 +86,14 @@ class ClientTaskerModeration{
             user_role
           )
         ),
+        tasker(
+            user(
+            first_name,
+            middle_name,
+            last_name,
+            user_role
+          )
+        ),
         post_task(
           task_id,
           task_title

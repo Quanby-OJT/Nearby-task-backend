@@ -22,6 +22,7 @@ import fs from 'fs';
 import https from "https";
 import path from 'path'
 import { Server } from "socket.io";
+
 dotenv.config();
 const app: Application = express();
 
@@ -61,6 +62,8 @@ app.use(
     },
   })
 );
+app.set("view engine", "ejs")
+app.set("views", path.join(__dirname, "email-views"))
 
 app.use("/connect", server);
 
