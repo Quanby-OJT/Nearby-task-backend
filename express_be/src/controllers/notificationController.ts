@@ -1197,230 +1197,222 @@ class NotificationController {
   }
 
 
-static async updateRequest(req: Request, res: Response): Promise<void> {
-  const taskTakenId = parseInt(req.params.taskTakenId);
-  const { value, role, reason_for_dispute, dispute_details } = req.body;
-  console.log("Role:", req.body);
-  console.log("Task Taken ID:", taskTakenId);
-  console.log("Value:", value);
-  console.log("Role:", role);
+  static async updateRequest(req: Request, res: Response): Promise<void> {
+    const taskTakenId = parseInt(req.params.taskTakenId);
+    const { value, role, reason_for_dispute, dispute_details } = req.body;
+    console.log("Role:", req.body);
+    console.log("Task Taken ID:", taskTakenId);
+    console.log("Value:", value);
+    console.log("Role:", role);
 
-  if (!taskTakenId) {
-    res.status(400).json({ error: "Task Taken ID is required." });
-    return;
-  }
-
-  let visit_client = false;
-  let visit_tasker = false;
-
-  
-  if (role == "Client") {
-    visit_client = true;
-    visit_tasker = false;
-  } else {
-    visit_client = false;
-    visit_tasker = true;
-  }
-
-  switch (value) {
-    case 'Accept':
-      await TaskAssignment.updateStatus(taskTakenId, "Confirmed", visit_client, visit_tasker);
-      break;
-    case 'Start':
-      await TaskAssignment.updateStatus(taskTakenId, "Ongoing", visit_client, visit_tasker);
-
-      const { data: taskData, error: taskError } = await supabase
-      .from("task_taken")
-      .select("*")
-      .eq("task_taken_id", taskTakenId)
-      .maybeSingle();
-
-    if (taskError) {
-      console.error(taskError.message);
-      res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+    if (!taskTakenId) {
+      res.status(400).json({ error: "Task Taken ID is required." });
       return;
     }
 
-    const { data: postTaskData, error: postTaskError } = await supabase
-      .from("post_task")
-      .update({ status: "Already Taken" })
-      .eq("task_id", taskData.task_id)
-      .maybeSingle();
+    let visit_client = false;
+    let visit_tasker = false;
 
-    if (postTaskError) {
-      console.error(postTaskError.message);
-      res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
-      return;
+    
+    if (role == "Client") {
+      visit_client = true;
+      visit_tasker = false;
+    } else {
+      visit_client = false;
+      visit_tasker = true;
     }
-      break;
-    case 'Reject':
-      await TaskAssignment.updateStatus(taskTakenId, "Rejected", visit_client, visit_tasker);
-      break;
-    case 'Review':
-      await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
-      break;
-    case 'Reject':
-      const { error: rejectError } = await supabase
-        .from("task_taken")
-        .update({ task_status: "Rejected", visit_client: visit_client, visit_tasker: visit_tasker })
-        .eq("task_taken_id", taskTakenId);
 
-        console.log("Reject request value: $value");
-
-        if (rejectError) {
-          console.error(rejectError.message);
-          res.status(500).json({ success: false, error: "An Error Occurred while rejecting the request." });
-          return;
-        }
+    switch (value) {
+      case 'Accept':
+        await TaskAssignment.updateStatus(taskTakenId, "Confirmed", visit_client, visit_tasker);
         break;
-    case 'Cancel':
-      await TaskAssignment.updateStatus(taskTakenId, "Cancelled", visit_client, visit_tasker);
-      break;
-    case 'Disputed':
-      await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
+      case 'Start':
+        await TaskAssignment.updateStatus(taskTakenId, "Ongoing", visit_client, visit_tasker);
 
-      const imageEvidence = req.files as Express.Multer.File[];
-      console.log("Image Evidence:", imageEvidence);
+        const { data: taskData, error: taskError } = await supabase
+        .from("task_taken")
+        .select("*")
+        .eq("task_taken_id", taskTakenId)
+        .maybeSingle();
 
-      let imageProof: string[] = [];
-      if (imageEvidence && imageEvidence.length > 0) {
-        for (const file of imageEvidence) {
-          // Validate file mimetype or content
-          const validImageTypes = ["image/jpeg", "image/png", "image/gif", "application/octet-stream"];
-          let contentType = file.mimetype;
+      if (taskError) {
+        console.error(taskError.message);
+        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+        return;
+      }
 
-          // Check file signature for octet-stream
-          if (file.mimetype === "application/octet-stream") {
-            const isJpeg = file.buffer.subarray(0, 4).toString("hex").startsWith("ffd8ff");
-            const isPng = file.buffer.subarray(0, 8).toString("hex").startsWith("89504e470d0a1a0a");
-            const isGif = file.buffer.subarray(0, 6).toString("hex").startsWith("47494638");
+      const { data: postTaskData, error: postTaskError } = await supabase
+        .from("post_task")
+        .update({ status: "Already Taken" })
+        .eq("task_id", taskData.task_id)
+        .maybeSingle();
 
-            if (isJpeg) {
-              contentType = "image/jpeg";
-            } else if (isPng) {
-              contentType = "image/png";
-            } else if (isGif) {
-              contentType = "image/gif";
-            } else {
-              console.error(`Invalid file content for: ${file.originalname}`);
+      if (postTaskError) {
+        console.error(postTaskError.message);
+        res.status(500).json({ success: false, error: "An Error Occurred while starting the request." });
+        return;
+      }
+        break;
+      case 'Reject':
+        await TaskAssignment.updateStatus(taskTakenId, "Rejected", visit_client, visit_tasker);
+        break;
+      case 'Review':
+        await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
+        break;
+      case 'Reject':
+        const { error: rejectError } = await supabase
+          .from("task_taken")
+          .update({ task_status: "Rejected", visit_client: visit_client, visit_tasker: visit_tasker })
+          .eq("task_taken_id", taskTakenId);
+
+          console.log("Reject request value: $value");
+
+          if (rejectError) {
+            console.error(rejectError.message);
+            res.status(500).json({ success: false, error: "An Error Occurred while rejecting the request." });
+            return;
+          }
+          break;
+      case 'Cancel':
+        await TaskAssignment.updateStatus(taskTakenId, "Cancelled", visit_client, visit_tasker);
+        break;
+      case 'Disputed':
+        await TaskAssignment.updateStatus(taskTakenId, "Disputed", visit_client, visit_tasker);
+
+        const imageEvidence = req.files as Express.Multer.File[];
+        console.log("Image Evidence:", imageEvidence);
+
+        let imageProof: string[] = [];
+        if (imageEvidence && imageEvidence.length > 0) {
+          for (const file of imageEvidence) {
+            // Validate file mimetype or content
+            const validImageTypes = ["image/jpeg", "image/png", "image/gif", "application/octet-stream"];
+            let contentType = file.mimetype;
+
+            // Check file signature for octet-stream
+            if (file.mimetype === "application/octet-stream") {
+              const isJpeg = file.buffer.subarray(0, 4).toString("hex").startsWith("ffd8ff");
+              const isPng = file.buffer.subarray(0, 8).toString("hex").startsWith("89504e470d0a1a0a");
+              const isGif = file.buffer.subarray(0, 6).toString("hex").startsWith("47494638");
+
+              if (isJpeg) {
+                contentType = "image/jpeg";
+              } else if (isPng) {
+                contentType = "image/png";
+              } else if (isGif) {
+                contentType = "image/gif";
+              } else {
+                console.error(`Invalid file content for: ${file.originalname}`);
+                res.status(400).json({
+                  success: false,
+                  message: `Invalid file content. Only JPEG, PNG, and GIF are allowed.`,
+                });
+                return;
+              }
+            }
+
+            if (!validImageTypes.includes(file.mimetype)) {
+              console.error(`Invalid file type: ${file.mimetype}`);
               res.status(400).json({
                 success: false,
-                message: `Invalid file content. Only JPEG, PNG, and GIF are allowed.`,
+                message: `Invalid file type. Only JPEG, PNG, and GIF are allowed.`,
               });
               return;
             }
+
+            const fileName = `dispute_proof/${Date.now()}_${file.originalname}`;
+            const { data, error } = await supabase.storage
+              .from("documents")
+              .upload(fileName, file.buffer, {
+                contentType: contentType,
+                cacheControl: "3600",
+                upsert: false,
+              });
+
+            if (error) {
+              console.error("Error uploading image:", error);
+              res.status(500).json({
+                success: false,
+                message: "Error uploading images",
+              });
+              return;
+            }
+
+            console.log("Image uploaded successfully:", data);
+
+            const { data: publicUrlData } = await supabase.storage
+              .from("documents")
+              .getPublicUrl(fileName);
+
+            imageProof.push(publicUrlData.publicUrl);
           }
 
-          if (!validImageTypes.includes(file.mimetype)) {
-            console.error(`Invalid file type: ${file.mimetype}`);
-            res.status(400).json({
-              success: false,
-              message: `Invalid file type. Only JPEG, PNG, and GIF are allowed.`,
+          console.log("Image Proof:", imageProof);
+          await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
+          break;
+        } else {
+          console.log("No image evidence provided");
+          await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
+          break;
+        }
+      case 'Finish':
+        console.log("Hi");
+    
+        if(role == "Tasker"){
+          await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
+        }else{
+          const task = await taskModel.getTaskAmount(taskTakenId);
+          console.log("Task data:", task);
+          console.log("Proposed Price:", task?.post_task.proposed_price);
+    
+          await TaskAssignment.updateStatus(taskTakenId, "Completed", visit_client, visit_tasker, undefined, true);
+    
+          //console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
+    
+          //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
+    
+          const { error: updateAmountError } = await supabase
+            .rpc('update_tasker_amount', {
+              addl_credits: task?.post_task.proposed_price, 
+              id: task?.tasker.tasker_id,
             });
+    
+          if (updateAmountError) {
+            console.error(updateAmountError.message);
+            res.status(500).json({ success: false, error: "An Error Occurred while updating tasker amount." });
             return;
           }
-
-          const fileName = `dispute_proof/${Date.now()}_${file.originalname}`;
-          const { data, error } = await supabase.storage
-            .from("documents")
-            .upload(fileName, file.buffer, {
-              contentType: contentType,
-              cacheControl: "3600",
-              upsert: false,
-            });
-
-          if (error) {
-            console.error("Error uploading image:", error);
-            res.status(500).json({
-              success: false,
-              message: "Error uploading images",
-            });
-            return;
-          }
-
-          console.log("Image uploaded successfully:", data);
-
-          const { data: publicUrlData } = supabase.storage
-            .from("documents")
-            .getPublicUrl(fileName);
-
-          imageProof.push(publicUrlData.publicUrl);
+          break;
         }
+      default:
+        res.status(400).json({ success: false, error: "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'" });
+        return;
+    }
 
-        console.log("Image Proof:", imageProof);
-        await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
-        break;
-      } else {
-        console.log("No image evidence provided");
-        await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
-        break;
-      }
-    case 'Finish':
-      console.log("Hi");
-  
-      if(role == "Tasker"){
-        await TaskAssignment.updateStatus(taskTakenId, "Review", visit_client, visit_tasker);
-      }else{
-        const task = await taskModel.getTaskAmount(taskTakenId);
-        console.log("Task data:", task);
-        console.log("Proposed Price:", task?.post_task.proposed_price);
-  
-        // await QTaskPayment.releasePayment({
-        //   client_id: task?.post_task.client_id,
-        //   transaction_id: "Id from Xendit", //Temporary value
-        //   amount: task?.post_task.proposed_price ?? 0,
-        //   payment_type: "Release of Payment to Tasker",
-        //   deposit_date: new Date().toISOString(),
-        // });
-  
-        await TaskAssignment.updateStatus(taskTakenId, "Completed", visit_client, visit_tasker, undefined, true);
-  
-        //console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
-  
-        //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
-  
-        const { error: updateAmountError } = await supabase
-          .rpc('update_tasker_amount', {
-            addl_credits: task?.post_task.proposed_price, 
-            id: task?.tasker.tasker_id,
-          });
-  
-        if (updateAmountError) {
-          console.error(updateAmountError.message);
-          res.status(500).json({ success: false, error: "An Error Occurred while updating tasker amount." });
-          return;
-        }
-        break;
-      }
-    default:
-      res.status(400).json({ success: false, error: "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'" });
+    res.status(200).json({ success: true, message: "Successfully Updated the Task Status." });
+  }
+
+  static async updateNotification(req: Request, res: Response): Promise<void> {
+    const taskTakenId = req.params.taskTakenId;
+
+    if (!taskTakenId) {
+      res.status(400).json({ error: "Task Taken ID is required." });
       return;
+    }
+
+    const { error } = await supabase
+      .from("task_taken")
+      .update({ visit_client: true, visit_tasker: true })
+      .eq("task_taken_id", taskTakenId);
+
+    if (error) {
+      console.error(error.message);
+      res.status(500).json({ error: "An Error Occurred while updating the notification." });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: "Notification updated successfully." });
   }
-
-  res.status(200).json({ success: true, message: "Successfully Updated the Task Status." });
-}
-
-static async    updateNotification(req: Request, res: Response): Promise<void> {
-  const taskTakenId = req.params.taskTakenId;
-
-  if (!taskTakenId) {
-    res.status(400).json({ error: "Task Taken ID is required." });
-    return;
-  }
-
-  const { error } = await supabase
-    .from("task_taken")
-    .update({ visit_client: true, visit_tasker: true })
-    .eq("task_taken_id", taskTakenId);
-
-  if (error) {
-    console.error(error.message);
-    res.status(500).json({ error: "An Error Occurred while updating the notification." });
-    return;
-  }
-
-  res.status(200).json({ success: true, message: "Notification updated successfully." });
-}
 
 
 }

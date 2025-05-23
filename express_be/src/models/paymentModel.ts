@@ -359,10 +359,10 @@ class QTaskPayment {
     const rawPayload = JSON.stringify(nextPayOptions)
     const signature = Crypto.createHmac("sha256", process.env.NEXTPAY_SECRET_KEY!).update(rawPayload).digest("hex")
 
-    console.log(nextPayOptions)
-    console.log("NextPay URL:", process.env.NEXTPAY_URL);
-    console.log("Client ID:", process.env.NEXTPAY_API_KEY?.slice(0, 10)); // should start with `np_test_`
-    console.log("Secret Key:", process.env.NEXTPAY_SECRET_KEY?.slice(0, 10));
+    // console.log(nextPayOptions)
+    // console.log("NextPay URL:", process.env.NEXTPAY_URL);
+    // console.log("Client ID:", process.env.NEXTPAY_API_KEY?.slice(0, 10)); // should start with `np_test_`
+    // console.log("Secret Key:", process.env.NEXTPAY_SECRET_KEY?.slice(0, 10));
 
 
     // Verify signature matches payload
@@ -370,7 +370,7 @@ class QTaskPayment {
       .update(rawPayload)
       .digest("hex");
 
-    console.log(signature === computedSignature)
+    // console.log(signature === computedSignature)
 
     // if (signature !== computedSignature) {
     //   throw new Error("Invalid signature - payload may have been tampered with");
@@ -408,6 +408,8 @@ class QTaskPayment {
             status: nextPayResponse.status,
             reference_id: nextPayResponse.reference_id
           })
+
+          
     console.log("Errors:", error);
     if (error) throw new Error(error.message);
   }
@@ -461,7 +463,8 @@ class QTaskPayment {
     if(UpdateClientCreditsError) throw new Error(UpdateClientCreditsError.message)
   }
 
-  static async releaseHalfCredits(task_taken_id: number, task_id: number){
+  //If the Moderator hasn't made a decision after 14 days or more, the payment will be half to both tasker and client.
+  static async releaseHalfCredits(task_taken_id: number){
     const task_amount = await taskModel.getTaskAmount(task_taken_id)
 
     if(!task_amount) return {error: "Unable to retrieve task payment. Please Try Again."}
@@ -480,6 +483,8 @@ class QTaskPayment {
 
     if(updateTaskerCreditsError) throw new Error(updateTaskerCreditsError.message)
   }
+
+
 
   static async deductAmountfromUser(role: string, amount: number, user_id: number) {
     const { error: deductionError } = await supabase.rpc('decrement_user_credits_by_role', {
