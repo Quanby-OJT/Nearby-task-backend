@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { supabase } from "../config/configuration";
 import { error } from "console";
-import PayMongoPayment from "../models/paymentModel";
+import QTaskPayment from "../models/paymentModel";
 import taskModel from "../models/taskModel";
 import TaskAssignment from "../models/taskAssignmentModel";
 import { DateTime } from "luxon";
@@ -1490,7 +1490,7 @@ class NotificationController {
           })
           .eq("task_taken_id", taskTakenId);
 
-        console.log("Reject request value: $value");
+          console.log("Reject request value: $value");
 
         if (rejectError) {
           console.error(rejectError.message);

@@ -3,9 +3,6 @@ import TaskerModel from "../models/taskerModel";
 import ClientModel from "../models/clientModel";
 import { supabase } from "../config/configuration";
 import { UserAccount } from "../models/userAccountModel";
-import FeedbackModel from "../models/feedbackModel";
-import taskModel from "../models/taskModel";
-import PayMongoPayment from "../models/paymentModel";
 
 class TaskerController {
   static async createTasker(req: Request, res: Response): Promise<any> {

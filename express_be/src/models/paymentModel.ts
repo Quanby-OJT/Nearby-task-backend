@@ -5,8 +5,6 @@ import Crypto from "crypto";
 
 interface Payment {
   payment_history_id?: number;
-  signature?: string;
-  account_no?: string;
   user_id?: number;
   transaction_id?: string;
   amount: number;
@@ -16,36 +14,7 @@ interface Payment {
   task_taken_id?: number;
   payment_method?: string;
   status?: string;
-}
-
-// Updated to match PayMongo's checkout_sessions response structure
-interface PayMongoIntentResponse {
-  data: {
-    id: string;
-    type: string;
-    attributes: {
-      amount: number,
-      capture_type: string;
-      currency: string;
-      checkout_url: string;
-      client_key: string;
-      description: string;
-      livemode: boolean;
-      original_amount: number;
-      statement_descriptor: string;
-      last_payment_error: null | object;
-      payment_method_allowed: string[];
-      payments: Array<object>;
-      next_action: null | object;
-      status: string; 
-      send_email_receipt: boolean;
-      metadata: object | null;
-      setup_future_usage: null | string;
-      created_at: number;
-      updated_at: number;
-    };
-  };
-  errors?: Array<{ detail: string }>; // For error cases
+  account_no?: string;
 }
 
 interface PaymentMethodResponse {
@@ -104,7 +73,39 @@ interface AttachedPaymentResponse {
   errors?: Array<{ detail: string }>; // For error cases
 }
 
-class PayMongoPayment {
+// Updated to match PayMongo's checkout_sessions response structure
+interface PayMongoIntentResponse {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      amount: number,
+      capture_type: string;
+      currency: string;
+      checkout_url: string;
+      client_key: string;
+      description: string;
+      livemode: boolean;
+      original_amount: number;
+      statement_descriptor: string;
+      last_payment_error: null | object;
+      payment_method_allowed: string[];
+      payments: Array<object>;
+      next_action: null | object;
+      status: string; 
+      send_email_receipt: boolean;
+      metadata: object | null;
+      setup_future_usage: null | string;
+      created_at: number;
+      updated_at: number;
+    };
+  };
+  errors?: Array<{ detail: string }>; // For error cases
+}
+
+//TODO: Implement XENDIT API response structure
+
+class QTaskPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
       first_name: string, 
@@ -117,7 +118,7 @@ class PayMongoPayment {
     // Fetch user and task data from Supabase
     const { data: userEmailResponse, error: emailError } = await supabase
       .from("user")
-      .select("first_name, middle_name, last_name, email, contact")
+      .select("first_name, middle_name, last_name, email, contact)")
       .eq("user_id", paymentInfo.user_id)
       .single() as { data: UserEmailResponse | null; error: any };
 
@@ -358,10 +359,10 @@ class PayMongoPayment {
     const rawPayload = JSON.stringify(nextPayOptions)
     const signature = Crypto.createHmac("sha256", process.env.NEXTPAY_SECRET_KEY!).update(rawPayload).digest("hex")
 
-    console.log(nextPayOptions)
-    console.log("NextPay URL:", process.env.NEXTPAY_URL);
-    console.log("Client ID:", process.env.NEXTPAY_API_KEY?.slice(0, 10)); // should start with `np_test_`
-    console.log("Secret Key:", process.env.NEXTPAY_SECRET_KEY?.slice(0, 10));
+    // console.log(nextPayOptions)
+    // console.log("NextPay URL:", process.env.NEXTPAY_URL);
+    // console.log("Client ID:", process.env.NEXTPAY_API_KEY?.slice(0, 10)); // should start with `np_test_`
+    // console.log("Secret Key:", process.env.NEXTPAY_SECRET_KEY?.slice(0, 10));
 
 
     // Verify signature matches payload
@@ -369,7 +370,7 @@ class PayMongoPayment {
       .update(rawPayload)
       .digest("hex");
 
-    console.log(signature === computedSignature)
+    // console.log(signature === computedSignature)
 
     // if (signature !== computedSignature) {
     //   throw new Error("Invalid signature - payload may have been tampered with");
@@ -407,6 +408,8 @@ class PayMongoPayment {
             status: nextPayResponse.status,
             reference_id: nextPayResponse.reference_id
           })
+
+          
     console.log("Errors:", error);
     if (error) throw new Error(error.message);
   }
@@ -420,16 +423,34 @@ class PayMongoPayment {
         payment_type,
         transaction_date,
         created_at,
-        user: user_id (
+        user (
           first_name,
           middle_name,
           last_name
         )
-      `)
-      .order('payment_history_id', { ascending: false });
-  
+      `).order('payment_history_id', { ascending: false });;
     if (error) throw new Error(error.message);
     return data;
+  }
+
+  //Checker is the tasker/client has sufficient Amount before galawin ang kaniyang amount from the database.
+  static async checkBalance(user_id: string){
+    let amount: number = 0
+    const {data: roleData, error: roleError} = await supabase.from("user").select("user_role").eq("user_id", user_id).single()
+
+    if(roleError) throw new Error(roleError.message)
+
+    if(roleData.user_role == "Tasker"){
+      const {data: tasker, error: taskerError} = await supabase.from("tasker").select("amount").eq("user_id", user_id).single()
+      if(taskerError) throw new Error(taskerError.message)
+      amount = tasker.amount
+    }else if(roleData.user_role == "Client"){
+      const {data: client, error: clientError} = await supabase.from("clients").select("amount").eq("user_id", user_id).single()
+      if(clientError) throw new Error(clientError.message)
+      amount = client.amount
+    }
+
+    return {amount, user_role: roleData.user_role};
   }
 
   //In Case of Dispute raised by either user/
@@ -442,7 +463,8 @@ class PayMongoPayment {
     if(UpdateClientCreditsError) throw new Error(UpdateClientCreditsError.message)
   }
 
-  static async releaseHalfCredits(task_taken_id: number, task_id: number){
+  //If the Moderator hasn't made a decision after 14 days or more, the payment will be half to both tasker and client.
+  static async releaseHalfCredits(task_taken_id: number){
     const task_amount = await taskModel.getTaskAmount(task_taken_id)
 
     if(!task_amount) return {error: "Unable to retrieve task payment. Please Try Again."}
@@ -462,6 +484,8 @@ class PayMongoPayment {
     if(updateTaskerCreditsError) throw new Error(updateTaskerCreditsError.message)
   }
 
+
+
   static async deductAmountfromUser(role: string, amount: number, user_id: number) {
     const { error: deductionError } = await supabase.rpc('decrement_user_credits_by_role', {
       subtract_credits: amount,
@@ -473,4 +497,4 @@ class PayMongoPayment {
   }
 }
 
-export default PayMongoPayment;
+export default QTaskPayment;

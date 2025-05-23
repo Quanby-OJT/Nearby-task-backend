@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import PayMongoPayment from "../models/paymentModel";
+import QTaskPayment from "../models/paymentModel";
 import ClientModel from "./clientController";
 import { supabase } from "../config/configuration";
 import Crypto from "crypto";
@@ -17,7 +17,7 @@ class PaymentController {
 
           const fixedPaymentMethod = payment_method.replace(/-/g, "_").toLowerCase();
 
-          const PaymentInformation = await PayMongoPayment.checkoutPayment({
+          const PaymentInformation = await QTaskPayment.checkoutPayment({
               user_id: client_id,
               amount,
               deposit_date: new Date().toISOString(),
@@ -37,7 +37,7 @@ class PaymentController {
   
   static async displayPaymentLogs(req: Request, res: Response): Promise<void> {
     try {
-      const logs = await PayMongoPayment.getPaymentLogsWithUser();
+      const logs = await QTaskPayment.getPaymentLogsWithUser();
       
       const formattedLogs = logs.map((log: any) => ({
         payment_id: log.transaction_id,
@@ -118,7 +118,7 @@ class PaymentController {
         return;
       }
 
-      await PayMongoPayment.releasePayment({
+      await QTaskPayment.releasePayment({
         user_id: tasker_id,
         amount,
         withdraw_date: new Date().toISOString(),
@@ -126,7 +126,7 @@ class PaymentController {
         payment_method,
         account_no: account_number,
       });
-      await PayMongoPayment.deductAmountfromUser(role, amount, tasker_id);
+      await QTaskPayment.deductAmountfromUser(role, amount, tasker_id);
 
       res.status(200).json({ success: true, message: "Payment Has been withdrawn successfully."});
     } catch (error) {
