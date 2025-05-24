@@ -4,13 +4,11 @@ import { supabase } from "../config/configuration";
 import console from "console";
 import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
-import TaskAssignment from "../models/taskAssignmentModel";
 import fetch from "node-fetch";
-import { User } from "@supabase/supabase-js";
 require("dotenv").config();
-import PayMongoPayment from "../models/paymentModel";
-import ClientModel from "./clientController";
+import QTaskPayment from "../models/paymentModel";
 import { WebSocketServer } from "ws";
+import ClientModel from "./clientController";
 
 const ws = new WebSocketServer({ port: 8080 });
 
@@ -20,6 +18,7 @@ class TaskController {
       const photo = req.file;
       console.log("Received photo:", photo);
       console.log("Received task data:", req.body);
+      console.log("Received insert data:", req.body);    
 
       const {
         client_id,
@@ -37,6 +36,14 @@ class TaskController {
         user_id,
         status,
       } = req.body;
+
+      const amount = await QTaskPayment.checkBalance(client_id);
+
+      if(proposed_price > amount.amount){
+        const remainingAmount = proposed_price - amount.amount
+        res.status(403).json({error: `You have insufficient funds to create this task. Please Deposit An Additional P${remainingAmount} in order to create this task.`})
+        return
+      }
 
       // Validate and parse price
       const parsedPrice = Number(proposed_price);
@@ -135,6 +142,8 @@ class TaskController {
         });
         return;
       }
+
+      await QTaskPayment.deductAmountfromUser(amount.user_role, amount.amount, user_id)
 
       res.status(201).json({
         success: true,
@@ -1004,17 +1013,13 @@ class TaskController {
         return;
       }
 
-      const transactionId = await PayMongoPayment.fetchTransactionId(
-        taskTakenId
-      );
+      const transactionId = await QTaskPayment.fetchTransactionId(taskTakenId);
 
-      if (task_status == "Rejected" || task_status == "Cancelled") {
-        if (task_status == "Cancelled") {
-          await PayMongoPayment.cancelTransaction(
-            transactionId,
-            reason_for_rejection_or_cancellation
-          );
-          res.status(200).json({ message: "You had cancelled your task." });
+      if(task_status == "Rejected" || task_status == "Cancelled"){
+        if(task_status == "Cancelled"){
+          await QTaskPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
+          res.status(200).json({ message: "You had cancelled your task."});
+
         }
 
         const { error } = await supabase
