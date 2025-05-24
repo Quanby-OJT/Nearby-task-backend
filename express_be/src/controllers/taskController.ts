@@ -1568,6 +1568,76 @@ class TaskController {
     }
   }
 
+  static async getTasksClient(req: Request, res: Response): Promise<void> {
+    const { userId } = req.params;
+
+    // Validate userId
+    if (!userId || isNaN(Number(userId))) {
+      res.status(400).json({ error: "Invalid or missing userId" });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("task_taken")
+        .select(
+          `
+        task_taken_id,
+        task_id,
+        task_status,
+        created_at,
+        client_id,
+        tasker_id,
+        post_task:task_id (
+          *,
+          tasker_specialization:specialization_id (specialization),
+          address:address (*)
+        ),
+        tasker:tasker_id (
+          tasker_id,
+          user:user_id (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            email,
+            contact,
+            gender,
+            birthdate,
+            user_role,
+            acc_status,
+            verified,
+            image_link
+          )
+        )
+      `
+        )
+        .eq("client_id", userId);
+
+      if (error) {
+        console.error("Supabase error:", error.message);
+        res.status(500).json({
+          success: false,
+          error: "Failed to retrieve tasks",
+          details: error.message,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: data || [],
+      });
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({
+        success: false,
+        error: "Internal server error",
+        details:
+          process.env.NODE_ENV === "development" ? String(error) : undefined,
+      });
+    }
+  }
   static async getTasks(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
 
@@ -1646,47 +1716,35 @@ class TaskController {
         .from("task_taken")
         .select(
           `
-        task_id,
-        task_status,
-        created_at,
-        client_id,
-        tasker_id,
-        task:post_task(
-          *,
-          tasker_specialization:specialization_id (specialization),
-          address (*),
-          clients!client_id (
+          task_taken_id,
+          task_id,
+          task_status,
+          created_at,
+          client_id,
+          tasker_id,
+          task:post_task (
+            *,
+            tasker_specialization:specialization_id (specialization),
+            address (*),
+          client:tasker!tasker_id (
+            tasker_id,
             user (
-            user_id,
-            first_name,
-            middle_name,
-            last_name,
-            email,
-            contact,
-            gender,
-            birthdate,
-            user_role,
-            acc_status,
-            verified,
-            image_link
+              user_id,
+              first_name,
+              middle_name,
+              last_name,
+              email,
+              contact,
+              gender,
+              birthdate,
+              user_role,
+              acc_status,
+              verified,
+              image_link
             )
           )
-        ),
-        client:clients(
-          client_id,
-          user:user_id(*),
-          client_address
         )
-          location,
-          specialization,
-          status
-        ),
-        client:clients(
-          client_id,
-          user:user_id(*),
-          client_address
-        )
-      `
+        `
         )
         .eq("task_id", taskId)
         .maybeSingle();
