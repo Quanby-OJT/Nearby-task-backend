@@ -71,6 +71,21 @@ class FeedbackModel {
     return taskReviewData;
   }
 
+    static async getFeedbackForClient(task_taken_id: number) {
+
+    const { data: taskReviewData, error: taskReviewError } = await supabase
+      .from("task_reviews")
+      .select(`
+        rating,
+        feedback
+      `)
+      .eq("task_taken_id", task_taken_id).single();
+
+    if (taskReviewError) throw new Error(taskReviewError.message);
+
+    return taskReviewData;
+  }
+
   static async getTaskerFeedback() {
     const { data, error } = await supabase.from("task_reviews")
       .select(`

@@ -1290,6 +1290,7 @@ class TaskController {
       const { data, error } = await supabase
       .from("task_taken")
       .select(`
+        task_taken_id,
         task_id,
         task_status,
         created_at,
@@ -1331,8 +1332,10 @@ class TaskController {
           client_address
         )
       `)
-      .eq("task_id", taskId)
+      .eq("task_taken_id", taskId)
       .maybeSingle();
+
+      console.log("Task Data: ", data, "Task Error: ", error)
 
       if (error) {
         console.error("Error fetching task information:", error.message);

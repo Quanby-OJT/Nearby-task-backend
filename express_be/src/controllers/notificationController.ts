@@ -560,7 +560,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .in("task_status", ["Review", "Disputed", "Dispute Settled"]);
+          .in("task_status", ["Review", "Disputed", "Completed"]);
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -825,7 +825,7 @@ class NotificationController {
           .from("task_taken")
           .select("*")
           .eq(column, userID)
-          .eq("task_status", "Dispute Settled");
+          .eq("task_status", "Completed");
 
         if (error) {
           throw new Error(`Error fetching ${column} tasks: ${error.message}`);
@@ -899,7 +899,7 @@ class NotificationController {
               return {
                 id: task.task_taken_id,
                 title: titleData?.task_title || "Untitled Task",
-                status: task.task_status || "Dispute Settled",
+                status: task.task_status || "Completed",
                 date: task.created_at || new Date().toISOString().split("T")[0],
                 remarks: task.remark || "No description provided",
                 role: "Client",

@@ -56,17 +56,17 @@ class AuthenticationController {
         two_fa_code: otp.toString(),
       });
 
-      const loginEmail = await renderEmailTemplate(
-        "otp_email",
-        otp
-      )
+      // const loginEmail = await renderEmailTemplate(
+      //   "otp_email",
+      //   otp
+      // )
 
-      await mailer.sendMail({
-        from: '"QTask" @ <noreply@qtask.com>',
-        to: email,
-        subject: "QTask OTP Code",
-        html: loginEmail
-      })
+      // await mailer.sendMail({
+      //   from: '"QTask" @ <noreply@qtask.com>',
+      //   to: email,
+      //   subject: "QTask OTP Code",
+      //   html: loginEmail
+      // })
       
       res.status(200).json({ 
         user_id: verifyLogin.user_id,
