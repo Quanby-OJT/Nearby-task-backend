@@ -128,6 +128,12 @@ router.get(
   "/display-task-for-client/:clientId",
   TaskController.getTaskforClient
 );
+
+router.get(
+  "/display-task-for-client-available/:clientId",
+  TaskController.getTaskforClientAvailable
+);
+
 router.post("/assign-task", TaskController.assignTask);
 router.get("/fetchIsApplied", TaskController.fetchIsApplied);
 router.get(
