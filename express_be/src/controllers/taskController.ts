@@ -38,6 +38,13 @@ class TaskController {
       } = req.body;
 
       const amount = await QTaskPayment.checkBalance(client_id);
+      if (!amount) {
+        res.status(404).json({ error: "User not found or insufficient funds." });
+        return;
+      }else if (!amount?.amount || amount.amount <= 0) {
+        res.status(403).json({ error: `You have no money in your wallet. Please Deposit an additional P${proposed_price} in order to create this task.`  });
+        return;
+      }
 
       if(proposed_price > amount.amount){
         const remainingAmount = proposed_price - amount.amount
@@ -1225,36 +1232,67 @@ class TaskController {
         throw new Error("User Does not exist from database.");
       }
 
+      let tableRow = ""
+
       switch (userRole.user_role) {
         case "Tasker":
-          const { data: taskerTokens, error: taskerTokensError } =
-            await supabase
-              .from("tasker")
-              .select("amount")
-              .eq("user_id", userId)
-              .single();
-          if (taskerTokensError)
-            throw new Error(
-              "Error fetching tasker tokens: " + taskerTokensError.message
-            );
-          res.status(200).json({ success: true, tokens: taskerTokens.amount });
+          tableRow = "tasker";
           break;
         case "Client":
-          const { data: clientTokens, error: clientTokensError } =
-            await supabase
-              .from("clients")
-              .select("amount")
-              .eq("user_id", userId)
-              .single();
-          if (clientTokensError)
-            throw new Error(
-              "Error fetching tasker tokens: " + clientTokensError.message
-            );
-          res.status(200).json({ success: true, tokens: clientTokens.amount });
+          tableRow = "clients";
           break;
         default:
-          break;
+          res.status(400).json({
+            success: false,
+            error: "Invalid user role",
+          });
+          return;
       }
+
+      const { data: tokens, error: tokensError } = await supabase
+        .from(tableRow)
+        .select("amount")
+        .eq("user_id", userId)
+        .single();
+
+      if (tokensError || !tokens) {
+        throw new Error(
+          "Error fetching tokens: " + (tokensError ? tokensError.message : "No tokens found")
+        );
+      }
+
+      res.status(200).json({ success: true, tokens: tokens.amount });
+
+      // switch (userRole.user_role) {
+      //   case "Tasker":
+      //     const { data: taskerTokens, error: taskerTokensError } =
+      //       await supabase
+      //         .from("tasker")
+      //         .select("amount")
+      //         .eq("user_id", userId)
+      //         .single();
+      //     if (taskerTokensError)
+      //       throw new Error(
+      //         "Error fetching tasker tokens: " + taskerTokensError.message
+      //       );
+      //     res.status(200).json({ success: true, tokens: taskerTokens.amount });
+      //     break;
+      //   case "Client":
+      //     const { data: clientTokens, error: clientTokensError } =
+      //       await supabase
+      //         .from("clients")
+      //         .select("amount")
+      //         .eq("user_id", userId)
+      //         .single();
+      //     if (clientTokensError)
+      //       throw new Error(
+      //         "Error fetching tasker tokens: " + clientTokensError.message
+      //       );
+      //     res.status(200).json({ success: true, tokens: clientTokens.amount });
+      //     break;
+      //   default:
+      //     break;
+      // }
     } catch (error) {
       console.error("Error fetching token balance:", error);
       res.status(500).json({ success: false, error: "Failed to fetch tokens" });
