@@ -36,8 +36,8 @@ app.use(
 );
 
 const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, "mkcert+4-key.pem")),
-  cert: fs.readFileSync(path.join(__dirname, "mkcert+4.pem")),
+  key: fs.readFileSync(path.join(__dirname, process.env.SECURITY_KEY || "")),
+  cert: fs.readFileSync(path.join(__dirname, process.env.SECURITY_CERT || "")),
 };
 
 const httpsServer = https.createServer(sslOptions, app);

@@ -103,8 +103,6 @@ interface PayMongoIntentResponse {
   errors?: Array<{ detail: string }>; // For error cases
 }
 
-//TODO: Implement XENDIT API response structure
-
 class QTaskPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
@@ -454,9 +452,11 @@ class QTaskPayment {
   }
 
   //In Case of Dispute raised by either user/
-  static async refundCreditstoClient(task_taken_id: number, task_id: number) {
-    const task_amount = await taskModel.getTaskAmount(task_taken_id);
+  static async refundCreditstoClient(task_taken_id: number, task_id: number, task_status?: string) {
+    let task_amount = await taskModel.getTaskAmount(task_taken_id);
     if(!task_amount) return {error: "Unable to retrieve task payment. Please Try Again."}
+
+    if(task_status == "Cancelled") task_amount.post_task.proposed_price = task_amount.post_task.proposed_price * 0.7
 
     const {error: UpdateClientCreditsError} = await supabase.rpc('increment_client_credits', { addl_credits: task_amount.post_task.proposed_price, id: task_amount.post_task.client_id})
 

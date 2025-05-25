@@ -1509,6 +1509,19 @@ class NotificationController {
           visit_tasker,
           reason_for_rejection_or_cancellation
         );
+
+        //30 percent of the contract price will be belong to the platform, while 70 percent will be returned to the client.
+        const task = await taskModel.getTaskAmount(taskTakenId);
+
+        if(!task) {
+          res.status(404).json({
+            success: false,
+            error: "Task not found.",
+          });
+          return;
+        }
+
+        await QTaskPayment.refundCreditstoClient(taskTakenId, task.task_id, "Cancelled")
         break;
       case "Disputed":
         await TaskAssignment.updateStatus(
