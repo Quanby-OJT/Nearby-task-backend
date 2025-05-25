@@ -301,8 +301,23 @@ class ReportANDAnalysisModel {
         task_id,
         task_status,
         client_id,
-        post_task!task_id(task_description,location),
-        clients!task_taken_client_id_fkey(client_id,client_address,user!clients_user_id_fkey(first_name,middle_name,last_name))
+        post_task!task_id(
+          task_description,
+          address(
+            barangay,
+            city,
+            province
+          )
+        ),
+        clients!task_taken_client_id_fkey(
+          client_id,
+          client_address,
+          user!clients_user_id_fkey(
+            first_name,
+            middle_name,
+            last_name
+          )
+        )
       `)
       .eq("tasker_id", taskerId);
   
@@ -317,13 +332,18 @@ class ReportANDAnalysisModel {
     return data.map((task: any) => {
       const client = task.clients || { client_address: "Unknown", user: { first_name: "Unknown", middle_name: "", last_name: "" } };
       const user = client.user || { first_name: "Unknown", middle_name: "", last_name: "" };
-      const postTask = Array.isArray(task.post_task) ? task.post_task[0] : task.post_task;
+      const postTask = Array.isArray(task.post_task) ? task.post_task[0] : task.post_task || { task_description: "N/A", address: null };
+      const address = postTask.address || { barangay: "N/A", city: "N/A", province: "N/A" };
   
       return {
         clientName: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' '),
-        taskDescription: postTask?.task_description || "N/A",
+        taskDescription: postTask.task_description || "N/A",
         status: task.task_status || "N/A",
-        address: postTask?.location || "N/A",
+        address: {
+          barangay: address.barangay,
+          city: address.city,
+          province: address.province
+        },
         clientAddress: client.client_address || "N/A"
       };
     });
