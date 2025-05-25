@@ -247,6 +247,8 @@ router.put("/set-address/:user_id", SettingController.setAddress);
 
 // User Task
 router.get("/fetchTasks/:userId", TaskController.getTasks);
+
+router.get("/fetchTasksClient/:userId", TaskController.getTasksClient);
 router.get("/tasker/taskinformation/:taskId", TaskController.getTaskInformation);
 
 //User CRUD
