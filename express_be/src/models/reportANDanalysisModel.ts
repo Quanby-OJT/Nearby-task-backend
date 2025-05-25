@@ -284,7 +284,8 @@ class ReportANDAnalysisModel {
         address: client.client_address || "Unknown",
         taskCount: taskCounts[client.client_id] || 0,
         gender: user.gender || "Unknown",
-        rating: client.rating || 0
+        rating: client.rating || 0,
+        clientId: client.client_id // Added for client history
       };
     }).sort((a: any, b: any) => b.taskCount - a.taskCount);
 
@@ -324,6 +325,56 @@ class ReportANDAnalysisModel {
         status: task.task_status || "N/A",
         address: postTask?.location || "N/A",
         clientAddress: client.client_address || "N/A"
+      };
+    });
+  }
+
+  async getClientHistory(clientId: number) {
+    const { data, error } = await supabase
+      .from("task_taken")
+      .select(`
+        task_taken_id,
+        task_id,
+        task_status,
+        tasker_id,
+        post_task!task_id(
+          task_description,
+          address(
+            barangay,
+            city,
+            province
+          )
+        ),
+        tasker!tasker_id(
+          user!user_id(
+            first_name,
+            middle_name,
+            last_name
+          )
+        )
+      `)
+      .eq("client_id", clientId);
+  
+    if (error || !data) {
+      console.error("Error fetching task_taken records for client:", error);
+      return [];
+    }
+  
+    return data.map((task: any) => {
+      const tasker = task.tasker || { user: { first_name: "Unknown", middle_name: "", last_name: "" } };
+      const user = tasker.user || { first_name: "Unknown", middle_name: "", last_name: "" };
+      const postTask = task.post_task || { task_description: "N/A", address: null };
+      const address = postTask.address || { barangay: "N/A", city: "N/A", province: "N/A" };
+  
+      return {
+        taskerName: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' '),
+        taskDescription: postTask.task_description,
+        status: task.task_status || "N/A",
+        address: {
+          barangay: address.barangay,
+          city: address.city,
+          province: address.province
+        }
       };
     });
   }

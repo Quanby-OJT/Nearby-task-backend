@@ -48,6 +48,15 @@ class ReportAnalysisController {
       taskHistory,
     });
   }
+
+  static async getClientHistory(req: Request, res: Response) {
+    const clientId = parseInt(req.params.clientId, 10);
+    const clientHistory = await reportANDanalysisModel.getClientHistory(clientId);
+    res.status(200).json({
+      success: true,
+      clientHistory,
+    });
+  }
 }
 
 export default ReportAnalysisController;
