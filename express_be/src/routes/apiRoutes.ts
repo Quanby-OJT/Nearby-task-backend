@@ -150,10 +150,8 @@ router.post("/update-status-client", TaskController.updateTaskStatusforClient);
 
 // Feedback
 router.post("/rate-the-tasker", FeedbackController.postClientFeedbacktoTasker);
-router.get(
-  "/get-taskers-feedback/:taskerId",
-  FeedbackController.getFeedbackForTasker
-);
+router.get("/get-taskers-feedback/:taskerId",FeedbackController.getFeedbackForTasker);
+router.get('/get-client-feedback/:id', FeedbackController.getFeedbackForClient)
 router.get("/get-all-tasker-feedback", FeedbackController.getFeedbacks);
 
 router.post("/set-tasker-schedule", ScheduleController.scheduleTask);
@@ -251,10 +249,7 @@ router.put("/set-address/:user_id", SettingController.setAddress);
 router.get("/fetchTasks/:userId", TaskController.getTasks);
 
 router.get("/fetchTasksClient/:userId", TaskController.getTasksClient);
-router.get(
-  "/tasker/taskinformation/:taskId",
-  TaskController.getTaskInformation
-);
+router.get("/tasker/taskinformation/:taskId", TaskController.getTaskInformation);
 
 //User CRUD
 router.put(

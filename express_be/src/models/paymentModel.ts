@@ -103,8 +103,6 @@ interface PayMongoIntentResponse {
   errors?: Array<{ detail: string }>; // For error cases
 }
 
-//TODO: Implement XENDIT API response structure
-
 class QTaskPayment {
   static async checkoutPayment(paymentInfo: Payment) {
     interface UserEmailResponse {
@@ -434,29 +432,56 @@ class QTaskPayment {
   }
 
   //Checker is the tasker/client has sufficient Amount before galawin ang kaniyang amount from the database.
-  static async checkBalance(user_id: string){
+  static async checkBalance(user_id: number){
     let amount: number = 0
+    let tableRole: string = ""
     const {data: roleData, error: roleError} = await supabase.from("user").select("user_role").eq("user_id", user_id).single()
 
     if(roleError) throw new Error(roleError.message)
+    
+      switch (roleData.user_role) {
+        case "Tasker":
+          tableRole = "tasker";
+          break;
+        case "Client":
+          tableRole = "clients";
+          break;
+        default:
+          return {error: "Invalid user role"};
+      }
 
-    if(roleData.user_role == "Tasker"){
-      const {data: tasker, error: taskerError} = await supabase.from("tasker").select("amount").eq("user_id", user_id).single()
-      if(taskerError) throw new Error(taskerError.message)
-      amount = tasker.amount
-    }else if(roleData.user_role == "Client"){
-      const {data: client, error: clientError} = await supabase.from("clients").select("amount").eq("user_id", user_id).single()
-      if(clientError) throw new Error(clientError.message)
-      amount = client.amount
-    }
+      const {data, error} = await supabase
+      .from(tableRole)
+      .select("amount")
+      .eq("user_id", user_id)
+      .single();
+
+      console.log("Data:", data, "Error:", error);
+
+    if (error) throw new Error(error.message);
+    if (!data) return {error: "User not found or no amount available"};
+    amount = data.amount;
+
+
+    // if(roleData.user_role == "Tasker"){
+    //   const {data: tasker, error: taskerError} = await supabase.from("tasker").select("amount").eq("user_id", user_id).single()
+    //   if(taskerError) throw new Error(taskerError.message)
+    //   amount = tasker.amount
+    // }else if(roleData.user_role == "Client"){
+    //   const {data: client, error: clientError} = await supabase.from("clients").select("amount").eq("user_id", user_id).single()
+    //   if(clientError) throw new Error(clientError.message)
+    //   amount = client.amount
+    // }
 
     return {amount, user_role: roleData.user_role};
   }
 
   //In Case of Dispute raised by either user/
-  static async refundCreditstoClient(task_taken_id: number, task_id: number) {
-    const task_amount = await taskModel.getTaskAmount(task_taken_id);
+  static async refundCreditstoClient(task_taken_id: number, task_id: number, task_status?: string) {
+    let task_amount = await taskModel.getTaskAmount(task_taken_id);
     if(!task_amount) return {error: "Unable to retrieve task payment. Please Try Again."}
+
+    if(task_status == "Cancelled") task_amount.post_task.proposed_price = task_amount.post_task.proposed_price * 0.7
 
     const {error: UpdateClientCreditsError} = await supabase.rpc('increment_client_credits', { addl_credits: task_amount.post_task.proposed_price, id: task_amount.post_task.client_id})
 

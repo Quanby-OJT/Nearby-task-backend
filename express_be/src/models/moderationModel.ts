@@ -86,6 +86,14 @@ class ClientTaskerModeration{
             user_role
           )
         ),
+        tasker(
+            user(
+            first_name,
+            middle_name,
+            last_name,
+            user_role
+          )
+        ),
         post_task(
           task_id,
           task_title
@@ -109,7 +117,7 @@ class ClientTaskerModeration{
   }
 
   static async getDispute(task_taken_id: number) {
-    const {data, error} = await supabase.from("dispute_logs").select("reason_for_dispute, dispute_details, moderator_action, addl_dispute_notes, task_taken(task_taken_id, post_task(task_title), task_status)").single()
+    const {data, error} = await supabase.from("dispute_logs").select("reason_for_dispute, dispute_details, moderator_action, addl_dispute_notes, task_taken(task_taken_id, post_task(task_title), task_status)").eq("task_taken_id", task_taken_id).single()
 
     if(error) throw new Error(error.message)
 

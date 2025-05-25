@@ -2,9 +2,7 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { mailer } from "../config/configuration";
-import { supabase } from "../config/configuration";
-import session from "express-session";
+import { mailer, supabase, renderEmailTemplate } from "../config/configuration";
 import { randomUUID } from "crypto";
 declare module "express-session" {
   interface SessionData {
@@ -21,7 +19,7 @@ class AuthenticationController {
       if (!verifyLogin) {
         res.status(404).json({
           error:
-            "Sorry, your email does not exist. Maybe you can sign up to find your clients/taskers.",
+            "Sorry, your email does not exist, or you have entered an incorrect email.",
         });
         return;
       }
@@ -58,7 +56,18 @@ class AuthenticationController {
         two_fa_code: otp.toString(),
       });
 
-      // Return the OTP directly in the response instead of sending email
+      // const loginEmail = await renderEmailTemplate(
+      //   "otp_email",
+      //   otp
+      // )
+
+      // await mailer.sendMail({
+      //   from: '"QTask" @ <noreply@qtask.com>',
+      //   to: email,
+      //   subject: "QTask OTP Code",
+      //   html: loginEmail
+      // })
+      
       res.status(200).json({ 
         user_id: verifyLogin.user_id,
         otp: otp // Include OTP directly in response
