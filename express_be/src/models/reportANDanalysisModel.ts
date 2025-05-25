@@ -228,7 +228,8 @@ class ReportANDAnalysisModel {
         userName: fullName,
         specialization: tasker.tasker_specialization?.specialization || "Unknown",
         taskCount: taskCounts[tasker.tasker_id] || 0,
-        rating: tasker.rating || 0
+        rating: tasker.rating || 0,
+        taskerId: tasker.tasker_id
       };
     }).sort((a: any, b: any) => b.taskCount - a.taskCount);
 
@@ -288,6 +289,43 @@ class ReportANDAnalysisModel {
     }).sort((a: any, b: any) => b.taskCount - a.taskCount);
 
     return { clients: rankedClients };
+  }
+
+  async getTaskHistory(taskerId: number) {
+    // Select task_taken data with joins to post_task, clients, and user tables
+    const { data, error } = await supabase
+      .from("task_taken")
+      .select(`
+        task_taken_id,
+        task_id,
+        task_status,
+        client_id,
+        post_task!task_id(task_description,location),
+        clients!task_taken_client_id_fkey(client_id,client_address,user!clients_user_id_fkey(first_name,middle_name,last_name))
+      `)
+      .eq("tasker_id", taskerId);
+  
+    if (error || !data) {
+      console.error("Error fetching task_taken records:", error);
+      return [];
+    }
+  
+    console.log("Fetched task_taken records:", data);
+  
+    // Map the task history data
+    return data.map((task: any) => {
+      const client = task.clients || { client_address: "Unknown", user: { first_name: "Unknown", middle_name: "", last_name: "" } };
+      const user = client.user || { first_name: "Unknown", middle_name: "", last_name: "" };
+      const postTask = Array.isArray(task.post_task) ? task.post_task[0] : task.post_task;
+  
+      return {
+        clientName: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' '),
+        taskDescription: postTask?.task_description || "N/A",
+        status: task.task_status || "N/A",
+        address: postTask?.location || "N/A",
+        clientAddress: client.client_address || "N/A"
+      };
+    });
   }
 }
 

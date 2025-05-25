@@ -39,6 +39,15 @@ class ReportAnalysisController {
       clients,
     });
   }
+
+  static async getTaskHistory(req: Request, res: Response) {
+    const taskerId = parseInt(req.params.taskerId, 10);
+    const taskHistory = await reportANDanalysisModel.getTaskHistory(taskerId);
+    res.status(200).json({
+      success: true,
+      taskHistory,
+    });
+  }
 }
 
 export default ReportAnalysisController;
