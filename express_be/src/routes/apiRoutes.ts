@@ -18,6 +18,7 @@ import FeedbackController from "../controllers/feedbackController";
 import SettingController from "../controllers/settingController";
 import PaymentController from "../controllers/paymentController";
 import AuthorityAccountController from "../controllers/authorityAccountController";
+import UserLogsController from "../controllers/userlogController";
 
 const upload = multer({ storage: memoryStorage() });
 

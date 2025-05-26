@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { mailer, supabase, renderEmailTemplate } from "../config/configuration";
+import { mailer, supabase } from "../config/configuration";
 import { randomUUID } from "crypto";
 declare module "express-session" {
   interface SessionData {
