@@ -97,7 +97,7 @@ class TaskController {
             task_title,
             specialization_id: Number(specialization_id),
             task_description,
-            address:address_id,
+            address: address_id,
             urgent: isUrgent,
             proposed_price: parsedPrice,
             remarks,
@@ -135,7 +135,7 @@ class TaskController {
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
       const taskId = parseInt(req.params.id);
-      const { loggedInUserId } = req.body;
+      const { loggedInUserId, reason } = req.body;
 
       if (isNaN(taskId)) {
         res.status(400).json({ success: false, message: "Invalid task ID" });
@@ -147,9 +147,53 @@ class TaskController {
         return;
       }
 
+      if (!reason) {
+        res.status(400).json({ success: false, message: "Reason for closing task is required" });
+        return;
+      }
+
+      // Validate that loggedInUserId exists in the user table
+      const { data: userExists, error: userCheckError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("user_id", parseInt(loggedInUserId))
+        .single();
+
+      if (userCheckError || !userExists) {
+        console.error("User does not exist:", userCheckError || "No user found");
+        res.status(400).json({
+          success: false,
+          message: "Logged-in user does not exist in the system",
+        });
+        return;
+      }
+
+      // Insert into action_taken_by with user_id and reason
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: parseInt(loggedInUserId),
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Supabase insert error for action_taken_by:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+
+      console.log("Action taken by data inserted:", actionData); // Verify the inserted data
+
+      // Update post_task with loggedInUserId as action_by
       const { data, error } = await supabase
         .from("post_task")
-        .update({ status: "Closed", action_by: loggedInUserId })
+        .update({ status: "Closed", action_by: parseInt(loggedInUserId) })
         .eq("task_id", taskId)
         .select()
         .single();
@@ -228,7 +272,7 @@ class TaskController {
 
   static async fetchAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data:task, error } = await supabase
+      const { data: task, error } = await supabase
       .from("post_task")
       .select(`
         *,
@@ -303,57 +347,57 @@ class TaskController {
     }
   }
 
-    static async getTaskforClient(req: Request, res: Response): Promise<void> {
-       const clientId = req.params.clientId;
+  static async getTaskforClient(req: Request, res: Response): Promise<void> {
+    const clientId = req.params.clientId;
     
-      try {
-        const { data:task, error } = await supabase
-          .from("post_task")
-          .select(`
-            *,
-            tasker_specialization:specialization_id (specialization),
-            address (*),
-            clients!client_id (
-              user (
-              user_id,
-              first_name,
-              middle_name,
-              last_name,
-              email,
-              contact,
-              gender,
-              birthdate,
-              user_role,
-              acc_status,
-              verified,
-              image_link
-              )
+    try {
+      const { data: task, error } = await supabase
+        .from("post_task")
+        .select(`
+          *,
+          tasker_specialization:specialization_id (specialization),
+          address (*),
+          clients!client_id (
+            user (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            email,
+            contact,
+            gender,
+            birthdate,
+            user_role,
+            acc_status,
+            verified,
+            image_link
             )
-          `)
-          .eq("client_id", clientId)
-          .eq("clients.user.user_role", "Client");
+          )
+        `)
+        .eq("client_id", clientId)
+        .eq("clients.user.user_role", "Client");
     
-        console.log("Tasks data:", task, "Error:", error);
+      console.log("Tasks data:", task, "Error:", error);
     
-        if (error) {
-          console.error("Error fetching tasks:", error.message);
-          res.status(500).json({ error: error.message });
-          return;
-        }
-    
-        if (!task || task.length === 0) {
-          res.status(200).json({ error: "No active tasks found." });
-          return;
-        }
-    
-        res.status(200).json({ tasks: task });
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-        res.status(500).json({
-          error: error instanceof Error ? error.message : "Unknown error occurred",
-        });
+      if (error) {
+        console.error("Error fetching tasks:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
       }
+    
+      if (!task || task.length === 0) {
+        res.status(200).json({ error: "No active tasks found." });
+        return;
+      }
+    
+      res.status(200).json({ tasks: task });
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      });
     }
+  }
 
   static async getTaskforTasker(req: Request, res: Response): Promise<void> {
     try {
