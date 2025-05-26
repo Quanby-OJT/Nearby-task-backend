@@ -97,7 +97,7 @@ class TaskController {
             task_title,
             specialization_id: Number(specialization_id),
             task_description,
-            address:address_id,
+            address: address_id,
             urgent: isUrgent,
             proposed_price: parsedPrice,
             remarks,
@@ -135,7 +135,7 @@ class TaskController {
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
       const taskId = parseInt(req.params.id);
-      const { loggedInUserId } = req.body;
+      const { loggedInUserId, reason } = req.body;
 
       if (isNaN(taskId)) {
         res.status(400).json({ success: false, message: "Invalid task ID" });
@@ -147,23 +147,49 @@ class TaskController {
         return;
       }
 
-      const { data, error } = await supabase
+      if (!reason) {
+        res.status(400).json({ success: false, message: "Reason is required" });
+        return;
+      }
+
+      // Update status in post_task table
+      const { data: taskData, error: taskError } = await supabase
         .from("post_task")
-        .update({ status: "Closed", action_by: loggedInUserId })
+        .update({ status: "Closed" })
         .eq("task_id", taskId)
         .select()
         .single();
 
-      if (error) {
-        console.error("Supabase update error:", error);
+      if (taskError) {
+        console.error("Supabase update error:", taskError);
         res.status(500).json({
           success: false,
-          message: `Failed to close task: ${error.message}`,
+          message: `Failed to close task: ${taskError.message}`,
         });
         return;
       }
 
-      res.status(200).json({ success: true, message: "Task closed successfully", task: data });
+      // Insert action into action_taken table
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: loggedInUserId,
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Supabase insert error for action_taken:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+
+      res.status(200).json({ success: true, message: "Task closed successfully", task: taskData, action: actionData });
     } catch (error) {
       console.error("Error in disableTask:", error);
       res.status(500).json({
@@ -228,7 +254,7 @@ class TaskController {
 
   static async fetchAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data:task, error } = await supabase
+      const { data: task, error } = await supabase
       .from("post_task")
       .select(`
         *,
@@ -303,57 +329,57 @@ class TaskController {
     }
   }
 
-    static async getTaskforClient(req: Request, res: Response): Promise<void> {
-       const clientId = req.params.clientId;
+  static async getTaskforClient(req: Request, res: Response): Promise<void> {
+    const clientId = req.params.clientId;
     
-      try {
-        const { data:task, error } = await supabase
-          .from("post_task")
-          .select(`
-            *,
-            tasker_specialization:specialization_id (specialization),
-            address (*),
-            clients!client_id (
-              user (
-              user_id,
-              first_name,
-              middle_name,
-              last_name,
-              email,
-              contact,
-              gender,
-              birthdate,
-              user_role,
-              acc_status,
-              verified,
-              image_link
-              )
+    try {
+      const { data: task, error } = await supabase
+        .from("post_task")
+        .select(`
+          *,
+          tasker_specialization:specialization_id (specialization),
+          address (*),
+          clients!client_id (
+            user (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            email,
+            contact,
+            gender,
+            birthdate,
+            user_role,
+            acc_status,
+            verified,
+            image_link
             )
-          `)
-          .eq("client_id", clientId)
-          .eq("clients.user.user_role", "Client");
+          )
+        `)
+        .eq("client_id", clientId)
+        .eq("clients.user.user_role", "Client");
     
-        console.log("Tasks data:", task, "Error:", error);
+      console.log("Tasks data:", task, "Error:", error);
     
-        if (error) {
-          console.error("Error fetching tasks:", error.message);
-          res.status(500).json({ error: error.message });
-          return;
-        }
-    
-        if (!task || task.length === 0) {
-          res.status(200).json({ error: "No active tasks found." });
-          return;
-        }
-    
-        res.status(200).json({ tasks: task });
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-        res.status(500).json({
-          error: error instanceof Error ? error.message : "Unknown error occurred",
-        });
+      if (error) {
+        console.error("Error fetching tasks:", error.message);
+        res.status(500).json({ error: error.message });
+        return;
       }
+    
+      if (!task || task.length === 0) {
+        res.status(200).json({ error: "No active tasks found." });
+        return;
+      }
+    
+      res.status(200).json({ tasks: task });
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      });
     }
+  }
 
   static async getTaskforTasker(req: Request, res: Response): Promise<void> {
     try {
