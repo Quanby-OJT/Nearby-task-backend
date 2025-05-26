@@ -14,7 +14,6 @@
   "description": "",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
-    "@tailwindcss/cli": "^4.1.7",
     "@types/luxon": "^3.6.2",
     "are-we-there-yet": "^4.0.2",
     "bcrypt": "^5.1.1",
@@ -29,6 +28,7 @@
     "juice": "^11.0.1",
     "luxon": "^3.6.1",
     "mime-types": "^2.1.35",
+    "mjml": "^4.15.3",
     "multer": "^1.4.5-lts.1",
     "ngx-cookie-service": "^19.1.2",
     "node-cron": "^4.0.7",
@@ -38,8 +38,7 @@
     "otp-generator": "^4.0.1",
     "postcss-cli": "^11.0.1",
     "postgres": "^3.4.5",
-    "socket.io": "^4.8.1",
-    "tailwindcss": "^4.1.7"
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
