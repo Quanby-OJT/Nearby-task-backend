@@ -10,7 +10,7 @@ class NotificationController {
   static async getTaskerRequest(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required." });
@@ -111,7 +111,7 @@ class NotificationController {
           })
         );
 
-        console.log(`Fetched and formatted data for ${column}:`, formattedData);
+        // console.log(`Fetched and formatted data for ${column}:`, formattedData);
         return formattedData;
       };
 
@@ -154,7 +154,7 @@ class NotificationController {
   static async getPendingRequests(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -285,7 +285,7 @@ class NotificationController {
   static async getCancelledRequests(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -416,7 +416,7 @@ class NotificationController {
   static async getRejectedRequests(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -547,7 +547,7 @@ class NotificationController {
   static async getReviewRequests(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -678,7 +678,7 @@ class NotificationController {
   static async getOngoingRequests(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -812,7 +812,7 @@ class NotificationController {
   ): Promise<void> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -944,7 +944,7 @@ class NotificationController {
   static async getDisputedRequests(req: Request, res: Response): Promise<void> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -1076,7 +1076,7 @@ class NotificationController {
   static async getFinishRequests(req: Request, res: Response): Promise<void> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -1211,7 +1211,7 @@ class NotificationController {
   ): Promise<void> {
     try {
       const userID = req.params.userId;
-      console.log("User ID:", userID);
+      // console.log("User ID:", userID);
 
       if (!userID) {
         res.status(400).json({ error: "User ID is required" });
@@ -1374,7 +1374,7 @@ class NotificationController {
       .from("task_taken")
       .update({ visit: true })
       .eq("task_taken_id", requestId);
-    console.log("Fetched request:", data);
+    //// console.log("Fetched request:", data);
     res.status(200).json({ request: data });
   }
 
@@ -1387,11 +1387,11 @@ class NotificationController {
       dispute_details,
       rejection_reason,
     } = req.body;
-    console.log("Role:", req.body);
-    console.log("Task Taken ID:", taskTakenId);
-    console.log("Value:", value);
-    console.log("Role:", role);
-    console.log("Rejection Reason:", rejection_reason);
+    // console.log("Role:", req.body);
+    // console.log("Task Taken ID:", taskTakenId);
+    // console.log("Value:", value);
+    // console.log("Role:", role);
+    // console.log("Rejection Reason:", rejection_reason);
     const reason_for_rejection_or_cancellation = rejection_reason;
 
     if (!taskTakenId) {
@@ -1490,7 +1490,7 @@ class NotificationController {
           })
           .eq("task_taken_id", taskTakenId);
 
-          console.log("Reject request value: $value");
+          // console.log("Reject request value: $value");
 
         if (rejectError) {
           console.error(rejectError.message);
@@ -1531,109 +1531,54 @@ class NotificationController {
           visit_tasker
         );
 
-        const imageEvidence = req.files as Express.Multer.File[];
+        let imageEvidence: Express.Multer.File[] = [];
+
+        if (req.files && !Array.isArray(req.files)) {
+          imageEvidence = req.files["imageEvidence"] || [];
+        }
+
         console.log("Image Evidence:", imageEvidence);
 
-        let imageProof: string[] = [];
-        if (imageEvidence && imageEvidence.length > 0) {
+        const imageProof: string[] = [];
+
+        if (imageEvidence) {
           for (const file of imageEvidence) {
-            // Validate file mimetype or content
-            const validImageTypes = [
-              "image/jpeg",
-              "image/png",
-              "image/gif",
-              "application/octet-stream",
-            ];
-            let contentType = file.mimetype;
+            try {
+              
+              const fileName = `disputes/DISPUTE-${Date.now()}-${file.originalname}`;
+              console.log(`Uploading file: ${fileName}`);
 
-            // Check file signature for octet-stream
-            if (file.mimetype === "application/octet-stream") {
-              const isJpeg = file.buffer
-                .subarray(0, 4)
-                .toString("hex")
-                .startsWith("ffd8ff");
-              const isPng = file.buffer
-                .subarray(0, 8)
-                .toString("hex")
-                .startsWith("89504e470d0a1a0a");
-              const isGif = file.buffer
-                .subarray(0, 6)
-                .toString("hex")
-                .startsWith("47494638");
+              const {error} = await supabase.storage.from("crud_bucket").upload(fileName, file.buffer, {
+                contentType: file.mimetype,
+                cacheControl: "3600",
+                upsert: true,
+              })
+              if(error) throw new Error(`Failed to upload file: ${error.message}`);
 
-              if (isJpeg) {
-                contentType = "image/jpeg";
-              } else if (isPng) {
-                contentType = "image/png";
-              } else if (isGif) {
-                contentType = "image/gif";
-              } else {
-                console.error(`Invalid file content for: ${file.originalname}`);
-                res.status(400).json({
-                  success: false,
-                  message: `Invalid file content. Only JPEG, PNG, and GIF are allowed.`,
-                });
-                return;
-              }
-            }
+              const {data: disputeProof} = await supabase.storage
+                .from("crud_bucket").getPublicUrl(fileName);
 
-            if (!validImageTypes.includes(file.mimetype)) {
-              console.error(`Invalid file type: ${file.mimetype}`);
+              console.log(`File uploaded successfully: ${disputeProof.publicUrl}`);
+
+              imageProof.push(disputeProof.publicUrl);
+            } catch (err: any) {
+              console.error(`Image skipped: ${file.originalname}`, err.message);
               res.status(400).json({
                 success: false,
-                message: `Invalid file type. Only JPEG, PNG, and GIF are allowed.`,
+                error: `Image upload failed for ${file.originalname}: ${err.message}`,
               });
-              return;
+              return
             }
-
-            const fileName = `dispute_proof/${Date.now()}_${file.originalname}`;
-            const { data, error } = await supabase.storage
-              .from("documents")
-              .upload(fileName, file.buffer, {
-                contentType: contentType,
-                cacheControl: "3600",
-                upsert: false,
-              });
-
-            if (error) {
-              console.error("Error uploading image:", error);
-              res.status(500).json({
-                success: false,
-                message: "Error uploading images",
-              });
-              return;
-            }
-
-            console.log("Image uploaded successfully:", data);
-
-            const { data: publicUrlData } = supabase.storage
-              .from("documents")
-              .getPublicUrl(fileName);
-
-            imageProof.push(publicUrlData.publicUrl);
           }
 
-          console.log("Image Proof:", imageProof);
-          await TaskAssignment.createDispute(
-            taskTakenId,
-            reason_for_dispute,
-            dispute_details,
-            imageProof
-          );
-          break;
+          console.log("Image Proof URLs:", imageProof);
+          await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
         } else {
-          console.log("No image evidence provided");
-          await TaskAssignment.createDispute(
-            taskTakenId,
-            reason_for_dispute,
-            dispute_details,
-            imageProof
-          );
-          break;
+          console.log("No image evidence provided, proceeding with text dispute.");
+          await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
         }
+        break
       case "Finish":
-        console.log("Hi");
-
         if (role == "Tasker") {
           await TaskAssignment.updateStatus(
             taskTakenId,
@@ -1643,16 +1588,6 @@ class NotificationController {
           );
         } else {
           const task = await taskModel.getTaskAmount(taskTakenId);
-          console.log("Task data:", task);
-          console.log("Proposed Price:", task?.post_task.proposed_price);
-
-          // await PayMongoPayment.releasePayment({
-          //   client_id: task?.post_task.client_id,
-          //   transaction_id: "Id from Xendit", //Temporary value
-          //   amount: task?.post_task.proposed_price ?? 0,
-          //   payment_type: "Release of Payment to Tasker",
-          //   deposit_date: new Date().toISOString(),
-          // });
 
           await TaskAssignment.updateStatus(
             taskTakenId,
@@ -1661,10 +1596,6 @@ class NotificationController {
             visit_tasker,
             reason_for_rejection_or_cancellation
           );
-
-          //console.log(task?.tasker.tasker_id, task?.post_task.proposed_price);
-
-          //const {data: reviewData, error: reviewError} = await supabase.from("task_review").select("").eq
 
           const { error: updateAmountError } = await supabase.rpc(
             "update_tasker_amount",

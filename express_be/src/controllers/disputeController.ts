@@ -87,13 +87,6 @@ class DisputeController {
             res.status(500).json({error: "Unable to calculate the amount from the task. Please Try Again. Contact our support to resolve this."})
             return
           }
-          
-          await QTaskPayment.releasePayment({
-            user_id: task?.post_task.client_id,
-            amount: task?.post_task.proposed_price ?? 0,
-            payment_type: "Release of Payment to Tasker",
-            deposit_date: new Date().toISOString(),
-          });
 
           await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Release Full Payment to Tasker", addl_dispute_notes, moderator_id)
           break;

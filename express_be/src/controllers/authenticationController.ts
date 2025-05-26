@@ -59,18 +59,18 @@ class AuthenticationController {
 
       const name = `${verifyLogin.first_name} ${verifyLogin.last_name}`;
 
-      const loginEmail = await renderEmail.renderOTPEmail(name, otp);
+      // const loginEmail = await renderEmail.renderOTPEmail(name, otp);
 
-      if (loginEmail.error) {
-        throw new Error('Failed to render email template');
-      }
+      // if (loginEmail.error) {
+      //   throw new Error('Failed to render email template');
+      // }
 
-      await mailer.sendMail({
-        from: '"QTask" <noreply@qtask.com>',
-        to: email,
-        subject: 'QTask OTP Code',
-        html: loginEmail.toString(),
-      });
+      // await mailer.sendMail({
+      //   from: '"QTask" <noreply@qtask.com>',
+      //   to: email,
+      //   subject: 'QTask OTP Code',
+      //   html: loginEmail.toString(),
+      // });
 
       
       res.status(200).json({ 
