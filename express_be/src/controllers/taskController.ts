@@ -148,14 +148,52 @@ class TaskController {
       }
 
       if (!reason) {
-        res.status(400).json({ success: false, message: "Reason is required" });
+        res.status(400).json({ success: false, message: "Reason for closing task is required" });
         return;
       }
 
-      // Update status in post_task table
-      const { data: taskData, error: taskError } = await supabase
+      // Validate that loggedInUserId exists in the user table
+      const { data: userExists, error: userCheckError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("user_id", parseInt(loggedInUserId))
+        .single();
+
+      if (userCheckError || !userExists) {
+        console.error("User does not exist:", userCheckError || "No user found");
+        res.status(400).json({
+          success: false,
+          message: "Logged-in user does not exist in the system",
+        });
+        return;
+      }
+
+      // Insert into action_taken_by with user_id and reason
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: parseInt(loggedInUserId),
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Supabase insert error for action_taken_by:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+
+      console.log("Action taken by data inserted:", actionData); // Verify the inserted data
+
+      // Update post_task with loggedInUserId as action_by
+      const { data, error } = await supabase
         .from("post_task")
-        .update({ status: "Closed" })
+        .update({ status: "Closed", action_by: parseInt(loggedInUserId) })
         .eq("task_id", taskId)
         .select()
         .single();
