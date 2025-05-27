@@ -198,36 +198,16 @@ class TaskController {
         .select()
         .single();
 
-      if (taskError) {
-        console.error("Supabase update error:", taskError);
+      if (error) {
+        console.error("Supabase update error:", error);
         res.status(500).json({
           success: false,
-          message: `Failed to close task: ${taskError.message}`,
+          message: `Failed to close task: ${error.message}`,
         });
         return;
       }
 
-      // Insert action into action_taken table
-      const { data: actionData, error: actionError } = await supabase
-        .from("action_taken_by")
-        .insert({
-          user_id: loggedInUserId,
-          action_reason: reason,
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (actionError) {
-        console.error("Supabase insert error for action_taken:", actionError);
-        res.status(500).json({
-          success: false,
-          message: `Failed to log action: ${actionError.message}`,
-        });
-        return;
-      }
-
-      res.status(200).json({ success: true, message: "Task closed successfully", task: taskData, action: actionData });
+      res.status(200).json({ success: true, message: "Task closed successfully", task: data });
     } catch (error) {
       console.error("Error in disableTask:", error);
       res.status(500).json({
