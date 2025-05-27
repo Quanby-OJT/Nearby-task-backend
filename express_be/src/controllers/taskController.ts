@@ -622,7 +622,7 @@ class TaskController {
 
   static async createSpecialization(req: Request, res: Response): Promise<void> {
     try {
-      const { specialization, user_id } = req.body;
+      const { specialization, user_id, reason } = req.body;
   
       if (!specialization) {
         res.status(400).json({ error: "Specialization name is required" });
@@ -633,7 +633,51 @@ class TaskController {
         res.status(400).json({ error: "Valid user ID is required" });
         return;
       }
+
+      if (!reason) {
+        res.status(400).json({ error: "Reason for adding specialization is required" });
+        return;
+      }
   
+      // Validate that user_id exists in the user table
+      const { data: userExists, error: userCheckError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("user_id", parseInt(user_id))
+        .single();
+
+      if (userCheckError || !userExists) {
+        console.error("User does not exist:", userCheckError || "No user found");
+        res.status(400).json({
+          success: false,
+          message: "Logged-in user does not exist in the system",
+        });
+        return;
+      }
+
+      // Insert into action_taken_by with user_id and reason
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: parseInt(user_id),
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Supabase insert error for action_taken_by:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+
+      console.log("Action taken by data inserted:", actionData);
+  
+      // Insert specialization into tasker_specialization
       const { data, error } = await supabase
         .from("tasker_specialization")
         .insert({ specialization, action_by: parseInt(user_id) })
