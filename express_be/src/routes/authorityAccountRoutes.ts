@@ -29,4 +29,6 @@ router.put("/update-address/:addressId", AuthorityAccountController.updateAddres
 
 router.get("/get-addresses/:userId", AuthorityAccountController.getAddresses);
 
+router.patch("/updateUserStatus/:id", AuthorityAccountController.updateUserStatus);
+
 export default router;
