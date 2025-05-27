@@ -297,8 +297,7 @@ class ConversationController {
                 return;
             }
 
-            // Get the logged-in user ID and taskTakenId from the request body
-            const { loggedInUserId, taskTakenId } = req.body;
+            const { loggedInUserId, taskTakenId, reason } = req.body;
             if (!loggedInUserId || isNaN(loggedInUserId)) {
                 res.status(400).json({ error: "Logged-in user ID is required and must be a valid number" });
                 return;
@@ -307,8 +306,31 @@ class ConversationController {
                 res.status(400).json({ error: "Task taken ID is required and must be a valid number" });
                 return;
             }
+            if (!reason) {
+                res.status(400).json({ error: "Reason for banning is required" });
+                return;
+            }
 
-            // Update the user's acc_status to "Banned" and set action_by in the user table
+            // Insert into action_taken_by
+            const { data: actionData, error: actionError } = await supabase
+                .from("action_taken_by")
+                .insert({
+                    user_id: loggedInUserId,
+                    action_reason: reason,
+                    created_at: new Date().toISOString(),
+                })
+                .select()
+                .single();
+
+            if (actionError) {
+                console.error("Supabase insert error for action_taken_by:", actionError);
+                res.status(500).json({
+                    success: false,
+                    message: `Failed to log action: ${actionError.message}`,
+                });
+                return;
+            }
+
             const { data: userData, error: userError } = await supabase
                 .from("user")
                 .update({ acc_status: "Banned", action_by: loggedInUserId })
@@ -329,7 +351,7 @@ class ConversationController {
 
             const { data: convoData, error: convoError } = await supabase
                 .from("conversation_history")
-                .update({ action_by: loggedInUserId })
+                .update({ action_by: loggedInUserId, reported: true  })
                 .eq("task_taken_id", taskTakenId)
                 .eq("user_id", userId);
 
@@ -338,7 +360,7 @@ class ConversationController {
                 throw convoError;
             }
 
-            console.log(`User with ID ${userId} has been banned by user ${loggedInUserId} for task_taken_id ${taskTakenId}`);
+            console.log(`User with ID ${userId} has been banned by user ${loggedInUserId} for task_taken_id ${taskTakenId} with reason: ${reason}`);
             res.status(200).json({ message: "User has been banned successfully" });
         } catch (error) {
             if (error instanceof Error) {
@@ -365,8 +387,7 @@ class ConversationController {
                 return;
             }
 
-
-            const { loggedInUserId, taskTakenId } = req.body;
+            const { loggedInUserId, taskTakenId, reason } = req.body;
             if (!loggedInUserId || isNaN(loggedInUserId)) {
                 res.status(400).json({ error: "Logged-in user ID is required and must be a valid number" });
                 return;
@@ -375,7 +396,30 @@ class ConversationController {
                 res.status(400).json({ error: "Task taken ID is required and must be a valid number" });
                 return;
             }
+            if (!reason) {
+                res.status(400).json({ error: "Reason for warning is required" });
+                return;
+            }
 
+            // Insert into action_taken_by
+            const { data: actionData, error: actionError } = await supabase
+                .from("action_taken_by")
+                .insert({
+                    user_id: loggedInUserId,
+                    action_reason: reason,
+                    created_at: new Date().toISOString(),
+                })
+                .select()
+                .single();
+
+            if (actionError) {
+                console.error("Supabase insert error for action_taken_by:", actionError);
+                res.status(500).json({
+                    success: false,
+                    message: `Failed to log action: ${actionError.message}`,
+                });
+                return;
+            }
 
             const { data: userData, error: userError } = await supabase
                 .from("user")
@@ -395,10 +439,9 @@ class ConversationController {
                 return;
             }
 
-
             const { data: convoData, error: convoError } = await supabase
                 .from("conversation_history")
-                .update({ action_by: loggedInUserId })
+                .update({ action_by: loggedInUserId, reported: true })
                 .eq("task_taken_id", taskTakenId)
                 .eq("user_id", userId);
 
@@ -407,7 +450,7 @@ class ConversationController {
                 throw convoError;
             }
 
-            console.log(`User with ID ${userId} has been warned by user ${loggedInUserId} for task_taken_id ${taskTakenId}`);
+            console.log(`User with ID ${userId} has been warned by user ${loggedInUserId} for task_taken_id ${taskTakenId} with reason: ${reason}`);
             res.status(200).json({ message: "User has been warned successfully" });
         } catch (error) {
             if (error instanceof Error) {
