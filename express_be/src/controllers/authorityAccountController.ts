@@ -21,9 +21,18 @@ class AuthorityAccountController {
         contact,
         gender,
         added_by,
+        action_reason,
       } = req.body;
       const imageFile = req.file;
       console.log("Received authority account data:", req.body);
+
+      // Validate added_by and action_reason
+      if (!added_by || isNaN(Number(added_by))) {
+        return res.status(400).json({ errors: "Invalid user ID for added_by" });
+      }
+      if (!action_reason) {
+        return res.status(400).json({ errors: "Reason for adding user is required" });
+      }
 
       const { data: existingUser, error: findError } = await supabase
         .from("user")
@@ -92,6 +101,22 @@ class AuthorityAccountController {
 
       if (insertError) {
         throw new Error(insertError.message);
+      }
+
+      // Insert into action_taken_by table
+      const { error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: Number(added_by),
+          action_reason,
+          created_at: new Date().toISOString(),
+        });
+
+      if (actionError) {
+        console.error("Error inserting into action_taken_by:", actionError);
+        // Optionally, rollback user insertion if action logging fails
+        await supabase.from("user").delete().eq("user_id", newUser.user_id);
+        throw new Error("Failed to log action: " + actionError.message);
       }
 
       res.status(201).json({
