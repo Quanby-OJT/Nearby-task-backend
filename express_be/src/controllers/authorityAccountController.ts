@@ -727,14 +727,63 @@ class AuthorityAccountController {
 
   static async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
-      const { data, error } = await supabase.from(`user`).select().order("created_at", { ascending: false });;
+      // First get all users
+      const { data: users, error: usersError } = await supabase
+        .from('user')
+        .select('*')
+        .order("created_at", { ascending: false });
 
-      if (error) {
-        res.status(500).json({ error: error.message });
+      if (usersError) {
+        console.error("Error fetching users:", usersError);
+        res.status(500).json({ error: usersError.message });
+        return;
+      }
+
+      // Get all users who are referenced in action_by
+      const actionByUserIds = users
+        .filter(user => user.action_by)
+        .map(user => user.action_by);
+
+      if (actionByUserIds.length > 0) {
+        const { data: actionByUsers, error: actionByUsersError } = await supabase
+          .from('user')
+          .select('user_id, first_name, middle_name, last_name')
+          .in('user_id', actionByUserIds);
+
+        if (actionByUsersError) {
+          console.error("Error fetching action_by users:", actionByUsersError);
+          res.status(500).json({ error: actionByUsersError.message });
+          return;
+        }
+
+        // Create a map of user_id to user details for quick lookup
+        const actionByUsersMap = new Map(
+          actionByUsers.map(user => [user.user_id, user])
+        );
+
+        // Transform the data to include the full name of action_by user
+        const transformedData = users.map(user => {
+          const actionByUser = user.action_by ? actionByUsersMap.get(user.action_by) : null;
+
+          return {
+            ...user,
+            action_by_name: actionByUser ? 
+              `${actionByUser.first_name} ${actionByUser.middle_name || ''} ${actionByUser.last_name}`.trim() : 
+              'No Action Yet'
+          };
+        });
+
+        res.status(200).json({ users: transformedData });
       } else {
-        res.status(200).json({ users: data });
+        // If no action_by users, just return the users with default action_by_name
+        const transformedData = users.map(user => ({
+          ...user,
+          action_by_name: 'No Action Yet'
+        }));
+        res.status(200).json({ users: transformedData });
       }
     } catch (error) {
+      console.error("Error in getAllUsers:", error);
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });
