@@ -96,12 +96,18 @@ class ClientTaskerModeration{
         ),
         post_task(
           task_id,
-          task_title
+          task_title,
+          task_description
         )
       ),
       reason_for_dispute,
       dispute_details,
       image_proof,
+      user(
+        first_name,
+        middle_name,
+        last_name
+      ),
       moderator_action,
       addl_dispute_notes,
       created_at::date

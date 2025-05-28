@@ -488,7 +488,7 @@ class QTaskPayment {
     if(UpdateClientCreditsError) throw new Error(UpdateClientCreditsError.message)
   }
 
-  //If the Moderator hasn't made a decision after 14 days or more, the payment will be half to both tasker and client.
+  //If the Moderator hasn't made a decision after 14 days or more, the payment will be paid half to both tasker and client.
   static async releaseHalfCredits(task_taken_id: number){
     const task_amount = await taskModel.getTaskAmount(task_taken_id)
 
