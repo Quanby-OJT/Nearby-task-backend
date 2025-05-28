@@ -47,34 +47,32 @@ class AuthorityAccount {
   }
 
   static async showUser(user_id: string) {
+    console.log(`Attempting to fetch user with ID: ${user_id}`);
     const { data, error } = await supabase
       .from("user")
       .select(`
-        first_name, 
-        middle_name, 
-        last_name, 
-        image_link, 
-        email, 
-        birthdate, 
-        user_role, 
-        gender, 
-        contact, 
+        user_id,
+        first_name,
+        middle_name,
+        last_name,
+        image_link,
+        email,
+        birthdate,
+        user_role,
+        gender,
+        contact,
         acc_status,
         action_by,
-        action_taken_by!action_taken_by_user_id_fkey (
-          action_reason,
-          created_at,
-          user:user_id (
-            first_name,
-            middle_name,
-            last_name
-          )
-        )
+        added_by
       `)
       .eq("user_id", user_id)
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error(`Error fetching user ${user_id}:`, error);
+      throw new Error(error.message);
+    }
+    console.log(`Successfully fetched user ${user_id} data:`, data);
     return data;
   }
 

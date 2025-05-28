@@ -275,6 +275,7 @@ class AuthorityAccountController {
           user_id: parseInt(loggedInUserId),
           action_reason: reason,
           created_at: new Date().toISOString(),
+          target_user_id: userId
         })
         .select()
         .single();
@@ -727,6 +728,7 @@ class AuthorityAccountController {
 
   static async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
+      console.log('Fetching all users...');
       // First get all users
       const { data: users, error: usersError } = await supabase
         .from('user')
@@ -738,13 +740,18 @@ class AuthorityAccountController {
         res.status(500).json({ error: usersError.message });
         return;
       }
+      console.log('Fetched users:', users.length);
 
       // Get all users who are referenced in action_by
       const actionByUserIds = users
         .filter(user => user.action_by)
         .map(user => user.action_by);
 
+      console.log('Action by user IDs:', actionByUserIds);
+
+      let actionByUsersMap = new Map();
       if (actionByUserIds.length > 0) {
+        console.log('Fetching action_by user details...');
         const { data: actionByUsers, error: actionByUsersError } = await supabase
           .from('user')
           .select('user_id, first_name, middle_name, last_name')
@@ -755,33 +762,57 @@ class AuthorityAccountController {
           res.status(500).json({ error: actionByUsersError.message });
           return;
         }
+        console.log('Fetched action_by users:', actionByUsers.length);
 
         // Create a map of user_id to user details for quick lookup
-        const actionByUsersMap = new Map(
+        actionByUsersMap = new Map(
           actionByUsers.map(user => [user.user_id, user])
         );
-
-        // Transform the data to include the full name of action_by user
-        const transformedData = users.map(user => {
-          const actionByUser = user.action_by ? actionByUsersMap.get(user.action_by) : null;
-
-          return {
-            ...user,
-            action_by_name: actionByUser ? 
-              `${actionByUser.first_name} ${actionByUser.middle_name || ''} ${actionByUser.last_name}`.trim() : 
-              'No Action Yet'
-          };
-        });
-
-        res.status(200).json({ users: transformedData });
-      } else {
-        // If no action_by users, just return the users with default action_by_name
-        const transformedData = users.map(user => ({
-          ...user,
-          action_by_name: 'No Action Yet'
-        }));
-        res.status(200).json({ users: transformedData });
+        console.log('Created actionByUsersMap');
       }
+
+      console.log('Fetching all action_taken_by records...');
+      // Get all actions taken by users
+      const { data: actions, error: actionsError } = await supabase
+        .from('action_taken_by')
+        .select('*')
+        .order("created_at", { ascending: false });
+
+      if (actionsError) {
+        console.error("Error fetching actions:", actionsError);
+        res.status(500).json({ error: actionsError.message });
+        return;
+      }
+      console.log('Fetched action_taken_by records:', actions.length);
+
+
+      // Transform the data to include the full name of action_by user and action_reason
+      const transformedData = users.map(user => {
+        const actionByUser = user.action_by ? actionByUsersMap.get(user.action_by) : null;
+
+        // Find the latest action taken ON this user (target_user_id) by the action_by user (user_id)
+        const userActions = actions.filter(action => 
+          action.target_user_id === user.user_id && 
+          action.user_id === user.action_by // Filter by the user who took the action
+        );
+
+        const latestAction = userActions.length > 0
+          ? userActions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+          : null;
+
+        console.log(`Processing user ${user.user_id}: Found ${userActions.length} actions, latestAction:`, latestAction);
+
+        return {
+          ...user,
+          action_by_name: actionByUser ? 
+            `${actionByUser.first_name} ${actionByUser.middle_name || ''} ${actionByUser.last_name}`.trim() : 
+            'No Action Yet',
+          action_reason: latestAction?.action_reason || 'Empty' // Add the action reason
+        };
+      });
+
+      console.log('Transformed data:', transformedData);
+      res.status(200).json({ users: transformedData });
     } catch (error) {
       console.error("Error in getAllUsers:", error);
       res.status(500).json({
