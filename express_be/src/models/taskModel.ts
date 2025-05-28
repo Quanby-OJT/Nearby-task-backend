@@ -114,6 +114,10 @@ class TaskModel {
         first_name,
         middle_name,
         last_name
+      ),
+      action_taken_by:action_taken_by!task_id (
+        action_reason,
+        user_id
       )
     `).order('task_id', { ascending: false });
     if (error) throw new Error(error.message);
