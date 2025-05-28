@@ -49,14 +49,32 @@ class AuthorityAccount {
   static async showUser(user_id: string) {
     const { data, error } = await supabase
       .from("user")
-      .select(
-        "first_name, middle_name, last_name, image_link, email, birthdate, user_role, gender, contact, acc_status"
-      )
+      .select(`
+        first_name, 
+        middle_name, 
+        last_name, 
+        image_link, 
+        email, 
+        birthdate, 
+        user_role, 
+        gender, 
+        contact, 
+        acc_status,
+        action_by,
+        action_taken_by!action_taken_by_user_id_fkey (
+          action_reason,
+          created_at,
+          user:user_id (
+            first_name,
+            middle_name,
+            last_name
+          )
+        )
+      `)
       .eq("user_id", user_id)
       .single();
 
     if (error) throw new Error(error.message);
-
     return data;
   }
 

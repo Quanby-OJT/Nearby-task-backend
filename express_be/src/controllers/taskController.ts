@@ -253,7 +253,8 @@ class TaskController {
           ),
           action_taken_by:action_taken_by!task_id (
             action_reason,
-            user_id
+            user_id,
+            created_at
           )
         `)
         .order('task_id', { ascending: false });
@@ -265,8 +266,26 @@ class TaskController {
         });
         return;
       }
+
+      // Process tasks to get the latest action_reason
+      const processedTasks = tasks.map(task => {
+        if (task.action_taken_by && task.action_taken_by.length > 0) {
+          // Sort by created_at in descending order (newest first)
+          const sortedActions = [...task.action_taken_by].sort((a, b) => {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateB - dateA; // Descending order
+          });
+          
+          // Get the most recent action
+          const latestAction = sortedActions[0];
+          task.action_reason = latestAction.action_reason;
+          task.action_by = latestAction.user_id;
+        }
+        return task;
+      });
   
-      res.status(200).json({ tasks });
+      res.status(200).json({ tasks: processedTasks });
     } catch (error) {
       console.error("Error fetching tasks:", error);
       res.status(500).json({
