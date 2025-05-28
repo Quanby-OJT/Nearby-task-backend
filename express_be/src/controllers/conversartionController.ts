@@ -326,14 +326,14 @@ class ConversationController {
                 return;
             }
 
-            // Insert into action_taken_by with report_id
+            // Insert into action_taken_by with convo_id
             const { data: actionData, error: actionError } = await supabase
                 .from("action_taken_by")
                 .insert({
                     user_id: loggedInUserId,
                     action_reason: reason,
                     created_at: new Date().toISOString(),
-                    report_id: convoRow.convo_id
+                    convo_id: convoRow.convo_id
                 })
                 .select()
                 .single();
@@ -432,14 +432,14 @@ class ConversationController {
                 return;
             }
 
-            // Insert into action_taken_by with report_id
+            // Insert into action_taken_by with convo_id
             const { data: actionData, error: actionError } = await supabase
                 .from("action_taken_by")
                 .insert({
                     user_id: loggedInUserId,
                     action_reason: reason,
                     created_at: new Date().toISOString(),
-                    report_id: convoRow.convo_id
+                    convo_id: convoRow.convo_id
                 })
                 .select()
                 .single();
