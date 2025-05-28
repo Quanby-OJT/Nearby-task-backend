@@ -311,13 +311,29 @@ class ConversationController {
                 return;
             }
 
-            // Insert into action_taken_by
+            // Get the latest convo_id for this user and taskTakenId
+            const { data: convoRow, error: convoIdError } = await supabase
+                .from("conversation_history")
+                .select("convo_id")
+                .eq("task_taken_id", taskTakenId)
+                .eq("user_id", userId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single();
+
+            if (convoIdError || !convoRow) {
+                res.status(400).json({ error: "Could not find conversation for this user and task." });
+                return;
+            }
+
+            // Insert into action_taken_by with report_id
             const { data: actionData, error: actionError } = await supabase
                 .from("action_taken_by")
                 .insert({
                     user_id: loggedInUserId,
                     action_reason: reason,
                     created_at: new Date().toISOString(),
+                    report_id: convoRow.convo_id
                 })
                 .select()
                 .single();
@@ -401,13 +417,29 @@ class ConversationController {
                 return;
             }
 
-            // Insert into action_taken_by
+            // Get the latest convo_id for this user and taskTakenId
+            const { data: convoRow, error: convoIdError } = await supabase
+                .from("conversation_history")
+                .select("convo_id")
+                .eq("task_taken_id", taskTakenId)
+                .eq("user_id", userId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single();
+
+            if (convoIdError || !convoRow) {
+                res.status(400).json({ error: "Could not find conversation for this user and task." });
+                return;
+            }
+
+            // Insert into action_taken_by with report_id
             const { data: actionData, error: actionError } = await supabase
                 .from("action_taken_by")
                 .insert({
                     user_id: loggedInUserId,
                     action_reason: reason,
                     created_at: new Date().toISOString(),
+                    report_id: convoRow.convo_id
                 })
                 .select()
                 .single();

@@ -285,13 +285,14 @@ class ReportController {
           return;
       }
 
-      // Insert into action_taken_by
+      // Insert into action_taken_by with report_id
       const { data: actionData, error: actionError } = await supabase
         .from("action_taken_by")
         .insert({
           user_id: moderatorId,
           action_reason: reason,
           created_at: new Date().toISOString(),
+          report_id: reportId
         })
         .select()
         .single();
