@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
 import console from "console";
-import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
 import fetch from "node-fetch";
 require("dotenv").config();
@@ -10,7 +9,7 @@ import QTaskPayment from "../models/paymentModel";
 import { WebSocketServer } from "ws";
 import ClientModel from "./clientController";
 
-const ws = new WebSocketServer({ port: 8080 });
+// const ws = new WebSocketServer({ port: 8080 });
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -1299,13 +1298,13 @@ class TaskController {
     }
   }
 
-  static notifyClient(clientId: number, amount: number) {
-    ws.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ clientId, amount }));
-      }
-    });
-  }
+  // static notifyClient(clientId: number, amount: number) {
+  //   ws.clients.forEach((client) => {
+  //     if (client.readyState === WebSocket.OPEN) {
+  //       client.send(JSON.stringify({ clientId, amount }));
+  //     }
+  //   });
+  // }
 
   static async getDocumentLink(req: Request, res: Response): Promise<any> {
     try {
@@ -1345,18 +1344,6 @@ class TaskController {
       } = req.body;
 
       console.log("Request body from another tasker:", req.body);
-
-      const { data: specializations, error: specialization_error } =
-        await supabase
-          .from("tasker_specialization")
-          .select("spec_id")
-          .eq("specialization", specialization)
-          .single();
-
-      if (specialization_error)
-        throw new Error(
-          "Specialization Error: " + specialization_error.message
-        );
 
       if (!req.files) {
         throw new Error("Missing required files (image and/or document)");
@@ -1408,38 +1395,55 @@ class TaskController {
         .from("documents")
         .getPublicUrl(documentPath).data.publicUrl;
 
-      const { data: tesda_documents, error: tesda_error } = await supabase
-        .from("tasker_documents")
-        .insert({ tesda_document_link: tesdaDocUrl })
-        .select("id")
-        .single();
-
-      if (tesda_error)
-        throw new Error(
-          "Error storing document reference: " + tesda_error.message
-        );
-
+      // Upload profile image to user account
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
-      await TaskerModel.createTasker({
-        address,
-        user_id,
-        bio,
-        specialization_id: specializations.spec_id,
-        skills,
-        availability: availability === "true",
-        wage_per_hour: parseFloat(wage_per_hour),
-        tesda_documents_id: tesda_documents.id,
-        social_media_links: social_media_links,
-      });
+
+      // Save bio and social media links to user_verify table only
+      if (bio || social_media_links) {
+        const verificationData: any = {};
+        if (bio) verificationData.bio = bio;
+        if (social_media_links) verificationData.social_media_links = social_media_links;
+        verificationData.updated_at = new Date().toISOString();
+
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: parseInt(user_id),
+            ...verificationData
+          });
+
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
+      }
+
+      // Save document URL to user_documents table if document was uploaded
+      if (tesdaDocUrl) {
+        const documentData = {
+          tasker_id: user_id, // Note: keeping tasker_id column name for compatibility
+          user_document_link: tesdaDocUrl,
+          updated_at: new Date().toISOString()
+        };
+        
+        const { error: docError } = await supabase
+          .from('user_documents')
+          .upsert(documentData);
+          
+        if (docError) {
+          console.warn("Could not update user_documents table:", docError);
+          // Don't fail the entire operation, just log the warning
+        }
+      }
 
       res.status(201).json({ taskerStatus: true });
     } catch (error) {
       console.error(
-        "Error in createTasker:",
+        "Error in updateTaskerProfile:",
         error instanceof Error ? error.message : "Internal Server Error"
       );
       console.error(
-        "Error in createTasker:",
+        "Error in updateTaskerProfile:",
         error instanceof Error ? error.stack : "Internal Server Error"
       );
       res.status(500).json({
@@ -1463,17 +1467,14 @@ class TaskController {
         contact,
         gender,
         birthdate,
-        specialization,
         bio,
-        skills,
-        wage_per_hour,
-        pay_period,
+        social_media_links,
       } = req.body;
 
-      console.log("Request body from tasker:", req.body);
-
+      console.log("Request body from user:", req.body);
       console.log("User ID:", userId);
 
+      // Update user table
       const { data: userData, error: userError } = await supabase
         .from("user")
         .update({
@@ -1494,43 +1495,29 @@ class TaskController {
         throw new Error("Error updating user account: " + userError.message);
       }
 
-      const { data: taskerData, error: taskerFetchError } = await supabase
-        .from("tasker")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
+      // Update user_verify table for bio and social media links (unified approach)
+      if (bio || social_media_links) {
+        const verificationData: any = {};
+        if (bio) verificationData.bio = bio;
+        if (social_media_links) verificationData.social_media_links = social_media_links;
+        verificationData.updated_at = new Date().toISOString();
 
-      if (taskerFetchError && taskerFetchError.code !== "PGRST116") {
-        throw new Error(
-          "Error fetching tasker data: " + taskerFetchError.message
-        );
-      }
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: parseInt(userId),
+            ...verificationData
+          });
 
-      console.log("Tasker Specialization:", specialization);
-      const { data: updatedTaskerData, error: taskerUpdateError } =
-        await supabase
-          .from("tasker")
-          .update({
-            bio,
-            skills,
-            specialization_id: specialization,
-            wage_per_hour: parseFloat(wage_per_hour),
-            pay_period,
-          })
-          .eq("user_id", userId)
-          .select()
-          .single();
-
-      if (taskerUpdateError) {
-        throw new Error(
-          "Error updating tasker data: " + taskerUpdateError.message
-        );
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
       }
 
       res.status(200).json({
-        message: "Tasker profile updated successfully",
+        message: "User profile updated successfully",
         user: userData,
-        tasker: updatedTaskerData,
       });
     } catch (error) {
       console.error(
@@ -1543,7 +1530,7 @@ class TaskController {
       );
       res.status(500).json({
         errors:
-          "An error occurred while updating the tasker profile: " +
+          "An error occurred while updating the user profile: " +
           (error instanceof Error ? error.message : "Unknown error"),
       });
     }

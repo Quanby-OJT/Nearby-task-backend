@@ -77,29 +77,35 @@ class AuthorityAccount {
   }
 
   static async showTasker(user_id: string) {
-    const { data: tasker, error: taskerError } = await supabase
-      .from("tasker")
-      .select(
-        "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period"
-      )
-      .eq("tasker_id", user_id)
+    // Get bio and social_media_links from user_verify table only
+    const { data: verifyData, error: verifyError } = await supabase
+      .from("user_verify")
+      .select("bio, social_media_links")
+      .eq("user_id", user_id)
       .maybeSingle();
-    console.log(tasker, taskerError);
 
-    if (taskerError) {
-      console.error("Tasker Query Error:", taskerError);
-      throw new Error("Tasker Error: " + taskerError.message);
+    if (verifyError) {
+      console.warn("User Verify Query Warning:", verifyError.message);
     }
+
+    // Return only verification data (no more tasker table data)
+    const taskerData = {
+      bio: verifyData?.bio || '',
+      social_media_links: verifyData?.social_media_links || '{}'
+    };
 
     const { data: userDocument, error: userDocumentError } = await supabase
       .from("user_documents")
       .select("doc_name, user_document_link")
       .eq("tasker_id", user_id);
-    console.log(tasker, taskerError, userDocument, userDocumentError);
+    console.log(taskerData, userDocument, userDocumentError);
 
-    if (userDocumentError) throw new Error("User Document Error: " + userDocumentError.message);
+    // Don't throw error if documents don't exist, just log it
+    if (userDocumentError) {
+      console.warn("User Document Warning:", userDocumentError.message);
+    }
 
-    return { tasker, userDocument };
+    return { tasker: taskerData, userDocument: userDocument || null };
   }
 
   static async getUserDocs(user_id: string) {
@@ -121,35 +127,18 @@ class AuthorityAccount {
   }
 
   static async updateTaskerDocumentsValid(user_id: string, valid: boolean) {
-    const { data: tasker, error: taskerError } = await supabase
-      .from("tasker")
-      .select("tasker_id")
-      .eq("user_id", user_id)
-      .maybeSingle();
-
-    if (taskerError) {
-      console.error("Tasker Query Error:", taskerError);
-      throw new Error("Tasker Query Error: " + taskerError.message);
-    }
-
-    if (!tasker) {
-      console.log(`No tasker found for user_id: ${user_id}`);
-      return;
-    }
-
-    const taskerId = user_id; // Use user_id directly as tasker_id in user_documents
-
+    // Update user_documents directly using user_id (no need to check tasker table)
     const { error: updateError } = await supabase
       .from("user_documents")
       .update({ valid: valid })
-      .eq("tasker_id", taskerId);
+      .eq("tasker_id", user_id);
 
     if (updateError) {
       console.error("User Documents Update Error:", updateError);
       throw new Error("User Documents Update Error: " + updateError.message);
     }
 
-    console.log(`Updated user_documents for tasker_id ${taskerId}: valid set to ${valid}`);
+    console.log(`Updated user_documents for user_id ${user_id}: valid set to ${valid}`);
   }
 }
 

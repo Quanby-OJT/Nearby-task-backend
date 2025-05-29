@@ -166,10 +166,11 @@ class TaskModel {
   }
 
   async getAssignedTask(task_taken_id: number){
+    // Get the main task data without tasker table references
     const { data, error } = await supabase.from("task_taken").
       select(`
         task_taken_id, 
-        tasker!tasker_id (user!user_id (first_name, middle_name, last_name, email), bio, tasker_specialization!specialization_id(specialization), skills, address, availability, wage_per_hour, pay_period, social_media_links, rating),
+        tasker_id,
         post_task!task_id (*),
         task_status,
         reason_for_rejection_or_cancellation
@@ -177,9 +178,53 @@ class TaskModel {
       ).
       eq("task_taken_id", task_taken_id).
       single();
-      console.log(data, error);
+      
     if (error) throw new Error(error.message);
-    return data;
+    
+    // Get user basic info
+    let userData = null;
+    if (data?.tasker_id) {
+      const { data: user, error: userError } = await supabase
+        .from("user")
+        .select("first_name, middle_name, last_name, email")
+        .eq("user_id", data.tasker_id)
+        .maybeSingle();
+        
+      if (userError) {
+        console.warn("User Query Warning:", userError.message);
+      } else {
+        userData = user;
+      }
+    }
+    
+    // Get bio and social_media_links from user_verify table
+    let verifyData = null;
+    if (data?.tasker_id) {
+      const { data: verify, error: verifyError } = await supabase
+        .from("user_verify")
+        .select("bio, social_media_links")
+        .eq("user_id", data.tasker_id)
+        .maybeSingle();
+        
+      if (verifyError) {
+        console.warn("User Verify Query Warning:", verifyError.message);
+      } else {
+        verifyData = verify;
+      }
+    }
+    
+    // Combine the data (simplified structure without tasker table data)
+    const result = {
+      ...data,
+      tasker: {
+        user: userData || { first_name: '', middle_name: '', last_name: '', email: '' },
+        bio: verifyData?.bio || '',
+        social_media_links: verifyData?.social_media_links || '{}'
+      }
+    };
+    
+    console.log(result, error);
+    return result;
   }
 
   async deleteTask(taskId: number) {

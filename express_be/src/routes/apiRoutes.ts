@@ -363,4 +363,16 @@ router.get(
   UserAccountController.getUserVerificationStatus
 );
 
+// Test endpoint for user_verify table
+router.get(
+  "/test-user-verify-table",
+  UserAccountController.testUserVerifyTable
+);
+
+// Debug endpoint for user_verify table inserts
+router.get(
+  "/debug-user-verify-insert/:id?",
+  UserAccountController.debugUserVerifyInsert
+);
+
 export default router;
