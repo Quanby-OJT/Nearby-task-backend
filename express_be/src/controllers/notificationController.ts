@@ -1353,7 +1353,28 @@ class NotificationController {
 
     const { data, error } = await supabase
       .from("task_taken")
-      .select("*")
+      .select(`*, post_task:task_id (
+              *,
+              tasker_specialization:specialization_id (specialization),
+              address (*),
+              client:clients!client_id (
+                client_id,
+                user (
+                  user_id,
+                  first_name,
+                  middle_name,
+                  last_name,
+                  email,
+                  contact,
+                  gender,
+                  birthdate,
+                  user_role,
+                  acc_status,
+                  verified,
+                  image_link
+                )
+              )
+            )`)
       .eq("task_taken_id", requestId)
       .maybeSingle();
 

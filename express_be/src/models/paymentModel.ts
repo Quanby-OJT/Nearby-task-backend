@@ -515,7 +515,7 @@ class QTaskPayment {
     const { error: deductionError } = await supabase.rpc('decrement_user_credits_by_role', {
       subtract_credits: amount,
       inp_user_id: user_id,
-      user_role: role // Ensure this is passed in from frontend or retrieved
+      user_role: role
     });
 
     if(deductionError) throw new Error(deductionError.message)

@@ -188,20 +188,30 @@ class TaskModel {
       .delete()
       .eq("task_id", taskId);
 
-     // .update({ status: "disabled" })
-     //.eq("task_id", jobPostId)
-
     if (error) throw new Error(error.message);
     return { success: true, message: "Task deleted successfully" };
   }
 
   async updateTask(taskId: number, taskData: any) {
     console.log("Updating task:", taskId, taskData);
+
+    let parsedRelatedSpecializations: number[] | null = null;
+      if (taskData.related_specializations) {
+        try {
+          parsedRelatedSpecializations = JSON.parse(taskData.related_specializations);
+          if (!Array.isArray(parsedRelatedSpecializations)) {
+            throw new Error("Invalid related specializations format");
+          }
+        } catch (e) {
+          console.error("Failed to parse related specializations:", e);
+          throw new Error("Failed to parse related specializations");
+        }
+      }
     
-    // Remove any fields that should not be updated
-    const cleanedData = { ...taskData };
-    delete cleanedData.task_id; // Don't update primary key
-    delete cleanedData.client_id; // Don't update client_id
+    const cleanedData = { ...taskData, address: taskData.address_id, related_specializations: parsedRelatedSpecializations, update_at: new Date() };
+    delete cleanedData.task_id;
+    delete cleanedData.client_id;
+    delete cleanedData.address_id;
     
     console.log("Cleaned data for update:", cleanedData);
     

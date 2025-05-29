@@ -116,6 +116,7 @@ router.post(
   UserAccountController.registerUser
 );
 router.post("/addTask", upload.single("photo"), TaskController.createTask);
+router.put("/updateTask/:id", upload.single("photo"), TaskController.updateTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get(
