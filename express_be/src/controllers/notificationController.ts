@@ -1419,6 +1419,20 @@ class NotificationController {
           visit_tasker
         );
         break;
+      case "Reworking":
+        const rework = 1; 
+        await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Reworking",
+            visit_client,
+            visit_tasker,
+            undefined,
+            false,
+            false,
+            undefined,
+            rework
+        );
+        break;
       case "Start":
         await TaskAssignment.updateStatus(
           taskTakenId,
@@ -1466,6 +1480,15 @@ class NotificationController {
           reason_for_rejection_or_cancellation
         );
         break;
+      case "Declined":
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Declined",
+          visit_client,
+          visit_tasker,
+          reason_for_rejection_or_cancellation
+        );
+        break;
       case "Review":
         const endDate = DateTime.now().setZone("Asia/Manila");
         const endDateISO = endDate.toISO();
@@ -1480,27 +1503,7 @@ class NotificationController {
           endDateISO as string
         );
         break;
-      case "Reject":
-        const { error: rejectError } = await supabase
-          .from("task_taken")
-          .update({
-            task_status: "Rejected",
-            visit_client: visit_client,
-            visit_tasker: visit_tasker,
-          })
-          .eq("task_taken_id", taskTakenId);
-
-          // console.log("Reject request value: $value");
-
-        if (rejectError) {
-          console.error(rejectError.message);
-          res.status(500).json({
-            success: false,
-            error: "An Error Occurred while rejecting the request.",
-          });
-          return;
-        }
-        break;
+   
       case "Cancel":
         await TaskAssignment.updateStatus(
           taskTakenId,
