@@ -258,18 +258,18 @@ class ReportANDAnalysisModel {
       return { clients: [] };
     }
 
-    // Fetch task counts for each client from post_task
-    const { data: postTasks, error: postTaskError } = await supabase
-      .from("post_task")
+    // Fetch task counts for each client from task_taken
+    const { data: taskTaken, error: taskTakenError } = await supabase
+      .from("task_taken")
       .select("client_id");
 
-    if (postTaskError || !postTasks) {
-      console.error("Error fetching post_task:", postTaskError);
+    if (taskTakenError || !taskTaken) {
+      console.error("Error fetching task_taken for client count:", taskTakenError);
       return { clients: [] };
     }
 
-    // Count tasks per client
-    const taskCounts = postTasks.reduce((acc: { [key: string]: number }, task: any) => {
+    // Count tasks per client from task_taken
+    const taskCounts = taskTaken.reduce((acc: { [key: string]: number }, task: any) => {
       const clientId = task.client_id;
       acc[clientId] = (acc[clientId] || 0) + 1;
       return acc;
@@ -332,7 +332,7 @@ class ReportANDAnalysisModel {
     return data.map((task: any) => {
       const client = task.clients || { client_address: "Unknown", user: { first_name: "Unknown", middle_name: "", last_name: "" } };
       const user = client.user || { first_name: "Unknown", middle_name: "", last_name: "" };
-      const postTask = Array.isArray(task.post_task) ? task.post_task[0] : task.post_task || { task_description: "N/A", address: null };
+      const postTask = task.post_task || { task_description: "N/A", address: null };
       const address = postTask.address || { barangay: "N/A", city: "N/A", province: "N/A" };
   
       return {
@@ -374,21 +374,23 @@ class ReportANDAnalysisModel {
         )
       `)
       .eq("client_id", clientId);
-  
+
     if (error || !data) {
       console.error("Error fetching task_taken records for client:", error);
       return [];
     }
-  
+
+    console.log("Fetched task_taken records for client:", data);
+
     return data.map((task: any) => {
       const tasker = task.tasker || { user: { first_name: "Unknown", middle_name: "", last_name: "" } };
       const user = tasker.user || { first_name: "Unknown", middle_name: "", last_name: "" };
       const postTask = task.post_task || { task_description: "N/A", address: null };
       const address = postTask.address || { barangay: "N/A", city: "N/A", province: "N/A" };
-  
+
       return {
         taskerName: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' '),
-        taskDescription: postTask.task_description,
+        taskDescription: postTask.task_description || "N/A",
         status: task.task_status || "N/A",
         address: {
           barangay: address.barangay,
