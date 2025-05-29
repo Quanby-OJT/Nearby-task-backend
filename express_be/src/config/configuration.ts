@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
-import ejs from "ejs"
 import path from "path";
 
 // Supabase Configuration
@@ -12,11 +11,6 @@ export const supabase = createClient(
   process.env.SUPABASE_URL as string,
   process.env.SUPABASE_KEY as string
 );
-
-export const renderEmailTemplate = async (templateName: string, data: any): Promise<string> => {
-  const filePath = path.join(__dirname, "..", "email-views", `${templateName}.ejs`);
-  return await ejs.renderFile(filePath, data, { async: true });
-}
 
 export const mailer = nodemailer.createTransport({
   host: process.env.MAIL_HOST as string,

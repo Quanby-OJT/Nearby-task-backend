@@ -5,7 +5,9 @@
   "scripts": {
     "start": "ts-node src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc && node node_modules\\tailwindcss\\lib\\cli.js -i ./src/styles/tailwind.css -o ./public/styles/tailwind.css --minify"
+    "dev": "",
+    "tw:init": "node node_modules/tailwindcss/lib/cli.js init",
+    "tw:build": "node node_modules/tailwindcss/lib/cli.js -i emails/src/css/input.css -o emails/src/css/output.css"
   },
   "author": "",
   "license": "ISC",
@@ -23,6 +25,7 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "express-validator": "^7.2.1",
+    "juice": "^11.0.1",
     "luxon": "^3.6.1",
     "mime-types": "^2.1.35",
     "multer": "^1.4.5-lts.1",
@@ -51,9 +54,6 @@
     "@types/nodemailer": "^6.4.17",
     "@types/otp-generator": "^4.0.2",
     "@types/socket.io": "^3.0.1",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^4.1.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },

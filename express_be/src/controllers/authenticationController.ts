@@ -2,8 +2,9 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { mailer, supabase, renderEmailTemplate } from "../config/configuration";
+import { mailer, supabase } from "../config/configuration";
 import { randomUUID } from "crypto";
+import renderEmail from "../emails/renderEmail";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -56,17 +57,21 @@ class AuthenticationController {
         two_fa_code: otp.toString(),
       });
 
-      // const loginEmail = await renderEmailTemplate(
-      //   "otp_email",
-      //   otp
-      // )
+      const name = `${verifyLogin.first_name} ${verifyLogin.last_name}`;
+
+      // const loginEmail = await renderEmail.renderOTPEmail(name, otp);
+
+      // if (loginEmail.error) {
+      //   throw new Error('Failed to render email template');
+      // }
 
       // await mailer.sendMail({
-      //   from: '"QTask" @ <noreply@qtask.com>',
+      //   from: '"QTask" <noreply@qtask.com>',
       //   to: email,
-      //   subject: "QTask OTP Code",
-      //   html: loginEmail
-      // })
+      //   subject: 'QTask OTP Code',
+      //   html: loginEmail.toString(),
+      // });
+
       
       res.status(200).json({ 
         user_id: verifyLogin.user_id,

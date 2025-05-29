@@ -1768,7 +1768,7 @@ class TaskController {
           task:post_task (
             *,
             tasker_specialization:specialization_id (specialization),
-            address (*),
+            address (*)),
           client:tasker!tasker_id (
             tasker_id,
             user (
