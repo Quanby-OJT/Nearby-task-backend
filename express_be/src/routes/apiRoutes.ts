@@ -241,10 +241,13 @@ router.put(
   "/update-specialization/:user_id",
   SettingController.updateSpecialization
 );
+router.put("/set-default-address/:user_id", SettingController.setLocationAsDefault);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
 router.get("/get-address/:user_id", SettingController.getAddress);
 router.get("/get-addresses/:user_id", SettingController.getAddresses);
 router.put("/set-address/:user_id", SettingController.setAddress);
+router.put("/update-address/:user_id", SettingController.updateAddress);
+router.delete("/delete-address/:id", SettingController.deleteAddress);
 
 // User Task
 router.get("/fetchTasks/:userId", TaskController.getTasks);
