@@ -657,20 +657,10 @@ class TaskController {
           client_id,
           tasker_id,
           task:post_task(
-            task_id,
-            task_title,
-            task_description,
-            duration,
-            proposed_price,
-            urgent,
-            location,
-            specialization,
-            status
-          ),
+            *
+          ),  
           client:clients(
-            client_id,
-            user_id,
-            client_address
+            *
           )
         `
         )
@@ -746,7 +736,7 @@ class TaskController {
       client_id,
       role,
       days_available,
-      available_date,
+    
     } = req.body;
 
     console.log("Role this is: " + role);
@@ -787,7 +777,6 @@ class TaskController {
       task_status: "Pending",
       requested_from,
       time_request: days_available,
-      start_date: available_date,
     });
 
     if (error) {
