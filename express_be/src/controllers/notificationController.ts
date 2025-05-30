@@ -1487,28 +1487,6 @@ class NotificationController {
           visit_client,
           visit_tasker
         );
-        break;
-      case "Reworking":
-        const rework = 1; 
-        await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Reworking",
-            visit_client,
-            visit_tasker,
-            undefined,
-            false,
-            false,
-            undefined,
-            rework
-        );
-        break;
-      case "Start":
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Ongoing",
-          visit_client,
-          visit_tasker
-        );
 
         const { data: taskData, error: taskError } = await supabase
           .from("task_taken")
@@ -1539,6 +1517,30 @@ class NotificationController {
           });
           return;
         }
+        break;
+      case "Reworking":
+        const rework = 1; 
+        await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Reworking",
+            visit_client,
+            visit_tasker,
+            undefined,
+            false,
+            false,
+            undefined,
+            rework
+        );
+        break;
+      case "Start":
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Ongoing",
+          visit_client,
+          visit_tasker
+        );
+
+        
         break;
       case "Reject":
         await TaskAssignment.updateStatus(
