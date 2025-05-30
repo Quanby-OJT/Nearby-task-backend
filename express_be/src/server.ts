@@ -16,13 +16,12 @@ import cookieParser from "cookie-parser";
 import authorityAccountRoutes from "./routes/authorityAccountRoutes";
 import reportANDanalysisRoute from "./routes/reportANDanalysisRoute";
 import paymentRoutes from "./routes/paymentRoutes";
+import TaskerModel from "./models/taskerModel";
 import ConversationRoutes from "./routes/conversationRoutes";
-import fs from "fs";
+import fs from 'fs';
 import https from "https";
-import http from "http";
-import path from "path";
+import path from 'path'
 import { Server } from "socket.io";
-
 dotenv.config();
 const app: Application = express();
 
@@ -35,18 +34,18 @@ app.use(
   })
 );
 
-// const sslOptions = {
-//   key: fs.readFileSync(path.join(__dirname, process.env.SECURITY_KEY || "")),
-//   cert: fs.readFileSync(path.join(__dirname, process.env.SECURITY_CERT || "")),
-// };
+const sslOptions = {
+  key: fs.readFileSync(path.join(__dirname, 'mkcert+4-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'mkcert+4.pem')),
+};
 
-// const httpsServer = https.createServer(sslOptions, app);
-// const io = new Server(httpsServer, {
-//   cors: {
-//     origin: "*",
-//     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-//   },
-// });
+const httpsServer = https.createServer(sslOptions, app);
+const io = new Server(httpsServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"] 
+  }
+});
 
 app.use(express.json());
 app.use(cookieParser());
@@ -62,8 +61,6 @@ app.use(
     },
   })
 );
-app.set("view engine", "ejs")
-app.set("views", path.join(__dirname, "email-views"))
 
 app.use("/connect", server);
 
@@ -79,15 +76,6 @@ app.use("/connect", reportRoutes);
 app.use("/connect", authorityAccountRoutes);
 app.use("/connect", reportANDanalysisRoute);
 app.use("/connect", paymentRoutes);
-
-// For development - using HTTP instead of HTTPS
-const httpServer = http.createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  },
-});
 
 io.on("connection", (socket) => {
   console.log("A user connected: " + socket.id);
@@ -106,7 +94,7 @@ io.on("connection", (socket) => {
 });
 
 const PORT = port || 5000;
-httpServer.listen(PORT, () => {
+httpsServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Click this to direct: ${process.env.URL}`);
 });
