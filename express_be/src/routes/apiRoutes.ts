@@ -117,6 +117,7 @@ router.post(
   UserAccountController.registerUser
 );
 router.post("/addTask", upload.single("photo"), TaskController.createTask);
+router.put("/updateTask/:id", upload.single("photo"), TaskController.updateTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get(
@@ -365,6 +366,18 @@ router.post(
 router.get(
   "/tasker-verification-status/:id",
   UserAccountController.getUserVerificationStatus
+);
+
+// Test endpoint for user_verify table
+router.get(
+  "/test-user-verify-table",
+  UserAccountController.testUserVerifyTable
+);
+
+// Debug endpoint for user_verify table inserts
+router.get(
+  "/debug-user-verify-insert/:id?",
+  UserAccountController.debugUserVerifyInsert
 );
 
 export default router;

@@ -16,4 +16,17 @@ router.get("/users", isAuthenticated, UserAccountController.getPaginationUsers);
 router.put("/updateUserInfo/:id/", isAuthenticated, upload.single("image"), UserAccountController.updateUser);
 router.post("/verify-otp", isAuthenticated, AuthenticationController.otpAuthentication);
 
+// Test and debug routes
+router.get("/test-image-document-tables", isAuthenticated, UserAccountController.testImageDocumentTables);
+router.get("/test-user-verify/:id?", isAuthenticated, UserAccountController.testUserVerifyTable);
+router.post("/debug-user-verify/:id?", isAuthenticated, UserAccountController.debugUserVerifyInsert);
+
+// Verification routes (with file uploads)
+router.post("/submit-verification/:id", isAuthenticated, upload.fields([
+  { name: 'idImage', maxCount: 1 },
+  { name: 'selfieImage', maxCount: 1 },
+  { name: 'documents', maxCount: 1 }
+]), UserAccountController.submitUserVerification);
+router.get("/verification-status/:id", isAuthenticated, UserAccountController.getUserVerificationStatus);
+
 export default router;

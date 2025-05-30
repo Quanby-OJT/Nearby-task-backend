@@ -230,7 +230,7 @@ class Auth {
         .from("user") // Changed from 'users' to 'user' to match your other queries
         .select("email, user_id")
         .eq("user_id", user_id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         //console.error("Error getting user by ID:", error.message);

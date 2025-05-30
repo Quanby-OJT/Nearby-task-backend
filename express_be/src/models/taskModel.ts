@@ -114,6 +114,10 @@ class TaskModel {
         first_name,
         middle_name,
         last_name
+      ),
+      action_taken_by:action_taken_by!task_id (
+        action_reason,
+        user_id
       )
     `).order('task_id', { ascending: false });
     if (error) throw new Error(error.message);
@@ -166,10 +170,11 @@ class TaskModel {
   }
 
   async getAssignedTask(task_taken_id: number){
+    // Get the main task data without tasker table references
     const { data, error } = await supabase.from("task_taken").
       select(`
         task_taken_id, 
-        tasker!tasker_id (user!user_id (first_name, middle_name, last_name, email), bio, tasker_specialization!specialization_id(specialization), skills, address, availability, wage_per_hour, pay_period, social_media_links, rating),
+        tasker_id,
         post_task!task_id (*),
         task_status,
         reason_for_rejection_or_cancellation
@@ -177,9 +182,53 @@ class TaskModel {
       ).
       eq("task_taken_id", task_taken_id).
       single();
-      console.log(data, error);
+      
     if (error) throw new Error(error.message);
-    return data;
+    
+    // Get user basic info
+    let userData = null;
+    if (data?.tasker_id) {
+      const { data: user, error: userError } = await supabase
+        .from("user")
+        .select("first_name, middle_name, last_name, email")
+        .eq("user_id", data.tasker_id)
+        .maybeSingle();
+        
+      if (userError) {
+        console.warn("User Query Warning:", userError.message);
+      } else {
+        userData = user;
+      }
+    }
+    
+    // Get bio and social_media_links from user_verify table
+    let verifyData = null;
+    if (data?.tasker_id) {
+      const { data: verify, error: verifyError } = await supabase
+        .from("user_verify")
+        .select("bio, social_media_links")
+        .eq("user_id", data.tasker_id)
+        .maybeSingle();
+        
+      if (verifyError) {
+        console.warn("User Verify Query Warning:", verifyError.message);
+      } else {
+        verifyData = verify;
+      }
+    }
+    
+    // Combine the data (simplified structure without tasker table data)
+    const result = {
+      ...data,
+      tasker: {
+        user: userData || { first_name: '', middle_name: '', last_name: '', email: '' },
+        bio: verifyData?.bio || '',
+        social_media_links: verifyData?.social_media_links || '{}'
+      }
+    };
+    
+    console.log(result, error);
+    return result;
   }
 
   async deleteTask(taskId: number) {
@@ -188,20 +237,30 @@ class TaskModel {
       .delete()
       .eq("task_id", taskId);
 
-     // .update({ status: "disabled" })
-     //.eq("task_id", jobPostId)
-
     if (error) throw new Error(error.message);
     return { success: true, message: "Task deleted successfully" };
   }
 
   async updateTask(taskId: number, taskData: any) {
     console.log("Updating task:", taskId, taskData);
+
+    let parsedRelatedSpecializations: number[] | null = null;
+      if (taskData.related_specializations) {
+        try {
+          parsedRelatedSpecializations = JSON.parse(taskData.related_specializations);
+          if (!Array.isArray(parsedRelatedSpecializations)) {
+            throw new Error("Invalid related specializations format");
+          }
+        } catch (e) {
+          console.error("Failed to parse related specializations:", e);
+          throw new Error("Failed to parse related specializations");
+        }
+      }
     
-    // Remove any fields that should not be updated
-    const cleanedData = { ...taskData };
-    delete cleanedData.task_id; // Don't update primary key
-    delete cleanedData.client_id; // Don't update client_id
+    const cleanedData = { ...taskData, address: taskData.address_id, related_specializations: parsedRelatedSpecializations, update_at: new Date() };
+    delete cleanedData.task_id;
+    delete cleanedData.client_id;
+    delete cleanedData.address_id;
     
     console.log("Cleaned data for update:", cleanedData);
     

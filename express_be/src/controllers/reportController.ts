@@ -11,7 +11,6 @@ const upload = multer({
 }).array("images[]", 5);
 
 class ReportController {
- 
   // Client and Tasker 
   static async createReport(req: Request, res: Response): Promise<void> {
     try {
@@ -177,7 +176,6 @@ class ReportController {
   static async getAllReports(req: Request, res: Response) {
     try {
       const reports = await reportModel.getAllReports();
-      // console.log("Fetched Data: ", reports);
       res.status(200).json({
         success: true,
         reports: reports,
@@ -197,9 +195,8 @@ class ReportController {
   
     try {
       const reportId = parseInt(req.params.reportId, 10);
-      const { status, moderatorId } = req.body;
-      const actionBy = moderatorId?.actionBy;
-  
+      const { status, moderatorId, reason, actionType } = req.body;
+
       // Validate reportId
       if (isNaN(reportId)) {
         res.status(400).json({
@@ -218,21 +215,120 @@ class ReportController {
         return;
       }
   
-      // Validate actionBy
-      if (typeof actionBy !== "number") {
+      // Validate moderatorId
+      if (typeof moderatorId !== "number") {
         res.status(400).json({
           success: false,
-          message: "actionBy must be a number",
+          message: "moderatorId must be a number",
         });
         return;
       }
   
+      // Validate reason
+      if (!reason || typeof reason !== "string" || reason.trim() === "") {
+        res.status(400).json({
+          success: false,
+          message: "Reason is required and must be a non-empty string",
+        });
+        return;
+      }
+
+      // Validate actionType
+      if (!actionType || !["ban", "unban"].includes(actionType)) {
+        res.status(400).json({
+          success: false,
+          message: "actionType must be either 'ban' or 'unban'",
+        });
+        return;
+      }
+
+      // Fetch the report to get reported_whom
+      const { data: reportData, error: reportError } = await supabase
+        .from("report")
+        .select("reported_whom")
+        .eq("report_id", reportId)
+        .single();
+
+      if (reportError) {
+        console.error("Supabase error fetching report:", reportError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to fetch report: ${reportError.message}`,
+        });
+        return;
+      }
+
+      if (!reportData) {
+        res.status(404).json({
+          success: false,
+          message: "Report not found",
+        });
+        return;
+      }
+
+      const reportedWhomId = reportData.reported_whom;
+
+      // Determine acc_status based on actionType
+      let accStatus: string;
+      switch (actionType) {
+        case "ban":
+          accStatus = "Ban";
+          break;
+        case "unban":
+          accStatus = "Active";
+          break;
+        default:
+          res.status(400).json({
+            success: false,
+            message: "Invalid actionType",
+          });
+          return;
+      }
+
+      // Insert into action_taken_by with report_id
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: moderatorId,
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+          report_id: reportId
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Supabase insert error for action_taken_by:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+
+      // Update the user's acc_status
+      const { data: userData, error: userError } = await supabase
+        .from("user")
+        .update({ acc_status: accStatus, action_by: moderatorId })
+        .eq("user_id", reportedWhomId)
+        .select()
+        .single();
+
+      if (userError) {
+        console.error("Supabase update error (user table):", userError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to update user status: ${userError.message}`,
+        });
+        return;
+      }
+
       // Update the report with status and actionBy
-      const updatedReport = await reportModel.updateReportStatus(reportId, status, actionBy);
-  
+      const updatedReport = await reportModel.updateReportStatus(reportId, status, moderatorId);
+
       res.status(200).json({
         success: true,
-        message: "Report status updated successfully",
+        message: `User has been ${accStatus.toLowerCase()} successfully`,
         report: updatedReport,
       });
     } catch (error) {
