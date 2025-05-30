@@ -34,6 +34,7 @@ class TaskController {
         is_verified_document,
         user_id,
         status,
+        task_begin_date,
       } = req.body;
 
       const amount = await QTaskPayment.checkBalance(client_id);
@@ -134,6 +135,7 @@ class TaskController {
             related_specializations: parsedRelatedSpecializations,
             scope,
             is_verified: isVerified,
+            task_begin_date,
             image_url,
           },
         ])
@@ -342,9 +344,10 @@ class TaskController {
 
   static async fetchAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data:  task, error } = await supabase
-        .from("post_task")
-        .select(
+      const { data:   task, error } = await supabase
+          .from("post_task")
+          .select(
+          
           `
         *,
         tasker_specialization:specialization_id (specialization),
@@ -993,6 +996,10 @@ class TaskController {
     try {
       const taskId = parseInt(req.params.id);
       const taskData = { ...req.body };
+
+      console.log("Task ID:", taskId);
+      console.log("Task Data:", taskData);
+      
       if (isNaN(taskId)) {
         res.status(400).json({ success: false, error: "Invalid task ID" });
         return;
@@ -1000,9 +1007,6 @@ class TaskController {
 
       console.log("Updating task with data:", taskData);
 
-      if (taskData.duration) {
-        taskData.duration = Number(taskData.duration);
-      }
 
       if (taskData.proposed_price) {
         taskData.proposed_price = Number(taskData.proposed_price);
