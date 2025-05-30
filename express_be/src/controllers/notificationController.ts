@@ -1399,6 +1399,54 @@ class NotificationController {
     res.status(200).json({ request: data });
   }
 
+  static async updateClientTask(req: Request, res: Response): Promise<any> {
+    const taskId = parseInt(req.params.taskId);
+    const { status } = req.body; // Use only 'status' to match client-side payload
+  
+    console.log("Task ID from the client:", taskId, "Status:", status);
+  
+    if (!taskId || !status) {
+      res.status(400).json({ success: false, error: "Task ID and status are required." });
+      return;
+    }
+  
+    try {
+      let isTaskClosed = false;
+  
+      // Map status to isTaskClosed boolean
+      switch (status) {
+        case "Accept":
+        case "Reworking":
+        case "Start":
+        case "Review":
+          isTaskClosed = false;
+          break;
+        case "Reject":
+        case "Declined":
+        case "Cancel":
+        case "Disputed":
+        case "Finish":
+          isTaskClosed = true;
+          break;
+        default:
+          res.status(400).json({ success: false, error: "Invalid status value." });
+          return;
+      }
+  
+      // Update task status in the database
+      await TaskAssignment.updateClientPostStatus(taskId, isTaskClosed);
+      
+      // Return success response that matches frontend expectation
+      res.status(200).json({ 
+        success: true, 
+        message: "Task status updated successfully." 
+      });
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      res.status(500).json({ success: false, error: "Internal server error." });
+    }
+  }
+
   static async updateRequest(req: Request, res: Response): Promise<void> {
     const taskTakenId = parseInt(req.params.taskTakenId);
     const {
@@ -1439,28 +1487,6 @@ class NotificationController {
           visit_client,
           visit_tasker
         );
-        break;
-      case "Reworking":
-        const rework = 1; 
-        await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Reworking",
-            visit_client,
-            visit_tasker,
-            undefined,
-            false,
-            false,
-            undefined,
-            rework
-        );
-        break;
-      case "Start":
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Ongoing",
-          visit_client,
-          visit_tasker
-        );
 
         const { data: taskData, error: taskError } = await supabase
           .from("task_taken")
@@ -1491,6 +1517,30 @@ class NotificationController {
           });
           return;
         }
+        break;
+      case "Reworking":
+        const rework = 1; 
+        await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Reworking",
+            visit_client,
+            visit_tasker,
+            undefined,
+            false,
+            false,
+            undefined,
+            rework
+        );
+        break;
+      case "Start":
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Ongoing",
+          visit_client,
+          visit_tasker
+        );
+
+        
         break;
       case "Reject":
         await TaskAssignment.updateStatus(

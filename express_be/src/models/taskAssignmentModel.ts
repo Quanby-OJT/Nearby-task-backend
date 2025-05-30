@@ -35,6 +35,18 @@ class TaskAssignment{
         if(error) throw new Error(error.message)
         return data
     }
+
+    static async updateClientPostStatus(task_id: number, task_status: boolean): Promise<any> {
+        const { error } = await supabase
+        .from("post_task")
+        .update({ able_to_delete: task_status })
+        .eq("task_id", task_id);
+        
+        if(error) throw new Error(error.message)
+        return { success: true, message: "Task status updated successfully." }
+    
+    }
+    
 }
 
 export default TaskAssignment
