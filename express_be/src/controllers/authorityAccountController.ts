@@ -21,9 +21,18 @@ class AuthorityAccountController {
         contact,
         gender,
         added_by,
+        action_reason,
       } = req.body;
       const imageFile = req.file;
       console.log("Received authority account data:", req.body);
+
+      // Validate added_by and action_reason
+      if (!added_by || isNaN(Number(added_by))) {
+        return res.status(400).json({ errors: "Invalid user ID for added_by" });
+      }
+      if (!action_reason) {
+        return res.status(400).json({ errors: "Reason for adding user is required" });
+      }
 
       const { data: existingUser, error: findError } = await supabase
         .from("user")
@@ -92,6 +101,22 @@ class AuthorityAccountController {
 
       if (insertError) {
         throw new Error(insertError.message);
+      }
+
+      // Insert into action_taken_by table
+      const { error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: Number(added_by),
+          action_reason,
+          created_at: new Date().toISOString(),
+        });
+
+      if (actionError) {
+        console.error("Error inserting into action_taken_by:", actionError);
+        // Optionally, rollback user insertion if action logging fails
+        await supabase.from("user").delete().eq("user_id", newUser.user_id);
+        throw new Error("Failed to log action: " + actionError.message);
       }
 
       res.status(201).json({
@@ -198,6 +223,108 @@ class AuthorityAccountController {
           error instanceof Error
             ? error.message
             : "An error occurred during authority user update",
+      });
+    }
+  }
+
+  static async updateUserStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = Number(req.params.id);
+      const { userData, loggedInUserId, reason } = req.body;
+  
+      if (isNaN(userId)) {
+        res.status(400).json({ success: false, message: "Invalid user ID" });
+        return;
+      }
+  
+      if (!loggedInUserId || isNaN(loggedInUserId)) {
+        res.status(400).json({ success: false, message: "Invalid logged-in user ID" });
+        return;
+      }
+  
+      if (!reason) {
+        res.status(400).json({ success: false, message: "Reason for updating status is required" });
+        return;
+      }
+  
+      if (!userData || !userData.acc_status || !userData.user_role) {
+        res.status(400).json({ success: false, message: "Missing required user data (acc_status or user_role)" });
+        return;
+      }
+  
+      // Validate that loggedInUserId exists in the user table
+      const { data: userExists, error: userCheckError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("user_id", parseInt(loggedInUserId))
+        .single();
+  
+      if (userCheckError || !userExists) {
+        console.error("User does not exist:", userCheckError || "No user found");
+        res.status(400).json({
+          success: false,
+          message: "Logged-in user does not exist in the system",
+        });
+        return;
+      }
+  
+      // Insert into action_taken_by with user_id and reason
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: parseInt(loggedInUserId),
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+          target_user_id: userId
+        })
+        .select()
+        .single();
+  
+      if (actionError) {
+        console.error("Supabase insert error for action_taken_by:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+  
+      console.log("Action taken by data inserted:", actionData);
+  
+      // Update user table with new status, user_role, and action_by
+      const updateData = {
+        acc_status: userData.acc_status,
+        user_role: userData.user_role,
+        action_by: parseInt(loggedInUserId),
+        verified: userData.acc_status === "Active" ? true : false
+      };
+  
+      const updatedUser = await AuthorityAccount.update(userId, {
+        ...updateData,
+        first_name: userData.first_name,
+        middle_name: userData.middle_name,
+        last_name: userData.last_name,
+        birthdate: userData.birthday,
+        email: userData.email,
+        contact: userData.contact || "", 
+        gender: userData.gender || ""  
+      });
+  
+      if (userData.acc_status === "Active" && userData.user_role === "Tasker") {
+        await AuthorityAccount.updateTaskerDocumentsValid(userId.toString(), true);
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: "User status updated successfully",
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error("Error in updateUserStatus:", error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while updating the user status",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
@@ -601,14 +728,93 @@ class AuthorityAccountController {
 
   static async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
-      const { data, error } = await supabase.from(`user`).select().order("created_at", { ascending: false });;
+      console.log('Fetching all users...');
+      // First get all users
+      const { data: users, error: usersError } = await supabase
+        .from('user')
+        .select('*')
+        .order("created_at", { ascending: false });
 
-      if (error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(200).json({ users: data });
+      if (usersError) {
+        console.error("Error fetching users:", usersError);
+        res.status(500).json({ error: usersError.message });
+        return;
       }
+      console.log('Fetched users:', users.length);
+
+      // Get all users who are referenced in action_by
+      const actionByUserIds = users
+        .filter(user => user.action_by)
+        .map(user => user.action_by);
+
+      console.log('Action by user IDs:', actionByUserIds);
+
+      let actionByUsersMap = new Map();
+      if (actionByUserIds.length > 0) {
+        console.log('Fetching action_by user details...');
+        const { data: actionByUsers, error: actionByUsersError } = await supabase
+          .from('user')
+          .select('user_id, first_name, middle_name, last_name')
+          .in('user_id', actionByUserIds);
+
+        if (actionByUsersError) {
+          console.error("Error fetching action_by users:", actionByUsersError);
+          res.status(500).json({ error: actionByUsersError.message });
+          return;
+        }
+        console.log('Fetched action_by users:', actionByUsers.length);
+
+        // Create a map of user_id to user details for quick lookup
+        actionByUsersMap = new Map(
+          actionByUsers.map(user => [user.user_id, user])
+        );
+        console.log('Created actionByUsersMap');
+      }
+
+      console.log('Fetching all action_taken_by records...');
+      // Get all actions taken by users
+      const { data: actions, error: actionsError } = await supabase
+        .from('action_taken_by')
+        .select('*')
+        .order("created_at", { ascending: false });
+
+      if (actionsError) {
+        console.error("Error fetching actions:", actionsError);
+        res.status(500).json({ error: actionsError.message });
+        return;
+      }
+      console.log('Fetched action_taken_by records:', actions.length);
+
+
+      // Transform the data to include the full name of action_by user and action_reason
+      const transformedData = users.map(user => {
+        const actionByUser = user.action_by ? actionByUsersMap.get(user.action_by) : null;
+
+        // Find the latest action taken ON this user (target_user_id) by the action_by user (user_id)
+        const userActions = actions.filter(action => 
+          action.target_user_id === user.user_id && 
+          action.user_id === user.action_by // Filter by the user who took the action
+        );
+
+        const latestAction = userActions.length > 0
+          ? userActions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+          : null;
+
+        console.log(`Processing user ${user.user_id}: Found ${userActions.length} actions, latestAction:`, latestAction);
+
+        return {
+          ...user,
+          action_by_name: actionByUser ? 
+            `${actionByUser.first_name} ${actionByUser.middle_name || ''} ${actionByUser.last_name}`.trim() : 
+            'No Action Yet',
+          action_reason: latestAction?.action_reason || 'Empty' // Add the action reason
+        };
+      });
+
+      console.log('Transformed data:', transformedData);
+      res.status(200).json({ users: transformedData });
     } catch (error) {
+      console.error("Error in getAllUsers:", error);
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
       });

@@ -25,7 +25,12 @@ class ConversationModel {
           action_user:user!conversation_history_action_by_fkey (
             first_name,
             middle_name,
-            last_name
+            last_name,
+            user_id
+          ),
+          action_taken:action_taken_by!fk_convo (
+            action_reason,
+            user_id
           ),
           task_taken!task_taken_id (
             task_taken_id,
@@ -83,6 +88,23 @@ class ConversationModel {
           hour12: true,
         };
 
+        // Get moderator user_id if available
+        let moderatorUserId = null;
+        if (conversation.action_user && conversation.action_user.user_id) {
+          moderatorUserId = conversation.action_user.user_id;
+        } else if (conversation.action_by) {
+          moderatorUserId = conversation.action_by;
+        }
+
+        // Find the action_reason for the moderator
+        let actionReason = 'Empty';
+        if (Array.isArray(conversation.action_taken) && conversation.action_taken.length > 0 && moderatorUserId) {
+          const found = conversation.action_taken.find((a: any) => a.user_id == moderatorUserId);
+          if (found && found.action_reason) {
+            actionReason = found.action_reason;
+          }
+        }
+
         return {
           ...conversation,
           created_at: conversation.created_at
@@ -100,6 +122,7 @@ class ConversationModel {
           action_by: conversation.action_user
             ? `${conversation.action_user.first_name || ''} ${conversation.action_user.middle_name || ''} ${conversation.action_user.last_name || ''}`.trim()
             : 'No Action Yet',
+          action_reason: actionReason
         };
       });
 
