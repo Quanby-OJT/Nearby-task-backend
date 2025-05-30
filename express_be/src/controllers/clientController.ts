@@ -128,7 +128,7 @@ class ClientModel {
       `
         )
         .eq("user.user_id", userId)
-        .single();
+        .maybeSingle();
       
       console.log("User ID:", userId);
 
@@ -140,7 +140,7 @@ class ClientModel {
         return;
       }
 
-      if (!data || data.length === 0) {
+      if (!data) {
         res.status(200).json({ error: "No active client found." });
         return;
       }
@@ -241,7 +241,7 @@ class ClientModel {
       `
         )
         .eq("user.user_id", userId)
-        .single();
+        .maybeSingle();
       
       console.log("User ID:", userId);
 
@@ -253,7 +253,7 @@ class ClientModel {
         return;
       }
 
-      if (!data || data.length === 0) {
+      if (!data) {
         res.status(200).json({ error: "No active client found." });
         return;
       }

@@ -86,14 +86,28 @@ class ClientTaskerModeration{
             user_role
           )
         ),
+        tasker(
+            user(
+            first_name,
+            middle_name,
+            last_name,
+            user_role
+          )
+        ),
         post_task(
           task_id,
-          task_title
+          task_title,
+          task_description
         )
       ),
       reason_for_dispute,
       dispute_details,
       image_proof,
+      user(
+        first_name,
+        middle_name,
+        last_name
+      ),
       moderator_action,
       addl_dispute_notes,
       created_at::date
@@ -108,7 +122,15 @@ class ClientTaskerModeration{
     return data;
   }
 
-  static async updateADispute(task_taken_id: number, task_status: string, dispute_id: number, moderator_action: string, addl_dispute_notes: Text, moderator_id: number){
+  static async getDispute(task_taken_id: number) {
+    const {data, error} = await supabase.from("dispute_logs").select("reason_for_dispute, dispute_details, moderator_action, addl_dispute_notes, task_taken(task_taken_id, post_task(task_title), task_status)").eq("task_taken_id", task_taken_id).single()
+
+    if(error) throw new Error(error.message)
+
+    return data
+  }
+
+  static async updateADispute(task_taken_id: number, task_status: string, dispute_id: number, moderator_action: string, addl_dispute_notes: string, moderator_id: number){
     // Check if dispute already has moderator action
     const { data: existingDispute, error: checkError } = await supabase
       .from('dispute_logs')
@@ -119,7 +141,7 @@ class ClientTaskerModeration{
     if (checkError) throw new Error(checkError.message);
 
     if (existingDispute?.moderator_action && existingDispute?.addl_dispute_notes) {
-      throw new Error('This dispute has already been moderated and cannot be updated again.');
+      throw new Error('This dispute has already been resolved.');
     }
 
     const {error: disputeError} = await supabase.from('dispute_logs').

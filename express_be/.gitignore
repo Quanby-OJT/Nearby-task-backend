@@ -73,7 +73,7 @@ typings/
 
 # dotenv environment variables file
 .env
-.env.test
+.env.*
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -107,11 +107,14 @@ dist
 .tern-port
 
 # Your MUST generate your own private key and certificate by doing the following:
-# install mkcert
+# choco install mkcert
 # input the following command in your terminal
-# mkcert -install
-# mkcert mkcert 10.0.2.2 localhost 127.0.0.1 ::1
+# /src mkcert -install
+# /src mkcert mkcert 10.0.2.2 localhost 127.0.0.1 ::1
 # This will create your local CA which is vital for PayMongo Redirection.
 
 mkcert+4-key.pem
 mkcert+4.pem
+
+10.0.2.2+3-key.pem
+10.0.2.2+3.pem

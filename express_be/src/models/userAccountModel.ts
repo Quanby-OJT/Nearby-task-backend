@@ -27,7 +27,7 @@ class UserAccount {
       .from("user")
       .select("verification_token")
       .eq("email", email)
-      .single();
+      .maybeSingle();
     console.log(data, error);
 
     if (error) throw new Error(error.message);
@@ -43,7 +43,7 @@ class UserAccount {
       })
       .eq("email", email)
       .select("user_id")
-      .single();
+      .maybeSingle();
     console.log(data, error);
 
     if (error) throw new Error(error.message);
@@ -68,9 +68,11 @@ class UserAccount {
         "first_name, middle_name, last_name, image_link, email, birthdate, user_role, gender, contact, acc_status"
       )
       .eq("user_id", user_id)
-      .single();
+      .maybeSingle();
 
     if (error) throw new Error(error.message);
+    
+    if (!data) throw new Error("User not found");
 
     return data;
   }
@@ -81,7 +83,7 @@ class UserAccount {
     .from("user")
     .select("*")
     .eq("user_id", user_id)
-    .single();
+    .maybeSingle();
 
     if (userError) throw new Error(userError.message);
 
@@ -94,7 +96,7 @@ class UserAccount {
       .from("client_documents")
       .select("*")
       .eq("user_id", user_id)
-      .single();
+      .maybeSingle();
 
     if (error) throw new Error(error.message);
 
@@ -104,7 +106,7 @@ class UserAccount {
       .from("user_documents")
       .select("*")
       .eq("tasker_id", user_id)
-      .single();
+      .maybeSingle();
 
     if (error) throw new Error(error.message);
 
@@ -129,29 +131,40 @@ class UserAccount {
   }
 
   static async showTasker(user_id: string) {
+    // Get verification data from user_verify table only
     const { data: tasker, error: taskerError } = await supabase
-    .from("tasker")
-    .select(
-      "tasker_id, bio, tasker_specialization(specialization), skills, availability, wage_per_hour, social_media_links, address, pay_period, rating"
-    )
-    .eq("tasker_id", user_id)  // Changed from user_id to tasker_id
-    .single();
+      .from("user_verify")
+      .select(
+        "bio, social_media_links"
+      )
+      .eq("user_id", user_id)
+      .maybeSingle();
     console.log(tasker, taskerError);
 
     if (taskerError) {
-      console.error("Tasker Query Error:", taskerError);
-      throw new Error("Tasker Error: " + taskerError.message);
+      console.error("User Verify Query Error:", taskerError);
+      throw new Error("User Verify Error: " + taskerError.message);
     }
+
+    // Provide default values if no verification data exists
+    const taskerData = tasker || {
+      bio: '',
+      social_media_links: '{}'
+    };
 
     const { data: taskerDocument, error: taskerDocumentError } = await supabase
       .from("user_documents")
       .select("user_document_link")
-      .eq("tasker_id", user_id);
-    console.log(tasker, taskerError, taskerDocument, taskerDocumentError);
+      .eq("tasker_id", user_id)
+      .maybeSingle();
+    console.log(taskerData, taskerError, taskerDocument, taskerDocumentError);
 
-    if (taskerDocumentError) throw new Error("Tasker Document Error: " + taskerDocumentError.message);
+    // Don't throw error if documents don't exist, just log it
+    if (taskerDocumentError) {
+      console.warn("Tasker Document Warning:", taskerDocumentError.message);
+    }
 
-    return { tasker, taskerDocument };
+    return { tasker: taskerData, taskerDocument: taskerDocument || null };
   }
 }
 

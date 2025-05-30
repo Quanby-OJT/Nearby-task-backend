@@ -71,6 +71,24 @@ class FeedbackModel {
     return taskReviewData;
   }
 
+    static async getFeedbackForClient(task_taken_id: number) {
+
+    const { data: taskReviewData, error: taskReviewError } = await supabase
+      .from("task_reviews")
+      .select(`
+        rating,
+        feedback
+      `)
+      .eq("task_taken_id", task_taken_id).single();
+
+    console.log(taskReviewData, taskReviewError)
+
+    if (taskReviewError && taskReviewError.code != 'PGRST116') throw new Error(taskReviewError.message);
+    if(taskReviewError?.code == 'PGRST116') return null
+
+    return taskReviewData;
+  }
+
   static async getTaskerFeedback() {
     const { data, error } = await supabase.from("task_reviews")
       .select(`

@@ -42,6 +42,19 @@ class FeedbackController {
     }
   }
 
+  static async getFeedbackForClient(req: Request, res: Response): Promise<void> {
+    try{    
+      const taskTakenId = parseInt(req.params.id)
+
+      const clientFeedback = await FeedbackModel.getFeedbackForClient(taskTakenId);
+
+      res.status(200).json({client_feedback: clientFeedback})
+    }catch(error){
+      console.error(error instanceof Error? error.message : "Internal Server Error")
+      res.status(500).json({error: "An Error Occured while retrieving your feedback. Please Try Again."})
+    }
+  }
+
 
   static async getFeedbacks(req: Request, res: Response): Promise<void> {
     try {

@@ -1,8 +1,15 @@
 // controllers/userController.ts
 import { Request, Response } from "express";
 import ClientTaskerModeration from "../models/moderationModel";
-import PayMongoPayment from "../models/paymentModel";
+import QTaskPayment from "../models/paymentModel";
 import taskModel from "../models/taskModel";
+import { supabase } from "../config/configuration";
+import cron from 'node-cron'
+
+cron.schedule('0 * * * *', () => {
+  DisputeController.autoResolveStaleDisputes()
+})
+
 class DisputeController {
   static async getAllDisputes(req: Request, res: Response): Promise<void> {
     try {
@@ -14,6 +21,50 @@ class DisputeController {
     }
   }
 
+  static async getADispute(req: Request, res: Response): Promise<void> {
+    try{
+      const task_taken_id = parseInt(req.params.id)
+      const dispute_details = await ClientTaskerModeration.getDispute(task_taken_id)
+
+      res.status(200).json(dispute_details)
+    }catch(error){
+      console.error(error instanceof Error ? error.message : "Error Unknown")
+      res.status(500).json({error: "An Error Occured while displaying your dispute information. Please Try Again."})
+    }
+  }
+
+  static async autoResolveStaleDisputes() {
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: staleDisputes, error } = await supabase
+      .from("dispute_logs")
+      .select("dispute_id, task_taken_id")
+      .eq("moderator_action", null)
+      .lte("created_at", fourteenDaysAgo);
+
+    if (error) {
+      console.error("Failed to fetch stale disputes:", error.message);
+      return;
+    }
+
+    for (const dispute of staleDisputes) {
+      try {
+        await QTaskPayment.releaseHalfCredits(dispute.task_taken_id);
+
+        await ClientTaskerModeration.updateADispute(
+          dispute.task_taken_id,
+          "auto_resolved",
+          dispute.dispute_id,
+          "System Auto-Resolution",
+          "Automatically released half payment to both parties after 14 days of no moderator action.",
+          0 // no moderator_id
+        );
+      } catch (err) {
+        console.error(`Failed to auto-resolve dispute ID ${dispute.dispute_id}:`, err instanceof Error ? err.message : "Unknown Error");
+      }
+    }
+  }
+
   static async updateDispute(req: Request, res: Response): Promise<void> {
     try{
       console.log("Updating dispute with the Information...", req.body)
@@ -22,24 +73,38 @@ class DisputeController {
 
       switch(moderator_action){
         case "refund_tokens":
-          await PayMongoPayment.refundCreditstoClient(task_taken_id, task_id)
-          await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Refund NearByTask Tokens to Client", addl_dispute_notes, moderator_id)
+          await QTaskPayment.refundCreditstoClient(task_taken_id, task_id)
+          await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Refund Amount to Client", addl_dispute_notes, moderator_id)
           break;
         case "release_half":
-          await PayMongoPayment.releaseHalfCredits(task_taken_id, task_status)
-          await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Release Half of the Total Payment to Tasker", addl_dispute_notes, moderator_id)
+          await QTaskPayment.releaseHalfCredits(task_taken_id)
+          await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Split Amount between Tasker and Client", addl_dispute_notes, moderator_id)
           break;
         case "release_full":
           const task = await taskModel.getTaskAmount(task_taken_id);
-          
-          await PayMongoPayment.releasePayment({
-            user_id: task?.post_task.client_id,
-            amount: task?.post_task.proposed_price ?? 0,
-            payment_type: "Release of Payment to Tasker",
-            deposit_date: new Date().toISOString(),
-          });
+
+          if(!task){
+            res.status(500).json({error: "Unable to calculate the amount from the task. Please Try Again. Contact our support to resolve this."})
+            return
+          }
 
           await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Release Full Payment to Tasker", addl_dispute_notes, moderator_id)
+          const { error: updateAmountError } = await supabase.rpc(
+            "update_tasker_amount",
+            {
+              addl_credits: task?.post_task.proposed_price,
+              id: task?.tasker.tasker_id,
+            }
+          );
+
+          if (updateAmountError) {
+            console.error(updateAmountError.message);
+            res.status(500).json({
+              success: false,
+              error: "An Error Occurred while updating tasker amount.",
+            });
+            return;
+          }
           break;
         case "reject_dispute":
           await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Reject Dispute", addl_dispute_notes, moderator_id)

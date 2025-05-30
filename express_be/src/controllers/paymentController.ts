@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import PayMongoPayment from "../models/paymentModel";
+import QTaskPayment from "../models/paymentModel";
 import ClientModel from "./clientController";
 import { supabase } from "../config/configuration";
 import Crypto from "crypto";
@@ -17,7 +17,7 @@ class PaymentController {
 
           const fixedPaymentMethod = payment_method.replace(/-/g, "_").toLowerCase();
 
-          const PaymentInformation = await PayMongoPayment.checkoutPayment({
+          const PaymentInformation = await QTaskPayment.checkoutPayment({
               user_id: client_id,
               amount,
               deposit_date: new Date().toISOString(),
@@ -37,7 +37,7 @@ class PaymentController {
   
   static async displayPaymentLogs(req: Request, res: Response): Promise<void> {
     try {
-      const logs = await PayMongoPayment.getPaymentLogsWithUser();
+      const logs = await QTaskPayment.getPaymentLogsWithUser();
       
       const formattedLogs = logs.map((log: any) => ({
         payment_id: log.transaction_id,
@@ -55,6 +55,24 @@ class PaymentController {
       } else {
         res.status(500).json({ error: "An error occured while processing your request. Please Try Again." });
       }
+    }
+  }
+
+  static async displayPaymentDetails(req: Request, res: Response): Promise<void> {
+    try {
+      const id = req.params.id;
+      const payment_method = req.params.payment_method;
+
+      const paymentDetails = await QTaskPayment.getPaymentDetails(id, payment_method);
+
+      if (!paymentDetails) {
+        res.status(404).json({ error: "Payment details not found." });
+        return;
+      }
+      res.status(200).json({payment_details: paymentDetails});
+    } catch (error) {
+      console.error("Error in displayPaymentDetails:", error instanceof Error ? error.message : error);
+      res.status(500).json({ error: "An error occured while processing your request. Please Try Again." });
     }
   }
 
@@ -109,24 +127,40 @@ class PaymentController {
   static async withdrawEscrowPayment(req: Request, res: Response): Promise<void> {
     try {
       const { amount, payment_method, account_number, role } = req.body;
-      const tasker_id = parseInt(req.params.id);
+      const user_id = parseInt(req.params.id);
 
-      console.log(req.body, "tasker id: ", tasker_id)
+      console.log(req.body, "tasker id: ", user_id)
 
-      if (!tasker_id || !amount || !payment_method || !account_number) {
+      if (!user_id || !amount || !payment_method || !account_number) {
         res.status(400).json({ error: "All fields are required." });
         return;
       }
 
-      await PayMongoPayment.releasePayment({
-        user_id: tasker_id,
+      const balance = await QTaskPayment.checkBalance(user_id);
+
+      if(balance.error) {
+        res.status(400).json({ error: balance.error });
+        return;
+      }else if (!balance.amount || balance.amount < 0) {
+        const errorMessage = role === "Tasker" ? "Earn More by tasking more tasks" : "Please Deposit Your Amount First.";
+        res.status(403).json({ error: "You don't have funds in our system." + errorMessage });
+        return;
+      }
+
+      if(balance.amount < amount) {
+        res.status(400).json({ error: "Insufficient Funds." });
+        return;
+      }
+
+      await QTaskPayment.releasePayment({
+        user_id: user_id,
         amount,
         withdraw_date: new Date().toISOString(),
         payment_type: "QTask Withdrawal",
         payment_method,
         account_no: account_number,
       });
-      await PayMongoPayment.deductAmountfromUser(role, amount, tasker_id);
+      await QTaskPayment.deductAmountfromUser(role, amount, user_id);
 
       res.status(200).json({ success: true, message: "Payment Has been withdrawn successfully."});
     } catch (error) {

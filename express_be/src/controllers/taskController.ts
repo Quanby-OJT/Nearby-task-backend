@@ -2,17 +2,14 @@ import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
 import console from "console";
-import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
-import TaskAssignment from "../models/taskAssignmentModel";
 import fetch from "node-fetch";
-import { User } from "@supabase/supabase-js";
 require("dotenv").config();
-import PayMongoPayment from "../models/paymentModel";
-import ClientModel from "./clientController";
+import QTaskPayment from "../models/paymentModel";
 import { WebSocketServer } from "ws";
+import ClientModel from "./clientController";
 
-const ws = new WebSocketServer({ port: 8080 });
+// const ws = new WebSocketServer({ port: 8080 });
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -20,6 +17,7 @@ class TaskController {
       const photo = req.file;
       console.log("Received photo:", photo);
       console.log("Received task data:", req.body);
+      console.log("Received insert data:", req.body);    
 
       const {
         client_id,
@@ -38,18 +36,36 @@ class TaskController {
         status,
       } = req.body;
 
+      const amount = await QTaskPayment.checkBalance(client_id);
+      if (!amount) {
+        res.status(404).json({ error: "User not found or insufficient funds." });
+        return;
+      }else if (!amount?.amount || amount.amount <= 0) {
+        res.status(403).json({ error: `You have no money in your wallet. Please Deposit an additional P${proposed_price} in order to create this task.`  });
+        return;
+      }
+
+      if(proposed_price > amount.amount){
+        const remainingAmount = proposed_price - amount.amount
+        res.status(403).json({error: `You have insufficient funds to create this task. Please Deposit An Additional P${remainingAmount} in order to create this task.`})
+        return
+      }
+
       // Validate and parse price
       const parsedPrice = Number(proposed_price);
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        res.status(400).json({ success: false, error: 'Invalid proposed price' });
+        res
+          .status(400)
+          .json({ success: false, error: "Invalid proposed price" });
         return;
       }
 
       // Parse urgent as boolean
-      const isUrgent = urgent === 'true' || urgent === true;
+      const isUrgent = urgent === "true" || urgent === true;
 
       // Parse is_verified_document as boolean
-      const isVerified = is_verified_document === 'true' || is_verified_document === true;
+      const isVerified =
+        is_verified_document === "true" || is_verified_document === true;
 
       // Parse related_specializations (expecting JSON string like '[5,7,3,2]')
       let parsedRelatedSpecializations: number[] | null = null;
@@ -57,11 +73,17 @@ class TaskController {
         try {
           parsedRelatedSpecializations = JSON.parse(related_specializations);
           if (!Array.isArray(parsedRelatedSpecializations)) {
-            res.status(400).json({ success: false, error: 'Invalid related specializations format' });
+            res.status(400).json({
+              success: false,
+              error: "Invalid related specializations format",
+            });
             return;
           }
         } catch (e) {
-          res.status(400).json({ success: false, error: 'Failed to parse related specializations' });
+          res.status(400).json({
+            success: false,
+            error: "Failed to parse related specializations",
+          });
           return;
         }
       }
@@ -69,23 +91,29 @@ class TaskController {
       // Handle photo upload to Supabase Storage
       let image_url: string | null = null;
       if (photo) {
-        const fileName = `tasks/image_${user_id}_${Date.now()}_${photo.originalname}`;
+        const fileName = `tasks/image_${user_id}_${Date.now()}_${
+          photo.originalname
+        }`;
         console.log("Uploading Image File:", fileName);
 
         const { error } = await supabase.storage
           .from("crud_bucket")
           .upload(fileName, photo.buffer, {
             contentType: photo.mimetype,
-            cacheControl: '3600',
+            cacheControl: "3600",
             upsert: true,
           });
 
         if (error) {
-          res.status(500).json({ success: false, error: `Error uploading image: ${error.message}` });
+          res.status(500).json({
+            success: false,
+            error: `Error uploading image: ${error.message}`,
+          });
           return;
         }
 
-        image_url = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
+        image_url = supabase.storage.from("crud_bucket").getPublicUrl(fileName)
+          .data.publicUrl;
       }
 
       // Insert task into Supabase
@@ -114,9 +142,14 @@ class TaskController {
 
       if (error) {
         console.error("Supabase insert error:", error);
-        res.status(500).json({ success: false, error: `Failed to create task: ${error.message}` });
+        res.status(500).json({
+          success: false,
+          error: `Failed to create task: ${error.message}`,
+        });
         return;
       }
+
+      await QTaskPayment.deductAmountfromUser(amount.user_role, amount.amount, user_id)
 
       res.status(201).json({
         success: true,
@@ -143,7 +176,9 @@ class TaskController {
       }
 
       if (!loggedInUserId || isNaN(loggedInUserId)) {
-        res.status(400).json({ success: false, message: "Invalid logged-in user ID" });
+        res
+          .status(400)
+          .json({ success: false, message: "Invalid logged-in user ID" });
         return;
       }
 
@@ -208,7 +243,11 @@ class TaskController {
         return;
       }
 
-      res.status(200).json({ success: true, message: "Task closed successfully", task: data });
+      res.status(200).json({
+        success: true,
+        message: "Task closed successfully",
+        task: data,
+      });
     } catch (error) {
       console.error("Error in disableTask:", error);
       res.status(500).json({
@@ -219,9 +258,14 @@ class TaskController {
     }
   }
 
-  static async getTaskWithSpecialization(req: Request, res: Response): Promise<void> {
+  static async getTaskWithSpecialization(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
-      const tasks = await taskModel.getTaskWithSpecialization(req.query.specialization as string);
+      const tasks = await taskModel.getTaskWithSpecialization(
+        req.query.specialization as string
+      );
       res.status(200).json({ tasks });
     } catch (error) {
       res.status(500).json({
@@ -234,7 +278,8 @@ class TaskController {
     try {
       const { data: tasks, error } = await supabase
         .from("post_task")
-        .select(`
+        .select(
+          `
           *,
           clients:client_id (
             client_id,
@@ -256,9 +301,10 @@ class TaskController {
             user_id,
             created_at
           )
-        `)
-        .order('task_id', { ascending: false });
-  
+        `
+        )
+        .order("task_id", { ascending: false });
+
       if (error) {
         console.error("Supabase error:", error.message);
         res.status(500).json({
@@ -296,9 +342,10 @@ class TaskController {
 
   static async fetchAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data: task, error } = await supabase
-      .from("post_task")
-      .select(`
+      const { data:  task, error } = await supabase
+        .from("post_task")
+        .select(
+          `
         *,
         tasker_specialization:specialization_id (specialization),
         address (*),
@@ -318,30 +365,31 @@ class TaskController {
           image_link
           )
         )
-      `)
+      `
+        )
         .not("clients", "is", null)
         .eq("clients.user.user_role", "Client");
-  
 
       console.log("This is fetchTask");
       console.log("Taskers data:", task, "Error:", error);
-  
+
       if (error) {
         console.error("Error fetching taskers:", error.message);
         res.status(500).json({ error: error.message });
         return;
       }
-  
+
       if (!task || task.length === 0) {
         res.status(200).json({ error: "No active taskers found." });
         return;
       }
-  
+
       res.status(200).json({ taskers: task });
     } catch (error) {
       console.error("Error fetching taskers:", error);
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   }
@@ -367,6 +415,149 @@ class TaskController {
       console.error("Server error:", error);
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  static async getTaskforClientAvailable(
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    const clientId = req.params.clientId;
+
+    try {
+      const [taskResult, taskTakenResult] = await Promise.all([
+        supabase
+          .from("post_task")
+          .select(
+            `
+            *,
+            tasker_specialization:specialization_id (specialization),
+            address (*),
+            clients!client_id (
+              user (
+                user_id,
+                first_name,
+                middle_name,
+                last_name,
+                email,
+                contact,
+                gender,
+                birthdate,
+                user_role,
+                acc_status,
+                verified,
+                image_link
+              )
+            )
+          `
+          )
+          .neq("status", "Already Taken")
+          .eq("client_id", clientId)
+          .eq("clients.user.user_role", "Client"),
+
+        supabase
+          .from("task_taken")
+          .select(
+            `
+            task_taken_id,
+            task_id,
+            task_status,
+            created_at,
+            client_id,
+            tasker_id,
+             tasker:tasker!tasker_id (
+                user_id,
+                  user (
+                    user_id,
+                    first_name,
+                    middle_name,
+                    last_name,
+                    email,
+                    contact,
+                    gender,
+                    birthdate,
+                    user_role,
+                    acc_status,
+                    verified,
+                    image_link
+                  )
+                ),
+            
+            task:post_task (
+              *,
+              tasker_specialization:specialization_id (specialization),
+              address (*),
+              client:clients!client_id (
+                client_id,
+                user (
+                  user_id,
+                  first_name,
+                  middle_name,
+                  last_name,
+                  email,
+                  contact,
+                  gender,
+                  birthdate,
+                  user_role,
+                  acc_status,
+                  verified,
+                  image_link
+                )
+              )
+            )
+          `
+          )
+          .eq("client_id", clientId),
+      ]);
+
+      if (taskResult.error) {
+        console.error("Error fetching tasks:", taskResult.error.message);
+        res.status(500).json({
+          success: false,
+          error: "Failed to fetch tasks",
+          details: taskResult.error.message,
+        });
+        return;
+      }
+
+      if (taskTakenResult.error) {
+        console.error(
+          "Error fetching taken tasks:",
+          taskTakenResult.error.message
+        );
+        res.status(500).json({
+          success: false,
+          error: "Failed to fetch taken tasks",
+          details: taskTakenResult.error.message,
+        });
+        return;
+      }
+
+      if (!taskResult.data || taskResult.data.length === 0) {
+        res.status(200).json({
+          success: true,
+          tasks: [],
+          taskTaken: taskTakenResult.data || [],
+          message: "No active tasks found",
+        });
+        return;
+      }
+
+      console.log("Task data:", taskResult.data);
+      console.log("Task taken data:", taskTakenResult.data);
+
+      res.status(200).json({
+        success: true,
+        tasks: taskResult.data,
+        taskTaken: taskTakenResult.data || [],
+      });
+    } catch (error) {
+      console.error("Unexpected error fetching tasks:", error);
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   }
@@ -430,13 +621,14 @@ class TaskController {
       if (!taskerId) {
         res.status(400).json({
           success: false,
-          error: "Tasker ID is required"
+          error: "Tasker ID is required",
         });
         return;
       }
       const { data, error } = await supabase
         .from("task_taken")
-        .select(`
+        .select(
+          `
           task_id,
           task_status,
           created_at,
@@ -458,27 +650,31 @@ class TaskController {
             user_id,
             client_address
           )
-        `)
+        `
+        )
         .eq("tasker_id", taskerId);
 
       if (error) {
         console.error("Error fetching tasks for tasker:", error);
         res.status(500).json({
           success: false,
-          error: error.message || "Failed to fetch tasks for this tasker"
+          error: error.message || "Failed to fetch tasks for this tasker",
         });
         return;
       }
 
       res.status(200).json({
         success: true,
-        tasks: data
+        tasks: data,
       });
     } catch (error) {
       console.error("Error in getTaskforTasker:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "An unexpected error occurred"
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
     }
   }
@@ -522,8 +718,15 @@ class TaskController {
   }
 
   static async assignTask(req: Request, res: Response): Promise<void> {
-    const { tasker_id, task_id, client_id, role, days_available, available_date } = req.body;
-    
+    const {
+      tasker_id,
+      task_id,
+      client_id,
+      role,
+      days_available,
+      available_date,
+    } = req.body;
+
     console.log("Role this is: " + role);
 
     let visit_client = false;
@@ -534,14 +737,19 @@ class TaskController {
       visit_client = true;
       visit_tasker = false;
       requested_from = "Client";
-
     } else {
       visit_client = false;
       visit_tasker = true;
       requested_from = "Tasker";
     }
 
-    const {data: task} = await supabase.from("task_taken").select("*").eq("task_id", task_id).eq("tasker_id", tasker_id).eq("client_id", client_id).single();
+    const { data: task } = await supabase
+      .from("task_taken")
+      .select("*")
+      .eq("task_id", task_id)
+      .eq("tasker_id", tasker_id)
+      .eq("client_id", client_id)
+      .single();
 
     if (task) {
       res.status(400).json({ error: "Task already assigned" });
@@ -556,15 +764,19 @@ class TaskController {
       visit_tasker,
       task_status: "Pending",
       requested_from,
-      time_request:days_available,
-      start_date:available_date,
+      time_request: days_available,
+      start_date: available_date,
     });
 
     if (error) {
       console.error(error.message);
-      res.status(500).json({ error: "An Error Occurred while opening the conversation." });
+      res
+        .status(500)
+        .json({ error: "An Error Occurred while opening the conversation." });
     } else {
-      res.status(201).json({ message: "A New Conversation Has been Opened.", task: data });
+      res
+        .status(201)
+        .json({ message: "A New Conversation Has been Opened.", task: data });
     }
   }
 
@@ -583,7 +795,10 @@ class TaskController {
       console.error("Error deleting task:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "An error occurred while deleting the task"
+        error:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while deleting the task",
       });
     }
   }
@@ -593,7 +808,9 @@ class TaskController {
       const taskTakenId = parseInt(req.params.task_taken_id);
 
       if (isNaN(taskTakenId)) {
-        res.status(400).json({ success: false, error: "Invalid task taken ID" });
+        res
+          .status(400)
+          .json({ success: false, error: "Invalid task taken ID" });
         return;
       }
 
@@ -604,16 +821,23 @@ class TaskController {
       console.error("Error fetching task by task taken ID:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "An error occurred while retrieving task"
+        error:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving task",
       });
     }
   }
 
-  static async getAllSpecializations(req: Request, res: Response): Promise<void> {
+  static async getAllSpecializations(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const { data, error } = await supabase
         .from("tasker_specialization")
-        .select(`
+        .select(
+          `
           *,
           action_by_user:user!action_by (
             user_id,
@@ -621,7 +845,8 @@ class TaskController {
             middle_name,
             last_name
           )
-        `)
+        `
+        )
         .order("spec_id", { ascending: true });
 
       if (error) {
@@ -629,12 +854,16 @@ class TaskController {
         res.status(500).json({ error: error.message });
         return;
       }
-      const formattedSpecialization = (data ?? []).map((specialization: any) => ({
-        ...specialization,
-        created_at: specialization.created_at
-          ? new Date(specialization.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" })
-          : null,
-      }));
+      const formattedSpecialization = (data ?? []).map(
+        (specialization: any) => ({
+          ...specialization,
+          created_at: specialization.created_at
+            ? new Date(specialization.created_at).toLocaleString("en-US", {
+                timeZone: "Asia/Manila",
+              })
+            : null,
+        })
+      );
 
       res.status(200).json({ specializations: formattedSpecialization });
     } catch (error) {
@@ -644,10 +873,13 @@ class TaskController {
     }
   }
 
-  static async createSpecialization(req: Request, res: Response): Promise<void> {
+  static async createSpecialization(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const { specialization, user_id, reason } = req.body;
-  
+
       if (!specialization) {
         res.status(400).json({ error: "Specialization name is required" });
         return;
@@ -706,23 +938,29 @@ class TaskController {
         .from("tasker_specialization")
         .insert({ specialization, action_by: parseInt(user_id) })
         .select();
-  
+
       if (error) {
         console.error("Error adding specialization:", error.message);
         res.status(500).json({ error: error.message });
         return;
       }
-  
-      res.status(201).json({ message: "Specialization added successfully", specialization: data[0] });
+
+      res.status(201).json({
+        message: "Specialization added successfully",
+        specialization: data[0],
+      });
     } catch (error) {
       console.error("Error in createSpecialization:", error);
       res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
 
-  static async getCreatedTaskByClient(req: Request, res: Response): Promise<void> {
+  static async getCreatedTaskByClient(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const clientId = parseInt(req.params.client_id);
 
@@ -737,13 +975,16 @@ class TaskController {
 
       res.status(200).json({
         success: true,
-        tasks: tasks
+        tasks: tasks,
       });
     } catch (error) {
       console.error("Error fetching tasks by client ID:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "An error occurred while retrieving tasks"
+        error:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while retrieving tasks",
       });
     }
   }
@@ -778,12 +1019,18 @@ class TaskController {
       console.error("Error updating task:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "An error occurred while updating the task"
+        error:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while updating the task",
       });
     }
   }
 
-  static async updateTaskStatusforTasker(req: Request, res: Response): Promise<void> {
+  static async updateTaskStatusforTasker(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const taskTakenId = parseInt(req.params.requestId);
       const { task_status, reason_for_rejection_or_cancellation } = req.body;
@@ -791,16 +1038,19 @@ class TaskController {
       console.log("Data::", task_status, reason_for_rejection_or_cancellation);
 
       if (isNaN(taskTakenId)) {
-        res.status(400).json({ success: false, error: "Invalid task taken ID" });
+        res
+          .status(400)
+          .json({ success: false, error: "Invalid task taken ID" });
         return;
       }
 
-      const transactionId = await PayMongoPayment.fetchTransactionId(taskTakenId);
+      const transactionId = await QTaskPayment.fetchTransactionId(taskTakenId);
 
       if(task_status == "Rejected" || task_status == "Cancelled"){
         if(task_status == "Cancelled"){
-          await PayMongoPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
+          await QTaskPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
           res.status(200).json({ message: "You had cancelled your task."});
+
         }
 
         const { error } = await supabase
@@ -809,32 +1059,49 @@ class TaskController {
           .eq("task_taken_id", taskTakenId);
 
         if (error) {
-          console.error("Error while updating Task Status", error.message, error.stack);
-          res.status(500).json({ error: "An Error Occurred while updating the task status." });
+          console.error(
+            "Error while updating Task Status",
+            error.message,
+            error.stack
+          );
+          res.status(500).json({
+            error: "An Error Occurred while updating the task status.",
+          });
         } else {
-          res.status(200).json({ message: "Task status updated successfully"});
+          res.status(200).json({ message: "Task status updated successfully" });
         }
-        return
-      }else{
+        return;
+      } else {
         const { data, error } = await supabase
           .from("task_taken")
           .update({ task_status })
           .eq("task_taken_id", taskTakenId);
 
         if (error) {
-          console.error("Error while updating Task Status", error.message, error.stack);
-          res.status(500).json({ error: "An Error Occurred while updating the task status." });
+          console.error(
+            "Error while updating Task Status",
+            error.message,
+            error.stack
+          );
+          res.status(500).json({
+            error: "An Error Occurred while updating the task status.",
+          });
         } else {
-          res.status(200).json({ message: "Task status updated successfully", task: data });
+          res
+            .status(200)
+            .json({ message: "Task status updated successfully", task: data });
         }
       }
     } catch (error) {
-      console.error(error instanceof Error ? error.message : "Error Unknown.")
-      res.status(500).json({ error: "Internal Server error", });
+      console.error(error instanceof Error ? error.message : "Error Unknown.");
+      res.status(500).json({ error: "Internal Server error" });
     }
   }
 
-  static async updateTaskStatusforClient(req: Request, res: Response): Promise<void> {
+  static async updateTaskStatusforClient(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const { task_id, status } = req.body;
       const { data, error } = await supabase
@@ -843,14 +1110,22 @@ class TaskController {
         .eq("task_id", task_id);
 
       if (error) {
-        console.error("Error while updating Task Status", error.message, error.stack);
-        res.status(500).json({ error: "An Error Occurred while updating the task status." });
+        console.error(
+          "Error while updating Task Status",
+          error.message,
+          error.stack
+        );
+        res
+          .status(500)
+          .json({ error: "An Error Occurred while updating the task status." });
       } else {
-        res.status(200).json({ message: "Task status updated successfully", task: data });
+        res
+          .status(200)
+          .json({ message: "Task status updated successfully", task: data });
       }
     } catch (error) {
-      console.error(error instanceof Error ? error.message : "Error Unknown.")
-      res.status(500).json({ error: "Internal Server error", });
+      console.error(error instanceof Error ? error.message : "Error Unknown.");
+      res.status(500).json({ error: "Internal Server error" });
     }
   }
 
@@ -860,81 +1135,106 @@ class TaskController {
 
       const { data: userEmail, error: emailError } = await supabase
         .from("task_taken")
-        .select(`
+        .select(
+          `
           clients (
             user:user_id (email)
           ),
           tasker:tasker_id (
             user:user_id (email)
           )
-        `)
+        `
+        )
         .eq("task_taken_id", task_taken_id)
         .single();
-        if (emailError) {
-          console.error("Error while retrieving Data: ", emailError.message, emailError.stack);
-          res.status(500).json({ error: "An Error Occurred while processing your payment." });
-          return
-        }
+      if (emailError) {
+        console.error(
+          "Error while retrieving Data: ",
+          emailError.message,
+          emailError.stack
+        );
+        res
+          .status(500)
+          .json({ error: "An Error Occurred while processing your payment." });
+        return;
+      }
 
-        const taskerEmail = userEmail?.tasker
-        const clientEmail = userEmail?.clients
+      const taskerEmail = userEmail?.tasker;
+      const clientEmail = userEmail?.clients;
 
-        if (!clientEmail || !taskerEmail) {
-          throw new Error("Could not retrieve client or tasker email");
-        }
-        const escrowResponse = await fetch(`${process.env.ESCROW_API_URL}/transaction`, {
+      if (!clientEmail || !taskerEmail) {
+        throw new Error("Could not retrieve client or tasker email");
+      }
+      const escrowResponse = await fetch(
+        `${process.env.ESCROW_API_URL}/transaction`,
+        {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer${process.env.ESCROW_API_KEY}`
+            Authorization: `Bearer${process.env.ESCROW_API_KEY}`,
           },
           body: JSON.stringify({
-            "parties": [
+            parties: [
               {
-                "role": "buyer",
-                "email": taskerEmail
+                role: "buyer",
+                email: taskerEmail,
               },
               {
-                "role": "seller",
-                "email": clientEmail
-              }
+                role: "seller",
+                email: clientEmail,
+              },
             ],
-            "amount": amount,
-            "description": "Initial Deposit for Task Assignment.",
-            "currency": "PHP",
-            "return_url": `${process.env.ESCROW_API_URL}/transaction/${task_taken_id}/deposit`
-          })
+            amount: amount,
+            description: "Initial Deposit for Task Assignment.",
+            currency: "PHP",
+            return_url: `${process.env.ESCROW_API_URL}/transaction/${task_taken_id}/deposit`,
+          }),
+        }
+      );
+
+      const escrowData = (await escrowResponse.json()) as {
+        id: string;
+        url: string;
+      };
+
+      if (!escrowResponse.ok) {
+        console.error("Escrow API Error: ", escrowData);
+        res.status(500).json({
+          error:
+            "An error occured while processing your transaction. Please Try Again Later.",
+        });
+        return;
+      }
+
+      const escrowTransactionId = escrowData.id;
+      const { data: escrowLog, error: escrowError } = await supabase
+        .from("escrow_payment_logs")
+        .insert({
+          task_taken_id: task_taken_id,
+          contract_price: amount,
+          status: status,
+          escrow_transaction_id: escrowTransactionId,
         })
+        .eq("task_id", task_taken_id);
 
-        const escrowData = await escrowResponse.json() as { id: string, url: string };
-
-        if (!escrowResponse.ok) {
-          console.error("Escrow API Error: ", escrowData);
-          res.status(500).json({ error: "An error occured while processing your transaction. Please Try Again Later." });
-          return
-        }
-
-        const escrowTransactionId = escrowData.id
-        const { data: escrowLog, error: escrowError } = await supabase
-          .from("escrow_payment_logs")
-          .insert({
-            task_taken_id: task_taken_id,
-            contract_price: amount,
-            status: status,
-            escrow_transaction_id: escrowTransactionId,
-          })
-          .eq("task_id", task_taken_id);
-
-        if (escrowError) {
-          console.error("Error while processing your payment: ", escrowError.message, escrowError.stack);
-          res.status(500).json({ error: "An Error Occurred while processing your payment." });
-        } else {
-          res.status(200).json({ message: "Processing your payment...", payment_url: escrowData.url });
-        }
-    }
-    catch (error) {
-      console.error(error instanceof Error ? error.message : "Error Unknown.")
-      res.status(500).json({ error: "Internal Server error", });
+      if (escrowError) {
+        console.error(
+          "Error while processing your payment: ",
+          escrowError.message,
+          escrowError.stack
+        );
+        res
+          .status(500)
+          .json({ error: "An Error Occurred while processing your payment." });
+      } else {
+        res.status(200).json({
+          message: "Processing your payment...",
+          payment_url: escrowData.url,
+        });
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Error Unknown.");
+      res.status(500).json({ error: "Internal Server error" });
     }
   }
 
@@ -945,45 +1245,91 @@ class TaskController {
         res.status(400).json({ success: false, error: "Invalid client ID" });
         return;
       }
-  
+
       const { data: userRole, error: userRoleError } = await supabase
         .from("user")
         .select("user_role")
         .eq("user_id", userId)
         .single();
 
-      
       if (userRoleError || !userRole) {
         throw new Error("User Does not exist from database.");
       }
 
+      let tableRow = ""
+
       switch (userRole.user_role) {
         case "Tasker":
-          const { data: taskerTokens, error: taskerTokensError} = await supabase.from('tasker').select('amount').eq('user_id', userId).single();
-          if(taskerTokensError) throw new Error('Error fetching tasker tokens: ' + taskerTokensError.message);
-          res.status(200).json({ success: true, tokens: taskerTokens.amount });
+          tableRow = "tasker";
           break;
         case "Client":
-          const { data: clientTokens, error: clientTokensError} = await supabase.from('clients').select('amount').eq('user_id', userId).single();
-          if(clientTokensError) throw new Error('Error fetching tasker tokens: ' + clientTokensError.message);
-          res.status(200).json({ success: true, tokens: clientTokens.amount });
+          tableRow = "clients";
           break;
         default:
-          break;
+          res.status(400).json({
+            success: false,
+            error: "Invalid user role",
+          });
+          return;
       }
+
+      const { data: tokens, error: tokensError } = await supabase
+        .from(tableRow)
+        .select("amount")
+        .eq("user_id", userId)
+        .single();
+
+      if (tokensError || !tokens) {
+        throw new Error(
+          "Error fetching tokens: " + (tokensError ? tokensError.message : "No tokens found")
+        );
+      }
+
+      res.status(200).json({ success: true, tokens: tokens.amount });
+
+      // switch (userRole.user_role) {
+      //   case "Tasker":
+      //     const { data: taskerTokens, error: taskerTokensError } =
+      //       await supabase
+      //         .from("tasker")
+      //         .select("amount")
+      //         .eq("user_id", userId)
+      //         .single();
+      //     if (taskerTokensError)
+      //       throw new Error(
+      //         "Error fetching tasker tokens: " + taskerTokensError.message
+      //       );
+      //     res.status(200).json({ success: true, tokens: taskerTokens.amount });
+      //     break;
+      //   case "Client":
+      //     const { data: clientTokens, error: clientTokensError } =
+      //       await supabase
+      //         .from("clients")
+      //         .select("amount")
+      //         .eq("user_id", userId)
+      //         .single();
+      //     if (clientTokensError)
+      //       throw new Error(
+      //         "Error fetching tasker tokens: " + clientTokensError.message
+      //       );
+      //     res.status(200).json({ success: true, tokens: clientTokens.amount });
+      //     break;
+      //   default:
+      //     break;
+      // }
     } catch (error) {
       console.error("Error fetching token balance:", error);
       res.status(500).json({ success: false, error: "Failed to fetch tokens" });
     }
   }
 
-  static notifyClient(clientId: number, amount: number) {
-    ws.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ clientId, amount }));
-      }
-    });
-  }
+  // static notifyClient(clientId: number, amount: number) {
+  //   ws.clients.forEach((client) => {
+  //     if (client.readyState === WebSocket.OPEN) {
+  //       client.send(JSON.stringify({ clientId, amount }));
+  //     }
+  //   });
+  // }
 
   static async getDocumentLink(req: Request, res: Response): Promise<any> {
     try {
@@ -998,8 +1344,11 @@ class TaskController {
       console.log("This is the document link: ", taskerId, data);
       res.status(200).json({ data: data, error });
     } catch (error) {
-      console.error(error instanceof Error ? error.message : "Error Unknown.")
-      res.status(500).json({ data: null, error: error instanceof Error ? error.message : "Error Unknown." });
+      console.error(error instanceof Error ? error.message : "Error Unknown.");
+      res.status(500).json({
+        data: null,
+        error: error instanceof Error ? error.message : "Error Unknown.",
+      });
     }
   }
 
@@ -1018,28 +1367,22 @@ class TaskController {
         wage_per_hour,
         social_media_links,
       } = req.body;
-  
+
       console.log("Request body from another tasker:", req.body);
-
-      const { data: specializations, error: specialization_error } = await supabase
-        .from("tasker_specialization")
-        .select("spec_id")
-        .eq("specialization", specialization)
-        .single();
-
-      if (specialization_error) throw new Error("Specialization Error: " + specialization_error.message);
 
       if (!req.files) {
         throw new Error("Missing required files (image and/or document)");
       }
       const { image, document } = req.files as {
-        image: Express.Multer.File[],
-        document: Express.Multer.File[]
+        image: Express.Multer.File[];
+        document: Express.Multer.File[];
       };
 
       console.log(image, document);
 
-      const profileImagePath = `profile_pictures/${user_id}_${Date.now()}_${image[0].originalname}`;
+      const profileImagePath = `profile_pictures/${user_id}_${Date.now()}_${
+        image[0].originalname
+      }`;
       const { error: profilePicError } = await supabase.storage
         .from("documents")
         .upload(profileImagePath, image[0].buffer, {
@@ -1048,9 +1391,14 @@ class TaskController {
           upsert: true,
         });
 
-      if (profilePicError) throw new Error("Error uploading profile picture: " + profilePicError.message);
+      if (profilePicError)
+        throw new Error(
+          "Error uploading profile picture: " + profilePicError.message
+        );
 
-      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${document[0].originalname}`;
+      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${
+        document[0].originalname
+      }`;
       const { error: tesdaDocError } = await supabase.storage
         .from("documents")
         .upload(documentPath, document[0].buffer, {
@@ -1059,7 +1407,10 @@ class TaskController {
           upsert: true,
         });
 
-      if (tesdaDocError) throw new Error("Error uploading TESDA document: " + tesdaDocError.message);
+      if (tesdaDocError)
+        throw new Error(
+          "Error uploading TESDA document: " + tesdaDocError.message
+        );
 
       const profilePicUrl = supabase.storage
         .from("documents")
@@ -1069,38 +1420,67 @@ class TaskController {
         .from("documents")
         .getPublicUrl(documentPath).data.publicUrl;
 
-      const { data: tesda_documents, error: tesda_error } = await supabase
-        .from("tasker_documents")
-        .insert({ tesda_document_link: tesdaDocUrl })
-        .select("id")
-        .single();
-
-      if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
-
+      // Upload profile image to user account
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
-      await TaskerModel.createTasker({
-        address,   
-        user_id,
-        bio,
-        specialization_id: specializations.spec_id,
-        skills,
-        availability: availability === 'true',
-        wage_per_hour: parseFloat(wage_per_hour),
-        tesda_documents_id: tesda_documents.id,
-        social_media_links: social_media_links
-      });
+
+      // Save bio and social media links to user_verify table only
+      if (bio || social_media_links) {
+        const verificationData: any = {};
+        if (bio) verificationData.bio = bio;
+        if (social_media_links) verificationData.social_media_links = social_media_links;
+        verificationData.updated_at = new Date().toISOString();
+
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: parseInt(user_id),
+            ...verificationData
+          });
+
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
+      }
+
+      // Save document URL to user_documents table if document was uploaded
+      if (tesdaDocUrl) {
+        const documentData = {
+          tasker_id: user_id, // Note: keeping tasker_id column name for compatibility
+          user_document_link: tesdaDocUrl,
+          updated_at: new Date().toISOString()
+        };
+        
+        const { error: docError } = await supabase
+          .from('user_documents')
+          .upsert(documentData);
+          
+        if (docError) {
+          console.warn("Could not update user_documents table:", docError);
+          // Don't fail the entire operation, just log the warning
+        }
+      }
 
       res.status(201).json({ taskerStatus: true });
     } catch (error) {
-      console.error("Error in createTasker:", error instanceof Error ? error.message : "Internal Server Error");
-      console.error("Error in createTasker:", error instanceof Error ? error.stack : "Internal Server Error");
+      console.error(
+        "Error in updateTaskerProfile:",
+        error instanceof Error ? error.message : "Internal Server Error"
+      );
+      console.error(
+        "Error in updateTaskerProfile:",
+        error instanceof Error ? error.stack : "Internal Server Error"
+      );
       res.status(500).json({
         error: "An Error Occurred while Creating Tasker. Please Try Again.",
       });
     }
   }
 
-  static async updateTaskerProfileNoImages(req: Request, res: Response): Promise<void> {
+  static async updateTaskerProfileNoImages(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.params.id;
       const {
@@ -1112,17 +1492,14 @@ class TaskController {
         contact,
         gender,
         birthdate,
-        specialization,
         bio,
-        skills,
-        wage_per_hour,
-        pay_period
+        social_media_links,
       } = req.body;
 
-      console.log("Request body from tasker:", req.body);
-
+      console.log("Request body from user:", req.body);
       console.log("User ID:", userId);
 
+      // Update user table
       const { data: userData, error: userError } = await supabase
         .from("user")
         .update({
@@ -1133,7 +1510,7 @@ class TaskController {
           user_role,
           contact,
           gender,
-          birthdate
+          birthdate,
         })
         .eq("user_id", userId)
         .select("*")
@@ -1143,91 +1520,100 @@ class TaskController {
         throw new Error("Error updating user account: " + userError.message);
       }
 
-      const { data: taskerData, error: taskerFetchError } = await supabase
-        .from("tasker")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
+      // Update user_verify table for bio and social media links (unified approach)
+      if (bio || social_media_links) {
+        const verificationData: any = {};
+        if (bio) verificationData.bio = bio;
+        if (social_media_links) verificationData.social_media_links = social_media_links;
+        verificationData.updated_at = new Date().toISOString();
 
-      if (taskerFetchError && taskerFetchError.code !== "PGRST116") {
-        throw new Error("Error fetching tasker data: " + taskerFetchError.message);
-      }
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: parseInt(userId),
+            ...verificationData
+          });
 
-      console.log("Tasker Specialization:", specialization);
-      const { data: updatedTaskerData, error: taskerUpdateError } = await supabase
-        .from("tasker")
-        .update({
-          bio,
-          skills,
-          specialization_id: specialization,
-          wage_per_hour: parseFloat(wage_per_hour),
-          pay_period
-        })
-        .eq("user_id", userId)
-        .select()
-        .single();
-
-      if (taskerUpdateError) {
-        throw new Error("Error updating tasker data: " + taskerUpdateError.message);
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
       }
 
       res.status(200).json({
-        message: "Tasker profile updated successfully",
+        message: "User profile updated successfully",
         user: userData,
-        tasker: updatedTaskerData
       });
     } catch (error) {
-      console.error("Error in updateTaskerProfileNoImages:", error instanceof Error ? error.message : "Internal Server Error");
-      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace available");
+      console.error(
+        "Error in updateTaskerProfileNoImages:",
+        error instanceof Error ? error.message : "Internal Server Error"
+      );
+      console.error(
+        "Error stack:",
+        error instanceof Error ? error.stack : "No stack trace available"
+      );
       res.status(500).json({
-        errors: "An error occurred while updating the tasker profile: " + (error instanceof Error ? error.message : "Unknown error")
+        errors:
+          "An error occurred while updating the user profile: " +
+          (error instanceof Error ? error.message : "Unknown error"),
       });
     }
   }
 
   static async checkTaskAssignment(req: Request, res: Response): Promise<any> {
     try {
-        const { taskId, taskerId } = req.params;
-        
-        // Add your database query here to check if the task is assigned
-        const { data: assignment, error } = await supabase
-            .from('task_taken')
-            .select()
-            .eq('task_id', parseInt(taskId))
-            .eq('tasker_id', parseInt(taskerId))
-            .maybeSingle();
+      const { taskId, taskerId } = req.params;
 
-        if (error) {
-            throw new Error('Error checking task assignment');
-        }
+      // Add your database query here to check if the task is assigned
+      const { data: assignment, error } = await supabase
+        .from("task_taken")
+        .select()
+        .eq("task_id", parseInt(taskId))
+        .eq("tasker_id", parseInt(taskerId))
+        .maybeSingle();
 
-        return res.status(200).json({
-            isAssigned: assignment !== null,
-            message: assignment ? "Task is assigned to this tasker" : "Task is not assigned to this tasker"
-        });
+      if (error) {
+        throw new Error("Error checking task assignment");
+      }
+
+      return res.status(200).json({
+        isAssigned: assignment !== null,
+        message: assignment
+          ? "Task is assigned to this tasker"
+          : "Task is not assigned to this tasker",
+      });
     } catch (error) {
-        console.error("Error checking task assignment:", error);
-        return res.status(500).json({
-            error: "Failed to check task assignment",
-            isAssigned: false
-        });
+      console.error("Error checking task assignment:", error);
+      return res.status(500).json({
+        error: "Failed to check task assignment",
+        isAssigned: false,
+      });
     }
   }
 
-  static async getAllCompletedTasks(req: Request, res: Response): Promise<void> {
+  static async getAllCompletedTasks(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const { data, error } = await supabase
         .from("post_task")
-        .select(`
+        .select(
+          `
           task_title,
           proposed_price,
-        `)
+        `
+        )
         .eq("task_status", "Completed")
         .eq("is_deleted", false);
 
       if (error) {
         console.error(error.message);
-        res.status(500).json({ error: "An Error Occurred while Retrieving Your Completed Tasks. Please Try Again" });
+        res.status(500).json({
+          error:
+            "An Error Occurred while Retrieving Your Completed Tasks. Please Try Again",
+        });
         return;
       }
       res.status(200).json({ data: data });
@@ -1237,19 +1623,90 @@ class TaskController {
     }
   }
 
-  static async getTasks(req: Request, res: Response): Promise<void> {
+  static async getTasksClient(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
-  
+
     // Validate userId
     if (!userId || isNaN(Number(userId))) {
       res.status(400).json({ error: "Invalid or missing userId" });
       return;
     }
-  
+
     try {
       const { data, error } = await supabase
         .from("task_taken")
-        .select(`
+        .select(
+          `
+        task_taken_id,
+        task_id,
+        task_status,
+        created_at,
+        client_id,
+        tasker_id,
+        post_task:task_id (
+          *,
+          tasker_specialization:specialization_id (specialization),
+          address:address (*)
+        ),
+        tasker:tasker_id (
+          tasker_id,
+          user:user_id (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            email,
+            contact,
+            gender,
+            birthdate,
+            user_role,
+            acc_status,
+            verified,
+            image_link
+          )
+        )
+      `
+        )
+        .eq("client_id", userId);
+
+      if (error) {
+        console.error("Supabase error:", error.message);
+        res.status(500).json({
+          success: false,
+          error: "Failed to retrieve tasks",
+          details: error.message,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: data || [],
+      });
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({
+        success: false,
+        error: "Internal server error",
+        details:
+          process.env.NODE_ENV === "development" ? String(error) : undefined,
+      });
+    }
+  }
+  static async getTasks(req: Request, res: Response): Promise<void> {
+    const { userId } = req.params;
+
+    // Validate userId
+    if (!userId || isNaN(Number(userId))) {
+      res.status(400).json({ error: "Invalid or missing userId" });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("task_taken")
+        .select(
+          `
           task_taken_id,
           task_id,
           task_status,
@@ -1278,9 +1735,10 @@ class TaskController {
               )
             )
           )
-        `)
+        `
+        )
         .eq("tasker_id", userId);
-  
+
       if (error) {
         console.error("Supabase error:", error.message);
         res.status(500).json({
@@ -1290,7 +1748,7 @@ class TaskController {
         });
         return;
       }
-  
+
       res.status(200).json({
         success: true,
         data: data || [],
@@ -1300,7 +1758,8 @@ class TaskController {
       res.status(500).json({
         success: false,
         error: "Internal server error",
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
+        details:
+          process.env.NODE_ENV === "development" ? String(error) : undefined,
       });
     }
   }
@@ -1309,55 +1768,48 @@ class TaskController {
     const { taskId } = req.params;
     try {
       const { data, error } = await supabase
-      .from("task_taken")
-      .select(`
-        task_id,
-        task_status,
-        created_at,
-        client_id,
-        tasker_id,
-        task:post_task(
-          *,
-          tasker_specialization:specialization_id (specialization),
-          address (*),
-          clients!client_id (
+        .from("task_taken")
+        .select(
+          `
+          task_taken_id,
+          task_id,
+          task_status,
+          created_at,
+          client_id,
+          tasker_id,
+          task:post_task (
+            *,
+            tasker_specialization:specialization_id (specialization),
+            address (*)),
+          client:tasker!tasker_id (
+            tasker_id,
             user (
-            user_id,
-            first_name,
-            middle_name,
-            last_name,
-            email,
-            contact,
-            gender,
-            birthdate,
-            user_role,
-            acc_status,
-            verified,
-            image_link
+              user_id,
+              first_name,
+              middle_name,
+              last_name,
+              email,
+              contact,
+              gender,
+              birthdate,
+              user_role,
+              acc_status,
+              verified,
+              image_link
             )
           )
-        ),
-        client:clients(
-          client_id,
-          user:user_id(*),
-          client_address
-        )
-          location,
-          specialization,
-          status
-        ),
-        client:clients(
-          client_id,
-          user:user_id(*),
-          client_address
         )
       `)
-      .eq("task_id", taskId)
+      .eq("task_taken_id", taskId)
       .maybeSingle();
+
+      console.log("Task Data: ", data, "Task Error: ", error)
 
       if (error) {
         console.error("Error fetching task information:", error.message);
-        res.status(500).json({ error: "Failed to retrieve task information. Please try again." });
+        res.status(500).json({
+          error: "Failed to retrieve task information. Please try again.",
+        });
         return;
       }
 

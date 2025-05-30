@@ -8,6 +8,6 @@
     "skipLibCheck": true,       
     "outDir": "./dist"                        
   }, 
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/email-views/tailwind.config.js", "src/email-views/config.js"],
   "exclude": ["node_modules"]
 }
