@@ -117,6 +117,30 @@ class SettingController {
 }
 }
 
+static async deleteAddress(req: Request, res: Response): Promise<any> {
+  const { address_id } = req.params;
+
+  console.log("Address ID to be deleted: ", address_id);
+
+  try {
+    const { data: existingData, error: fetchError } = await supabase
+      .from("address")
+      .delete()
+      .eq("id", address_id)
+      .select();
+
+    if (fetchError) {
+      console.error(fetchError.message);
+      res.status(500).json({ error: "An Error Occurred while Deleting the Address" });
+      return;
+    }
+
+    res.status(200).json({ status: true, message: "Address has been deleted successfully" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ status: false, error: "An Error Occurred while Deleting the Address" });
+  }
+}
 
 static async setAddress(req: Request, res: Response): Promise<void> {
   const {
@@ -130,6 +154,7 @@ static async setAddress(req: Request, res: Response): Promise<void> {
     street,
     postal_code,
     country,
+    remarks,
   } = req.body;
   const { user_id } = req.params;
 
@@ -145,6 +170,7 @@ static async setAddress(req: Request, res: Response): Promise<void> {
     street,
     postal_code,
     country,
+    remarks,
   });
 
   if (!latitude || !longitude || !city || !province) {
@@ -166,7 +192,7 @@ static async setAddress(req: Request, res: Response): Promise<void> {
       street,
       formatted_Address,
       region,
-     
+      remarks,
     };
 
     const {error: insertError } = await supabase
@@ -369,6 +395,7 @@ static async getLocation(req: Request, res: Response): Promise<void> {
           const { data: address, error: addressError } = await supabase
             .from("address")
             .select("*")
+            .neq("default", true)
             .eq("user_id", user_id)
       
           if (addressError) {
