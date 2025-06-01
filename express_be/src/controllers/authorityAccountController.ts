@@ -542,7 +542,7 @@ class AuthorityAccountController {
 <body>
   <div class="container">
     <div style="text-align: center; margin-bottom: 20px;">
-      <img src="https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/email-template-images//NearbyTasks.png" alt="NearbTask" style="width: 40px; height: auto; display: inline-block; vertical-align: middle;">
+      <img src="https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/email-template-images//NearbTask.png" alt="NearbTask" style="width: 40px; height: auto; display: inline-block; vertical-align: middle;">
     </div>
 
     <h1 class="heading">Welcome to QTask</h1>
