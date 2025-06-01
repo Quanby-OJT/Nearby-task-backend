@@ -257,6 +257,61 @@ class QTaskPayment {
     };
   }
 
+  static async getPaymentDetails(transactionId: string, payment_type: string) {
+    if (!transactionId) {
+      throw new Error("Transaction ID is required to fetch payment details");
+    }
+    let options = {}
+    if (!payment_type) {
+      // Fetch payment type from Supabase if not provided
+      const { data, error } = await supabase
+        .from("payment_logs")
+        .select("payment_type")
+        .eq("transaction_id", transactionId)
+        .single();
+
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("No payment found for this transaction ID");
+
+      payment_type = data.payment_type;
+    }
+
+    if(payment_type === "Client Deposit") {
+        // Fetch payment details from PayMongo
+        options = {
+          method: 'GET',
+          headers: {
+            accept: 'application/json',
+            authorization: authHeader,
+          }
+        }
+
+        const paymentData = await fetch(`${process.env.PAYMONGO_URL}/payment_intents/${transactionId}`, options);
+        if (!paymentData.ok) {
+          const errorData = await paymentData.json();
+          this.handlePayMongoErrors(errorData);
+          throw new Error(`PayMongo API failed: ${errorData.message}`);
+        }
+
+        const paymentDetails = await paymentData.json() as AttachedPaymentResponse;
+        console.log("Payment Details:", paymentDetails);
+        return paymentDetails.data;
+    }else if(payment_type === "QTask Withdrawal") {
+        //Implement NextPay API for withdrawal details
+        const fetch = require('node-fetch');
+        options = {method: 'GET', headers: {'client-id': nextpay_api_key, Accept: 'application/json'}};
+
+        try {
+          const response = await fetch(`https://api-sandbox.nextpay.world/v2/disbursements/${transactionId}`, options);
+          const data = await response.json();
+          return data;
+        } catch (error) {
+          console.error(error);
+          this.handlePayMongoErrors(error);
+        }
+    }
+  }
+
   private static handlePayMongoErrors(error: any) {
     if (error.status === 401) {
       throw new Error("Unauthorized: Invalid PayMongo credentials");
@@ -488,7 +543,7 @@ class QTaskPayment {
     if(UpdateClientCreditsError) throw new Error(UpdateClientCreditsError.message)
   }
 
-  //If the Moderator hasn't made a decision after 14 days or more, the payment will be half to both tasker and client.
+  //If the Moderator hasn't made a decision after 14 days or more, the payment will be paid half to both tasker and client.
   static async releaseHalfCredits(task_taken_id: number){
     const task_amount = await taskModel.getTaskAmount(task_taken_id)
 
@@ -508,8 +563,6 @@ class QTaskPayment {
 
     if(updateTaskerCreditsError) throw new Error(updateTaskerCreditsError.message)
   }
-
-
 
   static async deductAmountfromUser(role: string, amount: number, user_id: number) {
     const { error: deductionError } = await supabase.rpc('decrement_user_credits_by_role', {

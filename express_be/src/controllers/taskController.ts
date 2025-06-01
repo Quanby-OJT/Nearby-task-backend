@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import taskModel from "../models/taskModel";
 import { supabase } from "../config/configuration";
 import console from "console";
-import TaskerModel from "../models/taskerModel";
 import { UserAccount } from "../models/userAccountModel";
 import fetch from "node-fetch";
 require("dotenv").config();
@@ -10,7 +9,7 @@ import QTaskPayment from "../models/paymentModel";
 import { WebSocketServer } from "ws";
 import ClientModel from "./clientController";
 
-const ws = new WebSocketServer({ port: 8080 });
+// const ws = new WebSocketServer({ port: 8080 });
 
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
@@ -171,7 +170,7 @@ class TaskController {
   static async disableTask(req: Request, res: Response): Promise<void> {
     try {
       const taskId = parseInt(req.params.id);
-      const { loggedInUserId } = req.body;
+      const { loggedInUserId, reason } = req.body;
 
       if (isNaN(taskId)) {
         res.status(400).json({ success: false, message: "Invalid task ID" });
@@ -185,9 +184,54 @@ class TaskController {
         return;
       }
 
+      if (!reason) {
+        res.status(400).json({ success: false, message: "Reason for closing task is required" });
+        return;
+      }
+
+      // Validate that loggedInUserId exists in the user table
+      const { data: userExists, error: userCheckError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("user_id", parseInt(loggedInUserId))
+        .single();
+
+      if (userCheckError || !userExists) {
+        console.error("User does not exist:", userCheckError || "No user found");
+        res.status(400).json({
+          success: false,
+          message: "Logged-in user does not exist in the system",
+        });
+        return;
+      }
+
+      // Insert into action_taken_by with user_id and reason
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: parseInt(loggedInUserId),
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+          task_id: taskId
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Supabase insert error for action_taken_by:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+
+      console.log("Action taken by data inserted:", actionData); // Verify the inserted data
+
+      // Update post_task with loggedInUserId as action_by
       const { data, error } = await supabase
         .from("post_task")
-        .update({ status: "Closed", action_by: loggedInUserId })
+        .update({ status: "Closed", action_by: parseInt(loggedInUserId) })
         .eq("task_id", taskId)
         .select()
         .single();
@@ -253,6 +297,11 @@ class TaskController {
             first_name,
             middle_name,
             last_name
+          ),
+          action_taken_by:action_taken_by!task_id (
+            action_reason,
+            user_id,
+            created_at
           )
         `
         )
@@ -266,7 +315,25 @@ class TaskController {
         return;
       }
 
-      res.status(200).json({ tasks });
+      // Process tasks to get the latest action_reason
+      const processedTasks = tasks.map(task => {
+        if (task.action_taken_by && task.action_taken_by.length > 0) {
+          // Sort by created_at in descending order (newest first)
+          const sortedActions = [...task.action_taken_by].sort((a, b) => {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateB - dateA; // Descending order
+          });
+          
+          // Get the most recent action
+          const latestAction = sortedActions[0];
+          task.action_reason = latestAction.action_reason;
+          task.action_by = latestAction.user_id;
+        }
+        return task;
+      });
+  
+      res.status(200).json({ tasks: processedTasks });
     } catch (error) {
       console.error("Error fetching tasks:", error);
       res.status(500).json({
@@ -277,9 +344,10 @@ class TaskController {
 
   static async fetchAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data: task, error } = await supabase
-        .from("post_task")
-        .select(
+      const { data:   task, error } = await supabase
+          .from("post_task")
+          .select(
+          
           `
         *,
         tasker_specialization:specialization_id (specialization),
@@ -499,139 +567,52 @@ class TaskController {
 
   static async getTaskforClient(req: Request, res: Response): Promise<void> {
     const clientId = req.params.clientId;
-
+    
     try {
-      const [taskResult, taskTakenResult] = await Promise.all([
-        supabase
-          .from("post_task")
-          .select(
-            `
-            *,
-            tasker_specialization:specialization_id (specialization),
-            address (*),
-            clients!client_id (
-              user (
-                user_id,
-                first_name,
-                middle_name,
-                last_name,
-                email,
-                contact,
-                gender,
-                birthdate,
-                user_role,
-                acc_status,
-                verified,
-                image_link
-              )
+      const { data: task, error } = await supabase
+        .from("post_task")
+        .select(`
+          *,
+          tasker_specialization:specialization_id (specialization),
+          address (*),
+          clients!client_id (
+            user (
+            user_id,
+            first_name,
+            middle_name,
+            last_name,
+            email,
+            contact,
+            gender,
+            birthdate,
+            user_role,
+            acc_status,
+            verified,
+            image_link
             )
-          `
           )
-          .eq("client_id", clientId)
-          .eq("clients.user.user_role", "Client"),
-
-        supabase
-          .from("task_taken")
-          .select(
-            `
-            task_taken_id,
-            task_id,
-            task_status,
-            created_at,
-            client_id,
-            tasker_id,
-             tasker:tasker!tasker_id (
-                user_id,
-                  user (
-                    user_id,
-                    first_name,
-                    middle_name,
-                    last_name,
-                    email,
-                    contact,
-                    gender,
-                    birthdate,
-                    user_role,
-                    acc_status,
-                    verified,
-                    image_link
-                  )
-                ),
-            
-            task:post_task (
-              *,
-              tasker_specialization:specialization_id (specialization),
-              address (*),
-              client:clients!client_id (
-                client_id,
-                user (
-                  user_id,
-                  first_name,
-                  middle_name,
-                  last_name,
-                  email,
-                  contact,
-                  gender,
-                  birthdate,
-                  user_role,
-                  acc_status,
-                  verified,
-                  image_link
-                )
-              )
-            )
-          `
-          )
-          .eq("client_id", clientId),
-      ]);
-
-      if (taskResult.error) {
-        console.error("Error fetching tasks:", taskResult.error.message);
-        res.status(500).json({
-          success: false,
-          error: "Failed to fetch tasks",
-          details: taskResult.error.message,
-        });
+        `)
+        .eq("client_id", clientId)
+        .eq("clients.user.user_role", "Client");
+    
+      console.log("Tasks data:", task, "Error:", error);
+    
+      if (error) {
+        console.error("Error fetching tasks:", error.message);
+        res.status(500).json({ error: error.message });
         return;
       }
-
-      if (taskTakenResult.error) {
-        console.error(
-          "Error fetching taken tasks:",
-          taskTakenResult.error.message
-        );
-        res.status(500).json({
-          success: false,
-          error: "Failed to fetch taken tasks",
-          details: taskTakenResult.error.message,
-        });
+    
+      if (!task || task.length === 0) {
+        res.status(200).json({ error: "No active tasks found." });
         return;
       }
-
-      if (!taskResult.data || taskResult.data.length === 0) {
-        res.status(200).json({
-          success: true,
-          tasks: [],
-          taskTaken: taskTakenResult.data || [],
-          message: "No active tasks found",
-        });
-        return;
-      }
-
-      console.log("Task data:", taskResult.data);
-      console.log("Task taken data:", taskTakenResult.data);
-
-      res.status(200).json({
-        success: true,
-        tasks: taskResult.data,
-        taskTaken: taskTakenResult.data || [],
-      });
+    
+      res.status(200).json({ tasks: task });
     } catch (error) {
-      console.error("Unexpected error fetching tasks:", error);
+      console.error("Error fetching tasks:", error);
       res.status(500).json({
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        error: error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   }
@@ -889,7 +870,7 @@ class TaskController {
     res: Response
   ): Promise<void> {
     try {
-      const { specialization, user_id } = req.body;
+      const { specialization, user_id, reason } = req.body;
 
       if (!specialization) {
         res.status(400).json({ error: "Specialization name is required" });
@@ -901,6 +882,50 @@ class TaskController {
         return;
       }
 
+      if (!reason) {
+        res.status(400).json({ error: "Reason for adding specialization is required" });
+        return;
+      }
+  
+      // Validate that user_id exists in the user table
+      const { data: userExists, error: userCheckError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("user_id", parseInt(user_id))
+        .single();
+
+      if (userCheckError || !userExists) {
+        console.error("User does not exist:", userCheckError || "No user found");
+        res.status(400).json({
+          success: false,
+          message: "Logged-in user does not exist in the system",
+        });
+        return;
+      }
+
+      // Insert into action_taken_by with user_id and reason
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: parseInt(user_id),
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Supabase insert error for action_taken_by:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+
+      console.log("Action taken by data inserted:", actionData);
+  
+      // Insert specialization into tasker_specialization
       const { data, error } = await supabase
         .from("tasker_specialization")
         .insert({ specialization, action_by: parseInt(user_id) })
@@ -1291,13 +1316,13 @@ class TaskController {
     }
   }
 
-  static notifyClient(clientId: number, amount: number) {
-    ws.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ clientId, amount }));
-      }
-    });
-  }
+  // static notifyClient(clientId: number, amount: number) {
+  //   ws.clients.forEach((client) => {
+  //     if (client.readyState === WebSocket.OPEN) {
+  //       client.send(JSON.stringify({ clientId, amount }));
+  //     }
+  //   });
+  // }
 
   static async getDocumentLink(req: Request, res: Response): Promise<any> {
     try {
@@ -1337,18 +1362,6 @@ class TaskController {
       } = req.body;
 
       console.log("Request body from another tasker:", req.body);
-
-      const { data: specializations, error: specialization_error } =
-        await supabase
-          .from("tasker_specialization")
-          .select("spec_id")
-          .eq("specialization", specialization)
-          .single();
-
-      if (specialization_error)
-        throw new Error(
-          "Specialization Error: " + specialization_error.message
-        );
 
       if (!req.files) {
         throw new Error("Missing required files (image and/or document)");
@@ -1400,38 +1413,55 @@ class TaskController {
         .from("documents")
         .getPublicUrl(documentPath).data.publicUrl;
 
-      const { data: tesda_documents, error: tesda_error } = await supabase
-        .from("tasker_documents")
-        .insert({ tesda_document_link: tesdaDocUrl })
-        .select("id")
-        .single();
-
-      if (tesda_error)
-        throw new Error(
-          "Error storing document reference: " + tesda_error.message
-        );
-
+      // Upload profile image to user account
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
-      await TaskerModel.createTasker({
-        address,
-        user_id,
-        bio,
-        specialization_id: specializations.spec_id,
-        skills,
-        availability: availability === "true",
-        wage_per_hour: parseFloat(wage_per_hour),
-        tesda_documents_id: tesda_documents.id,
-        social_media_links: social_media_links,
-      });
+
+      // Save bio and social media links to user_verify table only
+      if (bio || social_media_links) {
+        const verificationData: any = {};
+        if (bio) verificationData.bio = bio;
+        if (social_media_links) verificationData.social_media_links = social_media_links;
+        verificationData.updated_at = new Date().toISOString();
+
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: parseInt(user_id),
+            ...verificationData
+          });
+
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
+      }
+
+      // Save document URL to user_documents table if document was uploaded
+      if (tesdaDocUrl) {
+        const documentData = {
+          tasker_id: user_id, // Note: keeping tasker_id column name for compatibility
+          user_document_link: tesdaDocUrl,
+          updated_at: new Date().toISOString()
+        };
+        
+        const { error: docError } = await supabase
+          .from('user_documents')
+          .upsert(documentData);
+          
+        if (docError) {
+          console.warn("Could not update user_documents table:", docError);
+          // Don't fail the entire operation, just log the warning
+        }
+      }
 
       res.status(201).json({ taskerStatus: true });
     } catch (error) {
       console.error(
-        "Error in createTasker:",
+        "Error in updateTaskerProfile:",
         error instanceof Error ? error.message : "Internal Server Error"
       );
       console.error(
-        "Error in createTasker:",
+        "Error in updateTaskerProfile:",
         error instanceof Error ? error.stack : "Internal Server Error"
       );
       res.status(500).json({
@@ -1455,17 +1485,14 @@ class TaskController {
         contact,
         gender,
         birthdate,
-        specialization,
         bio,
-        skills,
-        wage_per_hour,
-        pay_period,
+        social_media_links,
       } = req.body;
 
-      console.log("Request body from tasker:", req.body);
-
+      console.log("Request body from user:", req.body);
       console.log("User ID:", userId);
 
+      // Update user table
       const { data: userData, error: userError } = await supabase
         .from("user")
         .update({
@@ -1486,43 +1513,29 @@ class TaskController {
         throw new Error("Error updating user account: " + userError.message);
       }
 
-      const { data: taskerData, error: taskerFetchError } = await supabase
-        .from("tasker")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
+      // Update user_verify table for bio and social media links (unified approach)
+      if (bio || social_media_links) {
+        const verificationData: any = {};
+        if (bio) verificationData.bio = bio;
+        if (social_media_links) verificationData.social_media_links = social_media_links;
+        verificationData.updated_at = new Date().toISOString();
 
-      if (taskerFetchError && taskerFetchError.code !== "PGRST116") {
-        throw new Error(
-          "Error fetching tasker data: " + taskerFetchError.message
-        );
-      }
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: parseInt(userId),
+            ...verificationData
+          });
 
-      console.log("Tasker Specialization:", specialization);
-      const { data: updatedTaskerData, error: taskerUpdateError } =
-        await supabase
-          .from("tasker")
-          .update({
-            bio,
-            skills,
-            specialization_id: specialization,
-            wage_per_hour: parseFloat(wage_per_hour),
-            pay_period,
-          })
-          .eq("user_id", userId)
-          .select()
-          .single();
-
-      if (taskerUpdateError) {
-        throw new Error(
-          "Error updating tasker data: " + taskerUpdateError.message
-        );
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
       }
 
       res.status(200).json({
-        message: "Tasker profile updated successfully",
+        message: "User profile updated successfully",
         user: userData,
-        tasker: updatedTaskerData,
       });
     } catch (error) {
       console.error(
@@ -1535,7 +1548,7 @@ class TaskController {
       );
       res.status(500).json({
         errors:
-          "An error occurred while updating the tasker profile: " +
+          "An error occurred while updating the user profile: " +
           (error instanceof Error ? error.message : "Unknown error"),
       });
     }
@@ -1760,7 +1773,7 @@ class TaskController {
           task:post_task (
             *,
             tasker_specialization:specialization_id (specialization),
-            address (*),
+            address (*)),
           client:tasker!tasker_id (
             tasker_id,
             user (

@@ -18,6 +18,7 @@ import FeedbackController from "../controllers/feedbackController";
 import SettingController from "../controllers/settingController";
 import PaymentController from "../controllers/paymentController";
 import AuthorityAccountController from "../controllers/authorityAccountController";
+import UserLogsController from "../controllers/userlogController";
 
 const upload = multer({ storage: memoryStorage() });
 
@@ -243,10 +244,12 @@ router.put(
   "/update-specialization/:user_id",
   SettingController.updateSpecialization
 );
+router.put("/set-default-address/:user_id", SettingController.setLocationAsDefault);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
 router.get("/get-address/:user_id", SettingController.getAddress);
 router.get("/get-addresses/:user_id", SettingController.getAddresses);
 router.put("/set-address/:user_id", SettingController.setAddress);
+
 router.delete("/delete-address/:address_id", SettingController.deleteAddress);
 
 // User Task
@@ -365,6 +368,18 @@ router.post(
 router.get(
   "/tasker-verification-status/:id",
   UserAccountController.getUserVerificationStatus
+);
+
+// Test endpoint for user_verify table
+router.get(
+  "/test-user-verify-table",
+  UserAccountController.testUserVerifyTable
+);
+
+// Debug endpoint for user_verify table inserts
+router.get(
+  "/debug-user-verify-insert/:id?",
+  UserAccountController.debugUserVerifyInsert
 );
 
 export default router;
