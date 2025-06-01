@@ -495,7 +495,7 @@ class AuthorityAccountController {
       font-size: 13px;
       font-weight: bold;
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 90px;
     }
     .greeting {
       font-weight: bold;
