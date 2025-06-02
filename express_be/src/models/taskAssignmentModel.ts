@@ -21,6 +21,15 @@ class TaskAssignment{
         if (error) throw new Error(error.message)
     }
 
+    static async updatePostTaskStatus(task_id: number, status: string) {
+        const { error } = await supabase
+            .from("post_task")
+            .update({ status: status })
+            .eq("task_id", task_id);
+
+        if (error) throw new Error(error.message);
+    }
+
     static async createDispute(task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof?: string[]){
 
         const { data, error } = await supabase

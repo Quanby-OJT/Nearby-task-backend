@@ -259,14 +259,14 @@ class UserAccountController {
         return res.status(400).json({ error: "Invalid user ID" });
       }
 
-      console.log("Step 1: Calling UserAccount.showUser");
+      //console.log("Step 1: Calling UserAccount.showUser");
       const userData = await UserAccount.showUser(userID);
-      console.log("Step 2: Successfully retrieved user data:", userData);
+      //console.log("Step 2: Successfully retrieved user data:", userData);
       
       // Use type assertion to allow adding properties
       const userDataWithExtras: any = { ...userData };
 
-      console.log("Step 3: Fetching verification data from user_verify table");
+      //console.log("Step 3: Fetching verification data from user_verify table");
       // Fetch bio and social_media_links from user_verify table
       const { data: verifyData, error: verifyError } = await supabase
         .from("user_verify")
@@ -274,18 +274,18 @@ class UserAccountController {
         .eq("user_id", userID)
         .maybeSingle();
         
-      console.log("Step 4: Verify data query result:", { verifyData, verifyError });
+      //console.log("Step 4: Verify data query result:", { verifyData, verifyError });
         
       // Add bio and social_media_links to userData if they exist in user_verify
       if (!verifyError && verifyData) {
         userDataWithExtras.bio = verifyData.bio || null;
         userDataWithExtras.social_media_links = verifyData.social_media_links || null;
-        console.log("Step 5: Added verification data to user");
+        //console.log("Step 5: Added verification data to user");
       } else {
-        console.log("Step 5: No verification data found or error occurred");
+        //console.log("Step 5: No verification data found or error occurred");
       }
 
-      console.log("Step 6: Checking user role:", userDataWithExtras.user_role);
+      //console.log("Step 6: Checking user role:", userDataWithExtras.user_role);
       if (userDataWithExtras.user_role.toLowerCase() === "client") {
         console.log("Processing client user...");
         const clientData = await UserAccount.showClient(userID);
@@ -301,16 +301,16 @@ class UserAccountController {
       } else if (userDataWithExtras.user_role.toLowerCase() === "tasker") {
         console.log("Processing tasker user...");
         try {
-          console.log("Step 7: Calling UserAccount.showTasker");
+          //console.log("Step 7: Calling UserAccount.showTasker");
           const taskerData = await UserAccount.showTasker(userID);
-          console.log("Step 8: Successfully retrieved tasker data:", taskerData);
+          //console.log("Step 8: Successfully retrieved tasker data:", taskerData);
 
           // Note: We no longer override bio and social_media_links from tasker table
           // All verification data should come from user_verify table only
           
-          console.log("Step 10: Sending tasker response...");
+          //console.log("Step 10: Sending tasker response...");
           res.status(200).json({ user: userDataWithExtras, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
-          console.log("Step 11: Tasker response sent successfully");
+          //console.log("Step 11: Tasker response sent successfully");
         } catch (taskerError) {
           console.error("Error in tasker processing:", taskerError);
           console.error("Tasker error stack:", taskerError instanceof Error ? taskerError.stack : "Unknown error");
@@ -1551,7 +1551,7 @@ class UserAccountController {
     res: Response
   ): Promise<any> {
     try {
-      // Step 1: Validate the user_verify table structure first
+      // // Step 1: Validate the user_verify table structure first
       console.log("=== VALIDATING USER_VERIFY TABLE STRUCTURE ===");
       const tableValidation = await UserAccountController.validateUserVerifyTableStructure();
       
@@ -1808,7 +1808,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       console.log("- Selfie Image URL:", selfieImageUrl);
       console.log("- Documents URL:", documentsUrl);
 
-      // Step 1: Update the main user table with basic information
+      // // Step 1: Update the main user table with basic information
       // The user_verify table only contains bio and social_media_links
       // All other data (name, email, gender, phone, etc.) goes to the main user table
       const updateUser: any = {};
@@ -1848,7 +1848,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         console.log("✅ Successfully updated main user table");
       }
 
-      // Step 2: Handle user_verify table - ONLY bio and social_media_links
+      // // Step 2: Handle user_verify table - ONLY bio and social_media_links
       console.log("=== SAVING TO USER_VERIFY TABLE ===");
       console.log("Processing verification data for user_verify table...");
       
@@ -2003,7 +2003,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         console.log("✅ Successfully saved to user_verify table:", verifyData);
       }
 
-      // Step 3: Handle image and document storage in separate tables
+      // // Step 3: Handle image and document storage in separate tables
       console.log("=== SAVING IMAGES AND DOCUMENTS ===");
       console.log(`User ID: ${userId} (${typeof userId})`);
       console.log(`Files to save: ID=${!!idImageUrl}, Selfie=${!!selfieImageUrl}, Documents=${!!documentsUrl}`);
@@ -2405,7 +2405,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       console.log("Failed tables:", failedTables);
       console.log("Overall file save success:", verificationSuccess);
       
-      // Step 4: Prepare response
+      // // Step 4: Prepare response
       console.log("=== PREPARING RESPONSE ===");
       
       let message;
@@ -2829,8 +2829,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       const userId = Number(req.params.id || 291); // Default to user 291
       console.log("Testing with user ID:", userId);
       
-      // Step 1: Check if table exists and is accessible
-      console.log("Step 1: Checking table accessibility...");
+      // // Step 1: Check if table exists and is accessible
+      //console.log("Step 1: Checking table accessibility...");
       const { data: tableCheck, error: tableError } = await supabase
         .from('user_verify')
         .select('*')
@@ -2848,8 +2848,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       console.log("✅ Table is accessible");
       console.log("Current records in table:", tableCheck?.length || 0);
       
-      // Step 2: Check existing record for this user
-      console.log("Step 2: Checking for existing record...");
+      // // Step 2: Check existing record for this user
+      //console.log("Step 2: Checking for existing record...");
       const { data: existingRecord, error: existingError } = await supabase
         .from('user_verify')
         .select('*')
@@ -2867,8 +2867,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       
       console.log("Existing record:", existingRecord);
       
-      // Step 3: Try simple insert/update
-      console.log("Step 3: Attempting upsert...");
+      // // Step 3: Try simple insert/update
+      //console.log("Step 3: Attempting upsert...");
       const testData = {
         user_id: userId,
         bio: 'Debug test bio - ' + new Date().toISOString(),
@@ -2899,8 +2899,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       
       console.log("✅ Insert successful:", insertResult);
       
-      // Step 4: Verify the record was saved
-      console.log("Step 4: Verifying record was saved...");
+      // // Step 4: Verify the record was saved
+      //console.log("Step 4: Verifying record was saved...");
       const { data: verifyResult, error: verifyError } = await supabase
         .from('user_verify')
         .select('*')

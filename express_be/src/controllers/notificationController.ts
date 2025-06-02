@@ -7,6 +7,9 @@ import TaskAssignment from "../models/taskAssignmentModel";
 import { DateTime } from "luxon";
 
 class NotificationController {
+  /**
+   * What is the point of having these many types of get requests based on the the task status when you can all join them in one method?
+   */
   static async getTaskerRequest(req: Request, res: Response): Promise<any> {
     try {
       const userID = req.params.userId;
@@ -1408,11 +1411,11 @@ class NotificationController {
       dispute_details,
       rejection_reason,
     } = req.body;
-    // console.log("Role:", req.body);
-    // console.log("Task Taken ID:", taskTakenId);
-    // console.log("Value:", value);
-    // console.log("Role:", role);
-    // console.log("Rejection Reason:", rejection_reason);
+    console.log("Role:", req.body);
+    console.log("Task Taken ID:", taskTakenId);
+    console.log("Value:", value);
+    console.log("Role:", role);
+    console.log("Rejection Reason:", rejection_reason);
     const reason_for_rejection_or_cancellation = rejection_reason;
 
     if (!taskTakenId) {
@@ -1430,6 +1433,23 @@ class NotificationController {
       visit_client = false;
       visit_tasker = true;
     }
+
+    // Check if the taskTakenId exists
+    const { data: taskData, error: taskError } = await supabase
+      .from("task_taken")
+      .select("*")
+      .eq("task_taken_id", taskTakenId)
+      .maybeSingle();
+
+    if (taskError) {
+      console.error(taskError.message);
+      res.status(500).json({
+        success: false,
+        error: "An Error Occurred while starting the request.",
+      });
+      return;
+    }
+    
 
     switch (value) {
       case "Accept":
@@ -1462,35 +1482,22 @@ class NotificationController {
           visit_tasker
         );
 
-        const { data: taskData, error: taskError } = await supabase
-          .from("task_taken")
-          .select("*")
-          .eq("task_taken_id", taskTakenId)
-          .maybeSingle();
+        await TaskAssignment.updatePostTaskStatus(taskData.task_id, "Already Taken");
 
-        if (taskError) {
-          console.error(taskError.message);
-          res.status(500).json({
-            success: false,
-            error: "An Error Occurred while starting the request.",
-          });
-          return;
-        }
+        // const { data: postTaskData, error: postTaskError } = await supabase
+        //   .from("post_task")
+        //   .update({ status: "Already Taken" })
+        //   .eq("task_id", taskData.task_id)
+        //   .maybeSingle();
 
-        const { data: postTaskData, error: postTaskError } = await supabase
-          .from("post_task")
-          .update({ status: "Already Taken" })
-          .eq("task_id", taskData.task_id)
-          .maybeSingle();
-
-        if (postTaskError) {
-          console.error(postTaskError.message);
-          res.status(500).json({
-            success: false,
-            error: "An Error Occurred while starting the request.",
-          });
-          return;
-        }
+        // if (postTaskError) {
+        //   console.error(postTaskError.message);
+        //   res.status(500).json({
+        //     success: false,
+        //     error: "An Error Occurred while starting the request.",
+        //   });
+        //   return;
+        // }
         break;
       case "Reject":
         await TaskAssignment.updateStatus(
@@ -1524,8 +1531,16 @@ class NotificationController {
           endDateISO as string
         );
         break;
-   
       case "Cancel":
+        //This is 
+        if(!reason_for_rejection_or_cancellation) {
+          res.status(400).json({
+            success: false,
+            error: "Reason for cancellation is required.",
+          });
+          return;
+        }
+
         await TaskAssignment.updateStatus(
           taskTakenId,
           "Cancelled",
@@ -1535,9 +1550,9 @@ class NotificationController {
         );
 
         //30 percent of the contract price will be belong to the platform, while 70 percent will be returned to the client.
-        const task = await taskModel.getTaskAmount(taskTakenId);
+        const taskAmount = await taskModel.getTaskAmount(taskTakenId);
 
-        if(!task) {
+        if(!taskAmount) {
           res.status(404).json({
             success: false,
             error: "Task not found.",
@@ -1545,7 +1560,9 @@ class NotificationController {
           return;
         }
 
-        await QTaskPayment.refundCreditstoClient(taskTakenId, task.task_id, "Cancelled")
+        //Update task status from post_task to On Hold
+        await TaskAssignment.updatePostTaskStatus(taskData.task_id, "On Hold");
+        await QTaskPayment.refundCreditstoClient(taskTakenId, taskData.task_id, "Cancelled")
         break;
       case "Disputed":
         await TaskAssignment.updateStatus(
@@ -1601,6 +1618,8 @@ class NotificationController {
           console.log("No image evidence provided, proceeding with text dispute.");
           await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
         }
+
+        await TaskAssignment.updatePostTaskStatus(taskData.task_id, "On Hold");
         break
       case "Finish":
         if (role == "Tasker") {
@@ -1637,6 +1656,8 @@ class NotificationController {
             });
             return;
           }
+
+          await TaskAssignment.updatePostTaskStatus(taskData.task_id, "Closed");
           break;
         }
       default:
