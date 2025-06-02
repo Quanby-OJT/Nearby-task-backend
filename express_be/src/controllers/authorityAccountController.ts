@@ -774,15 +774,16 @@ class AuthorityAccountController {
   static async updateAddress(req: Request, res: Response): Promise<void> {
     try {
       const addressId = req.params.addressId;
-      const { user_id, street, barangay, city, province, postal_code, country, latitude, longitude, default: isDefault } = req.body;
+      const { street, barangay, city, province, postal_code, country, latitude, longitude,formatted_Address, region, remarks} = req.body;
 
-      if (!addressId || !user_id || !street || !barangay || !city || !province || !postal_code || !country) {
-        res.status(400).json({ error: "Required fields (addressId, user_id, street, barangay, city, province, postal_code, country) are missing" });
+      console.log("Received address data:", req.body);
+
+      if ( !street || !barangay || !city || !province || !postal_code || !country) {
+        res.status(400).json({ error: "Required fields (street, barangay, city, province, postal_code, country) are missing" });
         return;
       }
 
       const addressData = {
-        user_id,
         street,
         barangay,
         city,
@@ -791,9 +792,13 @@ class AuthorityAccountController {
         country,
         latitude: latitude || null,
         longitude: longitude || null,
-        default: isDefault || false,
+        formatted_Address: formatted_Address || null,
+        region: region || null,
+        remarks: remarks || null,
         updated_at: new Date().toISOString()
       };
+
+      console.log("Address data to update:", addressData);
 
       const { data, error } = await supabase.from("address").update(addressData).eq("id", addressId).select();
 
