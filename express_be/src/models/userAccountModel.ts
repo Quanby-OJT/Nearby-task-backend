@@ -102,15 +102,15 @@ class UserAccount {
 
     return data;
     } else if (userexists.user_role == "Tasker") {
-      const { data, error } = await supabase
-      .from("user_documents")
-      .select("*")
-      .eq("tasker_id", user_id)
-      .maybeSingle();
+        const { data, error } = await supabase
+        .from("user_documents")
+        .select("*")
+        .eq("tasker_id", user_id)
+        .maybeSingle();
 
-    if (error) throw new Error(error.message);
+        if (error) throw new Error(error.message);
 
-    return data;
+        return data;
     }
   }
 

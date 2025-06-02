@@ -151,6 +151,7 @@ class TaskController {
         return;
       }
 
+      amount.amount = amount.amount - proposed_price;
       await QTaskPayment.deductAmountfromUser(amount.user_role, amount.amount, user_id)
 
       res.status(201).json({
