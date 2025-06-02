@@ -54,7 +54,6 @@ class TaskAssignment{
         
         if(error) throw new Error(error.message)
         return { success: true, message: "Task status updated successfully." }
-    
     }
     
 }

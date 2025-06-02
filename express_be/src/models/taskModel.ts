@@ -300,6 +300,7 @@ class TaskModel {
     interface TaskTakenResponse {
       task_id: number;
       post_task: {
+        task_id: number;
         client_id: number;
         proposed_price: number;
       };
@@ -312,6 +313,7 @@ class TaskModel {
       .select(`
         task_id,
         post_task (
+          task_id,
           client_id,
           proposed_price
         ),
