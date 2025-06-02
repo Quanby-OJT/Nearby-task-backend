@@ -2518,10 +2518,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
     }
   }
 
-  static async getUserVerificationStatus(
-    req: Request,
-    res: Response
-  ): Promise<any> {
+  static async getUserVerificationStatus(req: Request, res: Response): Promise<any> {
     try {
       const userId = Number(req.params.id);
 

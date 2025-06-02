@@ -141,7 +141,7 @@ class ClientModel {
       }
 
       if (!data) {
-        res.status(200).json({ error: "No active client found." });
+        res.status(400).json({ error: "No active client found." });
         return;
       }
 
@@ -254,7 +254,7 @@ class ClientModel {
       }
 
       if (!data) {
-        res.status(200).json({ error: "No active client found." });
+        res.status(400).json({ error: "No active client found." });
         return;
       }
 
