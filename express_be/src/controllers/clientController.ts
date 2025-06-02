@@ -185,10 +185,10 @@ class ClientModel {
           ) 
         `
         )
-        .not("user", "is", null)
         .eq("user.acc_status", "Active")
         .eq("user.verified", true)
-        .eq("user.user_role", "Tasker");
+        .eq("user.user_role", "Tasker")
+        .eq("user.acc_status", "Review");
 
       console.log("Taskers data:", data, "Error:", error);
 

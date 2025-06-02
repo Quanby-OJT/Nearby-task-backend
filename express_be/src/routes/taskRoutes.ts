@@ -5,8 +5,6 @@ const upload = multer({ storage: memoryStorage() });
 
 const router = Router();
 
-router.post("/addTask", TaskController.createTask);
-
 router.get("/displayTask", TaskController.getAllTasks);
 
 router.patch("/displayTask/:id", TaskController.disableTask);
@@ -20,8 +18,6 @@ router.get("/task-taken/tasker/:taskerId", TaskController.getTaskforTasker);
 router.get("/getCreatedTaskByClient/:client_id", TaskController.getCreatedTaskByClient);
 
 router.post("/check-task-assignment/:taskId/:taskerId", TaskController.checkTaskAssignment);
-
-router.put("/updateTask/:id", TaskController.updateTask);
 
 router.get("/document-link/:id", TaskController.getDocumentLink);
 

@@ -15,10 +15,9 @@ const ws = new WebSocketServer({ port: 8080 });
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
-      const photo = req.file;
-      console.log("Received photo:", photo);
+      const photos = req.files as Express.Multer.File[];
+      console.log("Received photos:", photos);
       console.log("Received task data:", req.body);
-      console.log("Received insert data:", req.body);    
 
       const {
         client_id,
@@ -91,14 +90,14 @@ class TaskController {
       }
 
       // Handle photo upload to Supabase Storage
-      let image_url: string | null = null;
-      if (photo) {
-        const fileName = `tasks/image_${user_id}_${Date.now()}_${
-          photo.originalname
-        }`;
+      let imageIds: number[] = [];
+    if (photos && photos.length > 0) {
+      for (const photo of photos) {
+        const fileName = `task_images/image_${user_id}_${Date.now()}_${photo.originalname}`;
         console.log("Uploading Image File:", fileName);
 
-        const { error } = await supabase.storage
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
           .from("crud_bucket")
           .upload(fileName, photo.buffer, {
             contentType: photo.mimetype,
@@ -106,16 +105,42 @@ class TaskController {
             upsert: true,
           });
 
-        if (error) {
+        if (uploadError) {
           res.status(500).json({
             success: false,
-            error: `Error uploading image: ${error.message}`,
+            error: `Error uploading image: ${uploadError.message}`,
           });
           return;
         }
 
-        image_url = supabase.storage.from("crud_bucket").getPublicUrl(fileName)
-          .data.publicUrl;
+        const image_url = supabase.storage
+          .from("crud_bucket")
+          .getPublicUrl(fileName).data.publicUrl;
+
+        // Insert into post_task_images
+        const { data: imageData, error: imageInsertError } = await supabase
+          .from("post_task_images")
+          .insert([
+            {
+              image_link: image_url,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              user_id: client_id,
+            },
+          ])
+          .select("id")
+          .single();
+
+        if (imageInsertError) {
+          res.status(500).json({
+            success: false,
+            error: `Error saving image metadata: ${imageInsertError.message}`,
+          });
+          return;
+        }
+
+          imageIds.push(imageData.id);
+        }
       }
 
       // Insert task into Supabase
@@ -137,7 +162,7 @@ class TaskController {
             scope,
             is_verified: isVerified,
             task_begin_date,
-            image_url,
+            image_ids: imageIds.length > 0 ? imageIds : null,
           },
         ])
         .select()
@@ -840,6 +865,62 @@ class TaskController {
     }
   }
 
+  
+  static async getAllImages(
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { taskId } = req.params;
+
+      console.log("Task ID:", taskId);
+
+      // Fetch task to get image_ids
+      const { data: task, error: taskError } = await supabase
+        .from('post_task')
+        .select('image_ids')
+        .eq('task_id', taskId)
+        .single();
+
+      if (taskError || !task) {
+        res.status(404).json({ success: false, error: 'Task not found' });
+        return;
+      }
+
+      interface TaskImage {
+        id: number;
+        image_link: string;
+        created_at: string;
+        updated_at: string;
+      }
+
+      let images: TaskImage[] = [];
+      if (task.image_ids && task.image_ids.length > 0) {
+        
+        const { data: imageData, error: imageError } = await supabase
+          .from('post_task_images')
+          .select('id, image_link, created_at, updated_at')
+          .in('id', task.image_ids);
+
+        if (imageError) {
+          res.status(500).json({ success: false, error: imageError.message });
+          return;
+        }
+
+        images = imageData || [];
+      }
+
+      res.status(200).json({ success: true, images });
+    } catch (error) {
+      console.error('Error fetching task images:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+
   static async getAllSpecializations(
     req: Request,
     res: Response
@@ -958,42 +1039,261 @@ class TaskController {
 
   static async updateTask(req: Request, res: Response): Promise<void> {
     try {
-      const taskId = parseInt(req.params.id);
-      const taskData = { ...req.body };
+      const { taskId } = req.params;
+      const photos = req.files as Express.Multer.File[];
+      const {
+        client_id,
+        task_title,
+        task_description,
+        proposed_price,
+        urgent,
+        remarks,
+        work_type,
+        address,
+        specialization_id,
+        related_specializations,
+        scope,
+        task_begin_date,
+        status,
+        is_verified,
+        image_ids,
+        images_to_delete,
+      } = req.body;
 
       console.log("Task ID:", taskId);
-      console.log("Task Data:", taskData);
-      
-      if (isNaN(taskId)) {
-        res.status(400).json({ success: false, error: "Invalid task ID" });
+      console.log("Task Data:", req.body);
+  
+      // Validate required fields
+      if (!task_title || !task_description || !proposed_price) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required fields: task_title, task_description, or proposed_price',
+        });
         return;
       }
-
-      console.log("Updating task with data:", taskData);
-
-
-      if (taskData.proposed_price) {
-        taskData.proposed_price = Number(taskData.proposed_price);
+  
+      // Parse numeric fields
+      const parsedPrice = Number(proposed_price);
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        res.status(400).json({ success: false, error: 'Invalid proposed price' });
+        return;
       }
-
-      if (taskData.urgency) {
-        taskData.urgent = taskData.urgency === "Urgent";
-        delete taskData.urgency;
+  
+      const parsedClientId = Number(client_id);
+      if (isNaN(parsedClientId)) {
+        res.status(400).json({ success: false, error: 'Invalid client_id' });
+        return;
       }
+  
+      const parsedSpecializationId = specialization_id ? Number(specialization_id) : null;
+      if (specialization_id && isNaN(Number(specialization_id))) {
+        res.status(400).json({ success: false, error: 'Invalid specialization_id' });
+        return;
+      }
+  
+      // Parse boolean fields
+      const isUrgent = urgent === 'true' || urgent === true;
+      const isVerified = is_verified === 'true' || is_verified === true;
+  
+      // Parse array fields
+      let parsedRelatedSpecializations: number[] | null = null;
+      if (related_specializations) {
+        try {
+          parsedRelatedSpecializations = JSON.parse(related_specializations);
+          if (!Array.isArray(parsedRelatedSpecializations)) {
+            res.status(400).json({
+              success: false,
+              error: 'Related specializations must be an array',
+            });
+            return;
+          }
+        } catch (e) {
+          res.status(400).json({
+            success: false,
+            error: 'Failed to parse related specializations',
+          });
+          return;
+        }
+      }
+  
+      let currentImageIds: number[] = [];
+      if (image_ids) {
+        try {
+          currentImageIds = JSON.parse(image_ids);
+          if (!Array.isArray(currentImageIds)) {
+            res.status(400).json({
+              success: false,
+              error: 'Image IDs must be an array',
+            });
+            return;
+          }
+        } catch (e) {
+          res.status(400).json({
+            success: false,
+            error: 'Failed to parse image_ids',
+          });
+          return;
+        }
+      }
+  
+      let imagesToDelete: number[] = [];
+      if (images_to_delete) {
+        try {
+          imagesToDelete = JSON.parse(images_to_delete);
+          if (!Array.isArray(imagesToDelete)) {
+            res.status(400).json({
+              success: false,
+              error: 'Images to delete must be an array',
+            });
+            return;
+          }
+        } catch (e) {
+          res.status(400).json({
+            success: false,
+            error: 'Failed to parse images_to_delete',
+          });
+          return;
+        }
+      }
+  
+      // Remove deleted images
+      if (imagesToDelete.length > 0) {
+        const { data: imagesToRemove, error: imageError } = await supabase
+          .from('post_task_images')
+          .select('id, image_link')
+          .in('id', imagesToDelete);
+  
+        if (imageError) {
+          res.status(500).json({ success: false, error: imageError.message });
+          return;
+        }
+  
+        if (imagesToRemove.length > 0) {
+          const filePaths = imagesToRemove.map((img) =>
+            img.image_link.split('/').slice(-2).join('/')
+          );
+  
+          const { error: storageError } = await supabase.storage
+            .from('crud_bucket')
+            .remove(filePaths);
+  
+          if (storageError) {
+            res.status(500).json({ success: false, error: storageError.message });
+            return;
+          }
+  
+          const { error: deleteError } = await supabase
+            .from('post_task_images')
+            .delete()
+            .in('id', imagesToDelete);
+  
+          if (deleteError) {
+            res.status(500).json({ success: false, error: deleteError.message });
+            return;
+          }
+        }
+      }
+  
+      // Upload new images
+      let newImageIds: number[] = [];
+      if (photos && photos.length > 0) {
+        for (const photo of photos) {
+          const fileName = `task_images/image_${client_id}_${Date.now()}_${photo.originalname}`;
+          const { error: uploadError } = await supabase.storage
+            .from('crud_bucket')
+            .upload(fileName, photo.buffer, {
+              contentType: photo.mimetype,
+              cacheControl: '3600',
+              upsert: true,
+            });
+  
+          if (uploadError) {
+            res.status(500).json({
+              success: false,
+              error: `Failed to upload image: ${uploadError.message}`,
+            });
+            return;
+          }
+  
+          const imageUrl = supabase.storage
+            .from('crud_bucket')
+            .getPublicUrl(fileName).data.publicUrl;
+  
+          const { data: imageData, error: imageInsertError } = await supabase
+            .from('post_task_images')
+            .insert({
+              image_link: imageUrl,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .select('id')
+            .single();
+  
+          if (imageInsertError) {
+            res.status(500).json({
+              success: false,
+              error: imageInsertError.message,
+            });
+            return;
+          }
+  
+          newImageIds.push(imageData.id);
+        }
+      }
+  
+      // Update image IDs
+      const updatedImageIds = [
+        ...currentImageIds.filter((id) => !imagesToDelete.includes(id)),
+        ...newImageIds,
+      ];
 
-      const result = await taskModel.updateTask(taskId, taskData);
-      res.status(200).json(result);
+      console.log("Updated Image IDs:", updatedImageIds);
+  
+      // Update task
+      const { data, error } = await supabase
+        .from('post_task')
+        .update({
+          client_id: parsedClientId,
+          task_title,
+          task_description,
+          proposed_price: parsedPrice,
+          urgent: isUrgent,
+          remarks: remarks || null,
+          work_type,
+          address: address || null,
+          specialization_id: parsedSpecializationId,
+          related_specializations: parsedRelatedSpecializations,
+          scope,
+          task_begin_date: task_begin_date || null,
+          status: status || 'Available',
+          is_verified,
+          image_ids: updatedImageIds.length > 0 ? updatedImageIds : null,
+        })
+        .eq('task_id', taskId)
+        .select()
+        .single();
+  
+      if (error) {
+        res.status(500).json({ success: false, error: error.message });
+        return;
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: 'Task updated successfully',
+        task: data,
+      });
     } catch (error) {
-      console.error("Error updating task:", error);
+      console.error('Error updating task:', error);
       res.status(500).json({
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "An error occurred while updating the task",
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
+
+
+
 
   static async updateTaskStatusforTasker(
     req: Request,
