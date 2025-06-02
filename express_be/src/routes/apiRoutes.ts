@@ -68,6 +68,7 @@ router.post(
 router.post("/forgot-password", AuthenticationController.forgotPassword);
 router.post("/verify", UserAccountController.verifyEmail);
 router.post("/reset-password", AuthenticationController.resetPassword);
+router.post("/logout", AuthenticationController.logout);
 // router.use(isAuthenticated);
 
 /**
@@ -236,19 +237,20 @@ router.put(
   ]),
   NotificationController.updateRequest
 );
+
 router.put("/set-location/:user_id", SettingController.setLocation);
 router.get("/get-location/:user_id", SettingController.getLocation);
 router.put(
   "/update-specialization/:user_id",
   SettingController.updateSpecialization
 );
-router.put("/set-default-address/:user_id", SettingController.setLocationAsDefault);
+// router.put("/set-default-address/:user_id", SettingController.setLocationAsDefault);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
 router.get("/get-address/:user_id", SettingController.getAddress);
 router.get("/get-addresses/:user_id", SettingController.getAddresses);
 router.put("/set-address/:user_id", SettingController.setAddress);
-router.put("/update-address/:user_id", SettingController.updateAddress);
-router.delete("/delete-address/:id", SettingController.deleteAddress);
+
+router.delete("/delete-address/:address_id", SettingController.deleteAddress);
 
 // User Task
 router.get("/fetchTasks/:userId", TaskController.getTasks);
@@ -280,7 +282,7 @@ router.put(
   profileController.TaskerController.updateTaskerLogin
 );
 
-router.post("/logout", AuthenticationController.logout);
+
 
 // updating client with both profile and ID images
 router.put(

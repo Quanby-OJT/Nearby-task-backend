@@ -1459,6 +1459,24 @@ class NotificationController {
           visit_client,
           visit_tasker
         );
+
+        const { data: taskData, error: taskError } = await supabase
+          .from("task_taken")
+          .select("*")
+          .eq("task_taken_id", taskTakenId)
+          .maybeSingle();
+
+        if (taskError) {
+          console.error(taskError.message);
+          res.status(500).json({
+            success: false,
+            error: "An Error Occurred while starting the request.",
+          });
+          return;
+        }
+
+        await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
+        
         break;
       case "Reworking":
         const rework = 1; 
@@ -1473,6 +1491,24 @@ class NotificationController {
             undefined,
             rework
         );
+
+        
+        break;
+
+        case "Expired":
+        await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Expired",
+            visit_client,
+            visit_tasker,
+            undefined,
+            false,
+            false,
+            undefined,
+            undefined,
+        );
+
+        
         break;
       case "Start":
         await TaskAssignment.updateStatus(
@@ -1482,7 +1518,7 @@ class NotificationController {
           visit_tasker
         );
 
-        await TaskAssignment.updatePostTaskStatus(taskData.task_id, "Already Taken");
+        await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
 
         // const { data: postTaskData, error: postTaskError } = await supabase
         //   .from("post_task")
@@ -1516,6 +1552,7 @@ class NotificationController {
           visit_tasker,
           reason_for_rejection_or_cancellation
         );
+
         break;
       case "Review":
         const endDate = DateTime.now().setZone("Asia/Manila");
@@ -1561,7 +1598,7 @@ class NotificationController {
         }
 
         //Update task status from post_task to On Hold
-        await TaskAssignment.updatePostTaskStatus(taskData.task_id, "On Hold");
+        await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
         await QTaskPayment.refundCreditstoClient(taskTakenId, taskData.task_id, "Cancelled")
         break;
       case "Disputed":
@@ -1572,11 +1609,24 @@ class NotificationController {
           visit_tasker
         );
 
-        let imageEvidence: Express.Multer.File[] = [];
+        const { data: taskDataDisputed, error: taskErrorDisputed } = await supabase
+        .from("task_taken")
+        .select("*")
+        .eq("task_taken_id", taskTakenId)
+        .maybeSingle();
 
-        if (req.files && !Array.isArray(req.files)) {
-          imageEvidence = req.files["imageEvidence"] || [];
-        }
+      if (taskErrorDisputed) {
+        console.error(taskErrorDisputed.message);
+        res.status(500).json({
+          success: false,
+          error: "An Error Occurred while starting the request.",
+        });
+        return;
+      }
+
+      await TaskAssignment.updateTaskStatus(taskDataDisputed.task_id, "On Hold", false);
+
+        const imageEvidence = req.files as Express.Multer.File[];
 
         console.log("Image Evidence:", imageEvidence);
 
@@ -1619,7 +1669,7 @@ class NotificationController {
           await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
         }
 
-        await TaskAssignment.updatePostTaskStatus(taskData.task_id, "On Hold");
+        await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
         break
       case "Finish":
         if (role == "Tasker") {
@@ -1648,6 +1698,23 @@ class NotificationController {
             }
           );
 
+          const { data: taskDataFinish, error: taskErrorFinish } = await supabase
+          .from("task_taken")
+          .select("*")
+          .eq("task_taken_id", taskTakenId)
+          .maybeSingle();
+
+        if (taskErrorFinish) {
+          console.error(taskErrorFinish.message);
+          res.status(500).json({
+            success: false,
+            error: "An Error Occurred while starting the request.",
+          });
+          return;
+        }
+
+        await TaskAssignment.updateTaskStatus(taskDataFinish.task_id, "Closed", true);
+
           if (updateAmountError) {
             console.error(updateAmountError.message);
             res.status(500).json({
@@ -1657,7 +1724,7 @@ class NotificationController {
             return;
           }
 
-          await TaskAssignment.updatePostTaskStatus(taskData.task_id, "Closed");
+          await TaskAssignment.updateTaskStatus(taskData.task_id, "Closed", true);
           break;
         }
       default:

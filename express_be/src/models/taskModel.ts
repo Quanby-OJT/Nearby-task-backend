@@ -257,7 +257,7 @@ class TaskModel {
         }
       }
     
-    const cleanedData = { ...taskData, address: taskData.address_id, related_specializations: parsedRelatedSpecializations, update_at: new Date() };
+    const cleanedData = { ...taskData, address: taskData.address_id, related_specializations: parsedRelatedSpecializations, updated_at: new Date() };
     delete cleanedData.task_id;
     delete cleanedData.client_id;
     delete cleanedData.address_id;
