@@ -273,7 +273,7 @@ class ReportModel {
    */
   async getAllReports() {
     try {
-      const { data: reports, error: reportError } = await supabase.from("report").select("*") .order('report_id', { ascending: false });;
+      const { data: reports, error: reportError } = await supabase.from("report").select("*").order('report_id', { ascending: false });
 
       if (reportError) {
         console.error("Supabase error fetching reports:", reportError);
@@ -282,6 +282,34 @@ class ReportModel {
 
       if (!reports || reports.length === 0) {
         return [];
+      }
+
+      // Get all moderator user_ids (action_by) and report_ids
+      const moderatorReportPairs = reports
+        .filter(r => r.action_by && r.report_id)
+        .map(r => ({ user_id: r.action_by, report_id: r.report_id }));
+
+      // Fetch all action_taken_by for these moderator/report pairs
+      let actionReasonMap = new Map();
+      if (moderatorReportPairs.length > 0) {
+        const { data: actions, error: actionsError } = await supabase
+          .from("action_taken_by")
+          .select("user_id, report_id, action_reason, created_at")
+          .in("report_id", moderatorReportPairs.map(p => p.report_id));
+
+        if (actionsError) throw new Error(actionsError.message);
+
+        // Map (user_id, report_id) to action_reason
+        actions.forEach(action => {
+          const key = `${action.user_id}_${action.report_id}`;
+          // If multiple, pick the latest by created_at
+          if (
+            !actionReasonMap.has(key) ||
+            new Date(action.created_at) > new Date(actionReasonMap.get(key).created_at)
+          ) {
+            actionReasonMap.set(key, action);
+          }
+        });
       }
 
       const userIds = [
@@ -304,30 +332,36 @@ class ReportModel {
 
       const userMap = new Map(users.map((user) => [user.user_id, user]));
 
-      const combinedData = reports.map((report) => ({
-        ...report,
-        reporter: userMap.get(report.reported_by) || {
-          user_id: report.reported_by,
-          first_name: "Unknown",
-          middle_name: "Unknown",
-          last_name: "Unknown",
-          user_role: "Unknown",
-        },
-        violator: userMap.get(report.reported_whom) || {
-          user_id: report.reported_whom,
-          first_name: "Unknown",
-          middle_name: "Unknown",
-          last_name: "Unknown",
-          user_role: "Unknown",
-        },
-        actionBy: userMap.get(report.action_by) || {
+      const combinedData = reports.map((report) => {
+        const actionBy = userMap.get(report.action_by) || {
           user_id: report.action_by,
           first_name: "Unknown",
           middle_name: "Unknown",
           last_name: "Unknown",
           user_role: "Unknown",
-        },
-      }));
+        };
+        const key = `${report.action_by}_${report.report_id}`;
+        const actionTaken = actionReasonMap.get(key);
+        return {
+          ...report,
+          reporter: userMap.get(report.reported_by) || {
+            user_id: report.reported_by,
+            first_name: "Unknown",
+            middle_name: "Unknown",
+            last_name: "Unknown",
+            user_role: "Unknown",
+          },
+          violator: userMap.get(report.reported_whom) || {
+            user_id: report.reported_whom,
+            first_name: "Unknown",
+            middle_name: "Unknown",
+            last_name: "Unknown",
+            user_role: "Unknown",
+          },
+          actionBy,
+          action_reason: actionTaken ? actionTaken.action_reason : 'Empty',
+        };
+      });
 
       const formattedData = combinedData.map((report) => ({
         ...report,

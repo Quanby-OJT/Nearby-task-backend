@@ -30,7 +30,8 @@ class TaskAssignment{
         if (error) throw new Error(error.message)
     }
 
-    static async createDispute(task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof: string[]){
+    static async createDispute(task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof?: string[]){
+
 
         const { data, error } = await supabase
             .from('dispute_logs')
@@ -38,7 +39,7 @@ class TaskAssignment{
                 task_taken_id: task_taken_id, 
                 reason_for_dispute: reason_for_dispute,
                 dispute_details: dispute_details,
-                image_proof: JSON.stringify(image_proof) // Convert array to JSONB string
+                image_proof: image_proof // Convert array to JSONB string
             })
 
         if(error) throw new Error(error.message)

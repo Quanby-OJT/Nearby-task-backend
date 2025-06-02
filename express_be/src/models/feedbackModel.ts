@@ -81,7 +81,10 @@ class FeedbackModel {
       `)
       .eq("task_taken_id", task_taken_id).single();
 
-    if (taskReviewError) throw new Error(taskReviewError.message);
+    console.log(taskReviewData, taskReviewError)
+
+    if (taskReviewError && taskReviewError.code != 'PGRST116') throw new Error(taskReviewError.message);
+    if(taskReviewError?.code == 'PGRST116') return null
 
     return taskReviewData;
   }

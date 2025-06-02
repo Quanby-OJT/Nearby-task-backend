@@ -58,6 +58,24 @@ class PaymentController {
     }
   }
 
+  static async displayPaymentDetails(req: Request, res: Response): Promise<void> {
+    try {
+      const id = req.params.id;
+      const payment_method = req.params.payment_method;
+
+      const paymentDetails = await QTaskPayment.getPaymentDetails(id, payment_method);
+
+      if (!paymentDetails) {
+        res.status(404).json({ error: "Payment details not found." });
+        return;
+      }
+      res.status(200).json({payment_details: paymentDetails});
+    } catch (error) {
+      console.error("Error in displayPaymentDetails:", error instanceof Error ? error.message : error);
+      res.status(500).json({ error: "An error occured while processing your request. Please Try Again." });
+    }
+  }
+
   static async redirectToApplication(req: Request, res: Response): Promise<void> {
     try {
       const { amount, payment_intent_id } = req.params;

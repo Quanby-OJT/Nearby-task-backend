@@ -1,0 +1,16 @@
+<h1 class="mb-4 text-2xl font-bold">Hello, <%= name %>!</h1>
+<p class="text-base">This is your transaction details in regards to your deposited amount in the platform:</p>
+<div class="mt-2 rounded bg-gray-100 p-3">
+    <p class="font-light">Transaction ID: <span class="font-bold"><%= transation_id %></span></p>
+    <p class="font-light">Transaction Type: <span class="font-bold"><%= transaction_type %></span></p>
+    <p class="font-light text-justify">Description: <span class="font-bold"><%= description %></span></p>
+    <p class="font-light">Amount: <span class="font-bold">P <%= transaction_amount %></span></p>
+    <p class="font-light">Mode of Payment: <span class="font-bold"><%= payment_method %></span></p>
+</div>
+
+<p class="text-base">Should you have any concerns in regards to your transaction, don't hestitate to contact us by email.</p>
+
+<p>Best Regards,</p>
+<p class="font-bold">The Management</p>
+
+<p class="mt-8 text-xs text-gray-500">Please Ignore this email if you did not request it. Otherwise, change your password IMMEDIATELY.</p>

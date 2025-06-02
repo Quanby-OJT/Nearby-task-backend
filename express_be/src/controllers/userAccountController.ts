@@ -2,7 +2,6 @@ import { mailer, supabase } from "../config/configuration";
 import { Request, Response } from "express";
 import { UserAccount } from "../models/userAccountModel";
 import bcrypt from "bcrypt";
-import taskerModel from "../models/taskerModel";
 import { Auth } from "../models/authenticationModel";
 import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
@@ -97,7 +96,7 @@ class UserAccountController {
         throw new Error(insertError.message);
       }
 
-      // Insert into clients or tasker table based on user_role
+      // Insert into clients table based on user_role (removed tasker table insertion)
       if (user_role === "Client") {
         const { error: errorInsert } = await supabase
           .from("clients")
@@ -115,22 +114,8 @@ class UserAccountController {
         if (errorInsert) {
           throw new Error(errorInsert.message);
         }
-      } else if (user_role === "Tasker") {
-        const { error: errorInsert } = await supabase
-          .from("tasker")
-          .insert([
-            {
-              tasker_id: newUser.user_id,
-              user_id: newUser.user_id,
-            },
-          ]);
-
-        console.log("New user ID: " + newUser.user_id);
-
-        if (errorInsert) {
-          throw new Error(errorInsert.message);
-        }
       }
+      // Note: Removed tasker table insertion - only user_verify table is used for verification data
 
       // Send verification email (uncomment and configure as needed)
       /*
@@ -268,11 +253,20 @@ class UserAccountController {
       const userID = req.params.id;
       console.log("Retrieving User Data for..." + userID);
 
+      // Validate user ID
+      if (!userID || isNaN(Number(userID))) {
+        console.error("Invalid user ID provided:", userID);
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      console.log("Step 1: Calling UserAccount.showUser");
       const userData = await UserAccount.showUser(userID);
+      console.log("Step 2: Successfully retrieved user data:", userData);
       
       // Use type assertion to allow adding properties
       const userDataWithExtras: any = { ...userData };
 
+      console.log("Step 3: Fetching verification data from user_verify table");
       // Fetch bio and social_media_links from user_verify table
       const { data: verifyData, error: verifyError } = await supabase
         .from("user_verify")
@@ -280,45 +274,55 @@ class UserAccountController {
         .eq("user_id", userID)
         .maybeSingle();
         
+      console.log("Step 4: Verify data query result:", { verifyData, verifyError });
+        
       // Add bio and social_media_links to userData if they exist in user_verify
       if (!verifyError && verifyData) {
         userDataWithExtras.bio = verifyData.bio || null;
         userDataWithExtras.social_media_links = verifyData.social_media_links || null;
+        console.log("Step 5: Added verification data to user");
+      } else {
+        console.log("Step 5: No verification data found or error occurred");
       }
 
+      console.log("Step 6: Checking user role:", userDataWithExtras.user_role);
       if (userDataWithExtras.user_role.toLowerCase() === "client") {
+        console.log("Processing client user...");
         const clientData = await UserAccount.showClient(userID);
+        console.log("Client data retrieved:", clientData);
         if(!clientData) {
+          console.log("No client data found, returning error");
           res.status(404).json({ error: "Please Verify Your Account First." });
           return;
         }
+        console.log("Sending successful client response");
         res.status(200).json({ user: userDataWithExtras, client: clientData });
         console.log("Client Data: " + clientData);
       } else if (userDataWithExtras.user_role.toLowerCase() === "tasker") {
-        const taskerData = await UserAccount.showTasker(userID);
+        console.log("Processing tasker user...");
+        try {
+          console.log("Step 7: Calling UserAccount.showTasker");
+          const taskerData = await UserAccount.showTasker(userID);
+          console.log("Step 8: Successfully retrieved tasker data:", taskerData);
 
-        if(!taskerData) {
-          res.status(404).json({ error: "Please Verify Your Account First." });
-          return;
-        }
-        
-        // For taskers, prioritize bio and social_media_links from tasker table
-        if (taskerData.tasker) {
-          // Only override if tasker has these fields
-          if (taskerData.tasker.bio) {
-            userDataWithExtras.bio = taskerData.tasker.bio;
-          }
+          // Note: We no longer override bio and social_media_links from tasker table
+          // All verification data should come from user_verify table only
           
-          if (taskerData.tasker.social_media_links) {
-            userDataWithExtras.social_media_links = taskerData.tasker.social_media_links;
-          }
+          console.log("Step 10: Sending tasker response...");
+          res.status(200).json({ user: userDataWithExtras, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
+          console.log("Step 11: Tasker response sent successfully");
+        } catch (taskerError) {
+          console.error("Error in tasker processing:", taskerError);
+          console.error("Tasker error stack:", taskerError instanceof Error ? taskerError.stack : "Unknown error");
+          throw taskerError;
         }
-        
-        res.status(200).json({ user: userDataWithExtras, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
+      } else {
+        console.log("Unknown user role:", userDataWithExtras.user_role);
+        return res.status(400).json({ error: "Unknown user role" });
       }
     } catch (error) {
-      console.error(error instanceof Error ? error.message : "Unknown error");
-      console.error(error instanceof Error ? error.stack : "Unknown error");
+      console.error("Error in getUserData:", error instanceof Error ? error.message : "Unknown error");
+      console.error("Error stack:", error instanceof Error ? error.stack : "Unknown error");
       res.status(500).json({
         error:
           error instanceof Error
@@ -508,15 +512,6 @@ class UserAccountController {
         birthdate,
       };
 
-      const updateSkills = {
-        specialization_id,
-        bio,
-        skills,
-        wage_per_hour,
-        pay_period,
-        updated_at: new Date(),
-      };
-
       const { error: updateUserError } = await supabase
         .from("user")
         .update(updateUser)
@@ -527,14 +522,20 @@ class UserAccountController {
         return res.status(500).json({ error: updateUserError.message });
       }
 
-      const { error: updateSkillsError } = await supabase
-        .from("tasker")
-        .update(updateSkills)
-        .eq("user_id", userId);
+      // Save bio to user_verify table only (unified approach)
+      if (bio) {
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: userId,
+            bio: bio,
+            updated_at: new Date().toISOString(),
+          });
 
-      if (updateSkillsError) {
-        console.error("Error updating tasker table:", updateSkillsError);
-        return res.status(500).json({ error: updateSkillsError.message });
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
       }
 
       const { data: existingDocument } = await supabase
@@ -700,15 +701,16 @@ class UserAccountController {
         birthdate,
         image_link: profileImageUrl,
       };
-
-      const updateSkills = {
-        specialization_id,
-        bio,
-        skills,
-        wage_per_hour,
-        pay_period,
-        updated_at: new Date(),
-      };
+      
+      // // Set verification status - only for new submissions, not updates
+      // if (!isUpdateMode) {
+      //   updateUser.acc_status = "Review";
+      // }
+      
+      // // Use selfie as profile image if available
+      // if (selfieImageUrl) {
+      //   updateUser.image_link = selfieImageUrl;
+      // }
 
       const { error: updateUserError } = await supabase
         .from("user")
@@ -720,14 +722,20 @@ class UserAccountController {
         return res.status(500).json({ error: updateUserError.message });
       }
 
-      const { error: updateSkillsError } = await supabase
-        .from("tasker")
-        .update(updateSkills)
-        .eq("user_id", userId);
+      // Save bio to user_verify table only (unified approach)
+      if (bio) {
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: userId,
+            bio: bio,
+            updated_at: new Date().toISOString(),
+          });
 
-      if (updateSkillsError) {
-        console.error("Error updating tasker table:", updateSkillsError);
-        return res.status(500).json({ error: updateSkillsError.message });
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
       }
 
       const { data: existingDocument } = await supabase
@@ -856,26 +864,25 @@ class UserAccountController {
 
       console.log("Profile Image URL:", profileImageUrl);
 
-      const updateUser = {
-        first_name,
-        middle_name,
-        last_name,
-        email,
-        user_role,
-        contact,
-        gender,
-        birthdate,
-        image_link: profileImageUrl,
-      };
-
-      const updateSkills = {
-        specialization_id,
-        bio,
-        skills,
-        wage_per_hour,
-        pay_period,
-        updated_at: new Date(),
-      };
+      // Store basic info in the user table (including gender and phone since user_verify doesn't have them)
+      const updateUser: any = {};
+      if (first_name) updateUser.first_name = first_name;
+      if (middle_name) updateUser.middle_name = middle_name;
+      if (last_name) updateUser.last_name = last_name;
+      if (email) updateUser.email = email;
+      if (gender) updateUser.gender = gender;
+      if (contact) updateUser.contact = contact;
+      if (birthdate) updateUser.birthdate = birthdate;
+      
+      // // Set verification status - only for new submissions, not updates
+      // if (!isUpdateMode) {
+      //   updateUser.acc_status = "Review";
+      // }
+      
+      // // Use selfie as profile image if available
+      // if (selfieImageUrl) {
+      //   updateUser.image_link = selfieImageUrl;
+      // }
 
       const { error: updateUserError } = await supabase
         .from("user")
@@ -887,14 +894,20 @@ class UserAccountController {
         return res.status(500).json({ error: updateUserError.message });
       }
 
-      const { error: updateSkillsError } = await supabase
-        .from("tasker")
-        .update(updateSkills)
-        .eq("user_id", userId);
+      // Save bio to user_verify table only (unified approach)
+      if (bio) {
+        const { error: verifyError } = await supabase
+          .from("user_verify")
+          .upsert({
+            user_id: userId,
+            bio: bio,
+            updated_at: new Date().toISOString(),
+          });
 
-      if (updateSkillsError) {
-        console.error("Error updating tasker table:", updateSkillsError);
-        return res.status(500).json({ error: updateSkillsError.message });
+        if (verifyError) {
+          console.warn("Could not update user_verify table:", verifyError);
+          // Don't fail the entire operation, just log the warning
+        }
       }
 
       return res.status(200).json({
@@ -1538,29 +1551,132 @@ class UserAccountController {
     res: Response
   ): Promise<any> {
     try {
+      // Step 1: Validate the user_verify table structure first
+      console.log("=== VALIDATING USER_VERIFY TABLE STRUCTURE ===");
+      const tableValidation = await UserAccountController.validateUserVerifyTableStructure();
+      
+      if (!tableValidation.valid) {
+        console.error("❌ user_verify table validation failed:", tableValidation);
+        
+        // Check if essential columns are missing (user_id, bio, social_media_links)
+        const essentialColumns = ['user_id', 'bio', 'social_media_links'];
+        const missingEssentialColumns = tableValidation.missingColumns.filter(col => 
+          essentialColumns.includes(col) || col === 'table_does_not_exist'
+        );
+        
+        if (tableValidation.missingColumns.includes('table_does_not_exist')) {
+          return res.status(500).json({
+            error: "Database configuration error: user_verify table not found",
+            details: "The user_verify table needs to be created",
+            hint: "Please run the SQL provided below to create the table",
+            sql: `
+-- Create the user_verify table
+CREATE TABLE user_verify (
+  user_id INTEGER NOT NULL UNIQUE REFERENCES "user"(user_id) ON DELETE CASCADE,
+  bio TEXT,
+  social_media_links JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id)
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_user_verify_user_id ON user_verify(user_id);
+
+-- Disable RLS for now
+ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
+            `.trim(),
+            sqlNeeded: true
+          });
+        } else if (missingEssentialColumns.length > 0) {
+          // Generate specific SQL to fix missing essential columns
+          let fixSQL = "-- Fix missing essential columns in user_verify table\n";
+          
+          if (tableValidation.missingColumns.includes('user_id')) {
+            fixSQL += "-- Note: user_id should be the primary key. The table may need to be recreated.\n";
+            fixSQL += "-- Consider recreating the table with the full SQL provided above.\n";
+          }
+          if (tableValidation.missingColumns.includes('bio')) {
+            fixSQL += "ALTER TABLE user_verify ADD COLUMN IF NOT EXISTS bio TEXT;\n";
+          }
+          if (tableValidation.missingColumns.includes('social_media_links')) {
+            fixSQL += "ALTER TABLE user_verify ADD COLUMN IF NOT EXISTS social_media_links JSONB DEFAULT '{}';\n";
+          }
+          
+          return res.status(500).json({
+            error: "Database schema error: user_verify table has incorrect structure",
+            details: `Missing essential columns: ${missingEssentialColumns.join(', ')}`,
+            hint: "Please run the SQL provided below to fix the table structure",
+            missingColumns: missingEssentialColumns,
+            sql: fixSQL.trim(),
+            sqlNeeded: true
+          });
+        } else {
+          // Only timestamp columns are missing - warn but continue
+          console.warn("⚠️ Non-essential columns missing from user_verify table:", tableValidation.missingColumns);
+          console.log("Continuing with verification process...");
+          
+          if (tableValidation.missingColumns.includes('updated_at') || tableValidation.missingColumns.includes('created_at')) {
+            console.log("💡 Recommendation: Add missing timestamp columns to user_verify table:");
+            let recommendedSQL = "-- Add missing timestamp columns (recommended but not required)\n";
+            
+            if (tableValidation.missingColumns.includes('updated_at')) {
+              recommendedSQL += "ALTER TABLE user_verify ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;\n";
+            }
+            if (tableValidation.missingColumns.includes('created_at')) {
+              recommendedSQL += "ALTER TABLE user_verify ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;\n";
+            }
+            
+            console.log(recommendedSQL);
+          }
+        }
+      }
+      
+      console.log("✅ user_verify table structure validated successfully");
+      
       // Ensure the user_verify table exists with the correct structure
       await UserAccountController.ensureUserVerifyTable();
       
       const userId = Number(req.params.id);
       const {
+        // Frontend sends these field names (from Flutter verification_page.dart)
         gender,
-        phone_number,
+        phone_number, // This should go to user table as 'contact'
+        phone, // Alternative field name
         bio,
         social_media_links,
+        socialMediaJson, // Alternative field name from frontend
+        
         // Additional fields for user table updates
         first_name,
+        firstName, // Alternative field name from frontend
         middle_name,
+        middleName, // Alternative field name from frontend  
         last_name,
+        lastName, // Alternative field name from frontend
         email,
         birthdate,
         user_role,
+        userRole, // Alternative field name from frontend
+        
         // Flag to indicate if this is an update to existing verification
         is_update,
+        status, // Alternative field for update mode
       } = req.body;
 
-      const isUpdateMode = is_update === 'true';
+      // Handle alternative field names from frontend
+      const isUpdateMode = is_update === 'true' || status !== undefined;
+      const userFirstName = first_name || firstName;
+      const userMiddleName = middle_name || middleName;
+      const userLastName = last_name || lastName;
+      const submittedUserRole = user_role || userRole || 'tasker';
+      const userPhone = phone_number || phone;
+      const userSocialMediaLinks = social_media_links || socialMediaJson || '{}';
+      
+      console.log("=== USER VERIFICATION SUBMISSION ===");
       console.log("Received User Verification Data:", req.body);
       console.log("Is update mode:", isUpdateMode);
+      console.log("User role:", submittedUserRole);
 
       // Check if email already exists for another user
       if (email) {
@@ -1580,7 +1696,7 @@ class UserAccountController {
         }
       }
 
-      // Get the user's current role to determine storage paths
+      // Get the user's current role for processing
       const { data: userData, error: userError } = await supabase
         .from("user")
         .select("user_role, acc_status")
@@ -1592,8 +1708,18 @@ class UserAccountController {
         return res.status(500).json({ error: "Unable to determine user type" });
       }
       
-      const userType = user_role || userData.user_role || "Unknown";
-      console.log(`Processing verification for ${userType} user`);
+      const currentUserRole = userData.user_role || "Unknown";
+      console.log(`Processing verification for ${currentUserRole} user`);
+      
+      // Verification is now supported for both taskers and clients
+      const supportedRoles = ['tasker', 'client'];
+      if (!supportedRoles.includes(currentUserRole.toLowerCase())) {
+        return res.status(400).json({ 
+          error: `Verification is not supported for user role: ${currentUserRole}`,
+          supportedRoles: supportedRoles,
+          userRole: currentUserRole
+        });
+      }
 
       // Handle file uploads
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -1605,7 +1731,7 @@ class UserAccountController {
       // Upload ID image if provided
       if (files && files.idImage && files.idImage.length > 0) {
         const idImageFile = files.idImage[0];
-        const fileName = `users/id_${userId}_${Date.now()}_${idImageFile.originalname}`;
+        const fileName = `${currentUserRole.toLowerCase()}s/id_${userId}_${Date.now()}_${idImageFile.originalname}`;
 
         console.log("Uploading ID Image:", fileName);
 
@@ -1630,7 +1756,7 @@ class UserAccountController {
       // Upload selfie image if provided
       if (files && files.selfieImage && files.selfieImage.length > 0) {
         const selfieImageFile = files.selfieImage[0];
-        const fileName = `users/selfie_${userId}_${Date.now()}_${selfieImageFile.originalname}`;
+        const fileName = `${currentUserRole.toLowerCase()}s/selfie_${userId}_${Date.now()}_${selfieImageFile.originalname}`;
 
         console.log("Uploading Selfie Image:", fileName);
 
@@ -1655,7 +1781,7 @@ class UserAccountController {
       // Upload documents if provided
       if (files && files.documents && files.documents.length > 0) {
         const documentFile = files.documents[0];
-        const fileName = `users/documents_${userId}_${Date.now()}_${documentFile.originalname}`;
+        const fileName = `${currentUserRole.toLowerCase()}s/documents_${userId}_${Date.now()}_${documentFile.originalname}`;
 
         console.log("Uploading Documents:", fileName);
 
@@ -1677,18 +1803,22 @@ class UserAccountController {
           .getPublicUrl(fileName).data.publicUrl;
       }
 
-      console.log("ID Image URL:", idImageUrl);
-      console.log("Selfie Image URL:", selfieImageUrl);
-      console.log("Documents URL:", documentsUrl);
+      console.log("File Upload Results:");
+      console.log("- ID Image URL:", idImageUrl);
+      console.log("- Selfie Image URL:", selfieImageUrl);
+      console.log("- Documents URL:", documentsUrl);
 
-      // Store basic info in the user table
+      // Step 1: Update the main user table with basic information
+      // The user_verify table only contains bio and social_media_links
+      // All other data (name, email, gender, phone, etc.) goes to the main user table
       const updateUser: any = {};
-      if (first_name) updateUser.first_name = first_name;
-      if (middle_name) updateUser.middle_name = middle_name;
-      if (last_name) updateUser.last_name = last_name;
+      
+      if (userFirstName) updateUser.first_name = userFirstName;
+      if (userMiddleName) updateUser.middle_name = userMiddleName;
+      if (userLastName) updateUser.last_name = userLastName;
       if (email) updateUser.email = email;
       if (gender) updateUser.gender = gender;
-      if (phone_number) updateUser.contact = phone_number;
+      if (userPhone) updateUser.contact = userPhone;
       if (birthdate) updateUser.birthdate = birthdate;
       
       // Set verification status - only for new submissions, not updates
@@ -1701,19 +1831,26 @@ class UserAccountController {
         updateUser.image_link = selfieImageUrl;
       }
 
-      // Update the user table
-      const { error: updateUserError } = await supabase
-        .from("user")
-        .update(updateUser)
-        .eq("user_id", userId);
+      // Update user table
+      if (Object.keys(updateUser).length > 0) {
+        console.log("Updating main user table with:", updateUser);
+        
+        const { error: updateUserError } = await supabase
+          .from("user")
+          .update(updateUser)
+          .eq("user_id", userId);
 
-      if (updateUserError) {
-        console.error("Error updating user table:", updateUserError);
-        return res.status(500).json({ error: updateUserError.message });
+        if (updateUserError) {
+          console.error("Error updating user table:", updateUserError);
+          return res.status(500).json({ error: updateUserError.message });
+        }
+        
+        console.log("✅ Successfully updated main user table");
       }
 
-      // Try inserting into user_verify using a direct approach
-      console.log("Checking if user verification record already exists");
+      // Step 2: Handle user_verify table - ONLY bio and social_media_links
+      console.log("=== SAVING TO USER_VERIFY TABLE ===");
+      console.log("Processing verification data for user_verify table...");
       
       // Get current date in ISO format
       const currentDate = new Date().toISOString();
@@ -1727,182 +1864,604 @@ class UserAccountController {
       
       if (checkError) {
         console.error("Error checking for existing verification:", checkError);
+        console.error("Check error details:", {
+          code: checkError.code,
+          message: checkError.message,
+          details: checkError.details,
+          hint: checkError.hint
+        });
+        // Don't return error here, continue with the process
       }
       
-      // Prepare verification data
-      const verificationData = {
+      console.log("Existing verification record:", existingVerification);
+      
+      // Prepare verification data with ONLY the columns that exist in user_verify table
+      const verificationData: any = {
         user_id: userId,
-        gender: gender || '',
-        phone_number: phone_number || '',
-        bio: bio || '',
-        social_media_links: social_media_links || '{}',
-        created_at: existingVerification ? undefined : currentDate,
-        updated_at: existingVerification ? currentDate : undefined
+        bio: bio || '', // Text field for bio
+        social_media_links: userSocialMediaLinks, // JSONB field for social media links
       };
       
-      console.log("Attempting to save verification data");
+      // Only add timestamp columns if they exist in the table
+      // If updated_at column exists, add it
+      if (!tableValidation.missingColumns.includes('updated_at')) {
+        verificationData.updated_at = currentDate;
+      }
       
-      // Use upsert to handle both insert and update
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('user_verify')
-        .upsert(verificationData)
-        .select();
+      // Ensure social_media_links is valid JSON
+      if (typeof verificationData.social_media_links === 'string') {
+        try {
+          // Test if it's valid JSON
+          JSON.parse(verificationData.social_media_links);
+        } catch (e) {
+          console.warn("Invalid JSON in social_media_links, using empty object");
+          verificationData.social_media_links = '{}';
+        }
+      } else if (typeof verificationData.social_media_links === 'object') {
+        // Convert object to JSON string
+        verificationData.social_media_links = JSON.stringify(verificationData.social_media_links);
+      } else {
+        verificationData.social_media_links = '{}';
+      }
+      
+      // Only add created_at for new records if the column exists
+      if (!existingVerification && !tableValidation.missingColumns.includes('created_at')) {
+        verificationData.created_at = currentDate;
+      }
+      
+      console.log("Final verification data for user_verify table:", verificationData);
+      console.log("Data types:", {
+        user_id: typeof verificationData.user_id,
+        bio: typeof verificationData.bio,
+        social_media_links: typeof verificationData.social_media_links,
+        created_at: typeof verificationData.created_at,
+        updated_at: typeof verificationData.updated_at
+      });
+      
+      // Save to user_verify table
+      let verifyData = null;
+      let verifyError = null;
+      
+      if (existingVerification) {
+        console.log("Updating existing verification record in user_verify table...");
+        const updateFields: any = {
+          bio: verificationData.bio,
+          social_media_links: verificationData.social_media_links,
+        };
+        
+        // Only add updated_at if the column exists
+        if (!tableValidation.missingColumns.includes('updated_at')) {
+          updateFields.updated_at = verificationData.updated_at;
+        }
+        
+        const updateResult = await supabase
+          .from('user_verify')
+          .update(updateFields)
+          .eq('user_id', userId)
+          .select();
+          
+        verifyData = updateResult.data;
+        verifyError = updateResult.error;
+      } else {
+        console.log("Inserting new verification record into user_verify table...");
+        const insertResult = await supabase
+          .from('user_verify')
+          .insert(verificationData)
+          .select();
+          
+        verifyData = insertResult.data;
+        verifyError = insertResult.error;
+      }
       
       if (verifyError) {
-        console.error("Error saving to user_verify:", verifyError);
+        console.error("❌ Error saving to user_verify table:", verifyError);
+        console.error("Error details:", {
+          code: verifyError.code,
+          message: verifyError.message,
+          details: verifyError.details,
+          hint: verifyError.hint
+        });
+        
+        console.error("Raw error object:", JSON.stringify(verifyError, null, 2));
+        
+        // Handle specific error cases
+        if (verifyError.code === '42P01') { // Table doesn't exist
+          console.warn("user_verify table doesn't exist");
+          return res.status(500).json({
+            error: "Database configuration error: user_verify table not found",
+            details: "Please create the user_verify table using the SQL provided in the logs",
+            hint: "Contact your database administrator"
+          });
+        } else if (verifyError.code === '23503') { // Foreign key constraint
+          return res.status(500).json({ 
+            error: "Invalid user ID or database constraint violation",
+            details: verifyError.message,
+            hint: "Ensure the user exists in the main user table"
+          });
+        } else if (verifyError.code === '42703') { // Column doesn't exist
+          console.error("Column doesn't exist error. Table structure is incorrect.");
+          return res.status(500).json({
+            error: "Database schema error: user_verify table has incorrect structure",
+            details: verifyError.message,
+            hint: "Please run the table creation SQL provided in the logs"
+          });
+        } else if (verifyError.code === '42501') { // Insufficient privileges
+          console.error("Permission denied error. API key lacks write permissions.");
+          return res.status(500).json({
+            error: "Permission error: Unable to save verification data",
+            details: "The API key doesn't have write permissions for the user_verify table"
+          });
+        } else {
+          // For other errors, return with details
+          return res.status(500).json({
+            error: "Failed to save verification data to user_verify table",
+            details: verifyError.message,
+            code: verifyError.code
+          });
+        }
       } else {
-        console.log("Successfully saved to user_verify table:", verifyData);
+        console.log("✅ Successfully saved to user_verify table:", verifyData);
       }
 
-      // Now handle the image and document data in their respective tables
+      // Step 3: Handle image and document storage in separate tables
+      console.log("=== SAVING IMAGES AND DOCUMENTS ===");
+      console.log(`User ID: ${userId} (${typeof userId})`);
+      console.log(`Files to save: ID=${!!idImageUrl}, Selfie=${!!selfieImageUrl}, Documents=${!!documentsUrl}`);
+      
+      // Verify user exists before attempting to save related data
+      console.log("Verifying user exists before saving images/documents...");
+      const { data: userExists, error: userExistsError } = await supabase
+        .from('user')
+        .select('user_id')
+        .eq('user_id', userId)
+        .single();
+        
+      if (userExistsError || !userExists) {
+        console.error("❌ User does not exist, cannot save images/documents:", userExistsError);
+        return res.status(400).json({
+          error: "User not found - cannot save verification images/documents",
+          userId: userId
+        });
+      }
+      console.log("✅ User exists, proceeding with image/document saves");
+      
       let verificationSuccess = true;
       let failedTables = [];
+      let savedFiles = {
+        idImage: false,
+        selfieImage: false,
+        documents: false
+      };
       
-      // Insert ID image data if provided
+      // Save ID image to user_id table if provided
       if (idImageUrl) {
-        console.log("Attempting to insert ID image data");
-        const idImageData = {
-          user_id: userId,
-          id_image: idImageUrl,
-          created_at: existingVerification ? undefined : currentDate,
-          updated_at: existingVerification ? currentDate : undefined
-        };
+        console.log("=== SAVING ID IMAGE TO user_id TABLE ===");
+        console.log("ID Image URL:", idImageUrl);
         
-        // Note: There might be a foreign key constraint issue if the database schema
-        // hasn't been fully updated from tasker_* to user_* tables
-        const { data: idImageInsertResult, error: idImageError } = await supabase
-          .from('user_id')
-          .upsert(idImageData)
-          .select();
-          
-        if (idImageError) {
-          console.error("Error inserting into user_id table:", idImageError);
-          // Handle foreign key constraint errors gracefully
-          if (idImageError.code === '23503' && idImageError.message.includes('foreign key constraint')) {
-            console.warn("This appears to be a foreign key constraint issue. The database schema may need to be updated to change foreign key references from tasker_* to user_* tables.");
-            console.warn("As a temporary workaround, we'll continue with the verification process.");
-            // Don't mark verification as failed due to DB schema issues
-          } else {
-            verificationSuccess = false;
-            failedTables.push('user_id');
-          }
-        } else {
-          console.log("Successfully inserted into user_id table");
-        }
-        
-        // Also save ID image to client_documents if the user is a client
-        if (userType.toLowerCase() === 'client') {
-          const clientDocData = {
-            user_id: userId,
-            document_type: 'id',
-            document_url: idImageUrl,
-            created_at: existingVerification ? undefined : currentDate,
-            updated_at: existingVerification ? currentDate : undefined
-          };
-          
-          const { error: clientDocError } = await supabase
-            .from('client_documents')
-            .upsert(clientDocData)
-            .select();
+        try {
+          // First check if user_id table exists and has correct structure
+          const { data: tableTest, error: tableTestError } = await supabase
+            .from('user_id')
+            .select('user_id, id_image')
+            .limit(1);
             
-          if (clientDocError) {
-            console.warn("Could not save ID to client_documents:", clientDocError);
-          }
-        }
-      }
-      
-      // Insert selfie/face image data if provided
-      if (selfieImageUrl) {
-        console.log("Attempting to insert face image data");
-        const faceImageData = {
-          user_id: userId,
-          face_image: selfieImageUrl,
-          created_at: existingVerification ? undefined : currentDate,
-          updated_at: existingVerification ? currentDate : undefined
-        };
-        
-        // Note: There might be a foreign key constraint issue if the database schema
-        // hasn't been fully updated from tasker_* to user_* tables
-        const { data: faceImageInsertResult, error: faceImageError } = await supabase
-          .from('user_face_identity')
-          .upsert(faceImageData)
-          .select();
-          
-        if (faceImageError) {
-          console.error("Error inserting into user_face_identity table:", faceImageError);
-          // Handle foreign key constraint errors gracefully
-          if (faceImageError.code === '23503' && faceImageError.message.includes('foreign key constraint')) {
-            console.warn("This appears to be a foreign key constraint issue. The database schema may need to be updated to change foreign key references from tasker_* to user_* tables.");
-            console.warn("As a temporary workaround, we'll continue with the verification process.");
-            // Don't mark verification as failed due to DB schema issues
+          if (tableTestError && tableTestError.code === '42P01') {
+            console.error("❌ user_id table does not exist");
+            failedTables.push('user_id (table missing)');
+          } else if (tableTestError && tableTestError.code === '42703') {
+            console.error("❌ user_id table missing required columns");
+            failedTables.push('user_id (incorrect structure)');
           } else {
-            verificationSuccess = false;
-            failedTables.push('user_face_identity');
+            const idImageData: any = {
+              user_id: userId,
+              id_image: idImageUrl,
+            };
+            
+            console.log("Attempting to save ID image data:", idImageData);
+            
+            // Check if record already exists
+            const { data: existingIdRecord, error: checkIdError } = await supabase
+              .from('user_id')
+              .select('user_id')
+              .eq('user_id', userId)
+              .maybeSingle();
+            
+            let idImageInsertResult, idImageError;
+            
+            if (existingIdRecord) {
+              // Update existing record
+              console.log("Updating existing ID image record...");
+              const updateResult = await supabase
+                .from('user_id')
+                .update({ id_image: idImageUrl })
+                .eq('user_id', userId)
+                .select();
+              idImageInsertResult = updateResult.data;
+              idImageError = updateResult.error;
+            } else {
+              // Insert new record
+              console.log("Inserting new ID image record...");
+              const insertResult = await supabase
+                .from('user_id')
+                .insert(idImageData)
+                .select();
+              idImageInsertResult = insertResult.data;
+              idImageError = insertResult.error;
+            }
+            
+            if (idImageError) {
+              console.error("❌ Error saving ID image:", idImageError);
+              console.error("ID Image Error Details:", {
+                code: idImageError.code,
+                message: idImageError.message,
+                details: idImageError.details,
+                hint: idImageError.hint
+              });
+              
+              // Provide specific guidance based on error type
+              if (idImageError.code === '23503') {
+                console.error("Foreign key constraint violation - user may not exist in user table");
+              } else if (idImageError.code === '23505') {
+                console.error("Unique constraint violation - user_id may already exist in user_id table");
+              } else if (idImageError.code === '42501') {
+                console.error("Permission denied - check RLS policies and API key permissions");
+              }
+              
+              failedTables.push('user_id');
+            } else {
+              console.log("✅ Successfully saved ID image to user_id table");
+              console.log("Saved data:", idImageInsertResult);
+              savedFiles.idImage = true;
+            }
           }
-        } else {
-          console.log("Successfully inserted into user_face_identity table");
+        } catch (error) {
+          console.error("❌ Exception while saving ID image:", error);
+          failedTables.push('user_id');
         }
-      }
-      
-      // Insert document data if provided
-      if (documentsUrl) {
-        console.log("Attempting to insert document data");
-        const documentData = {
-          tasker_id: userId,
-          user_document_link: documentsUrl,
-          created_at: existingVerification ? undefined : currentDate,
-          updated_at: existingVerification ? currentDate : undefined
-        };
-        
-        // Note: There might be a foreign key constraint issue if the database schema
-        // hasn't been fully updated from tasker_* to user_* tables
-        const { data: documentInsertResult, error: documentError } = await supabase
-          .from('user_documents')
-          .upsert(documentData)
-          .select();
-          
-        if (documentError) {
-          console.error("Error inserting into user_documents table:", documentError);
-          // Handle foreign key constraint errors gracefully
-          if (documentError.code === '23503' && documentError.message.includes('foreign key constraint')) {
-            console.warn("This appears to be a foreign key constraint issue. The database schema may need to be updated to change foreign key references from tasker_* to user_* tables.");
-            console.warn("As a temporary workaround, we'll continue with the verification process.");
-            // Don't mark verification as failed due to DB schema issues
-          } else {
-            verificationSuccess = false;
-            failedTables.push('user_documents');
-          }
-        } else {
-          console.log("Successfully inserted into user_documents table");
-        }
-      }
-
-      // Determine the appropriate response message
-      let message;
-      if (isUpdateMode) {
-        message = verificationSuccess 
-          ? "Your information has been updated successfully!" 
-          : `Your information was partially updated. There were problems with: ${failedTables.join(', ')}. Please contact support if you continue to have issues.`;
       } else {
-        message = verificationSuccess 
+        console.log("ℹ️ No ID image provided - skipping user_id table save");
+      }
+      
+      // Save selfie image to user_face_identity table if provided
+      if (selfieImageUrl) {
+        console.log("=== SAVING SELFIE IMAGE TO user_face_identity TABLE ===");
+        console.log("Selfie Image URL:", selfieImageUrl);
+        
+        try {
+          // First check if user_face_identity table exists and has correct structure
+          const { data: tableTest, error: tableTestError } = await supabase
+            .from('user_face_identity')
+            .select('user_id, face_image')
+            .limit(1);
+            
+          if (tableTestError && tableTestError.code === '42P01') {
+            console.error("❌ user_face_identity table does not exist");
+            failedTables.push('user_face_identity (table missing)');
+          } else if (tableTestError && tableTestError.code === '42703') {
+            console.error("❌ user_face_identity table missing required columns");
+            failedTables.push('user_face_identity (incorrect structure)');
+          } else {
+            const faceImageData: any = {
+              user_id: userId,
+              face_image: selfieImageUrl,
+            };
+            
+            console.log("Attempting to save selfie image data:", faceImageData);
+            
+            // Check if record already exists
+            const { data: existingFaceRecord, error: checkFaceError } = await supabase
+              .from('user_face_identity')
+              .select('user_id')
+              .eq('user_id', userId)
+              .maybeSingle();
+            
+            let faceImageInsertResult, faceImageError;
+            
+            if (existingFaceRecord) {
+              // Update existing record
+              console.log("Updating existing face image record...");
+              const updateResult = await supabase
+                .from('user_face_identity')
+                .update({ face_image: selfieImageUrl })
+                .eq('user_id', userId)
+                .select();
+              faceImageInsertResult = updateResult.data;
+              faceImageError = updateResult.error;
+            } else {
+              // Insert new record
+              console.log("Inserting new face image record...");
+              const insertResult = await supabase
+                .from('user_face_identity')
+                .insert(faceImageData)
+                .select();
+              faceImageInsertResult = insertResult.data;
+              faceImageError = insertResult.error;
+            }
+            
+            if (faceImageError) {
+              console.error("❌ Error saving selfie image:", faceImageError);
+              console.error("Selfie Image Error Details:", {
+                code: faceImageError.code,
+                message: faceImageError.message,
+                details: faceImageError.details,
+                hint: faceImageError.hint
+              });
+              
+              // Provide specific guidance based on error type
+              if (faceImageError.code === '23503') {
+                console.error("Foreign key constraint violation - user may not exist in user table");
+              } else if (faceImageError.code === '23505') {
+                console.error("Unique constraint violation - user_id may already exist in user_face_identity table");
+              } else if (faceImageError.code === '42501') {
+                console.error("Permission denied - check RLS policies and API key permissions");
+              }
+              
+              failedTables.push('user_face_identity');
+            } else {
+              console.log("✅ Successfully saved selfie image to user_face_identity table");
+              console.log("Saved data:", faceImageInsertResult);
+              savedFiles.selfieImage = true;
+            }
+          }
+        } catch (error) {
+          console.error("❌ Exception while saving selfie image:", error);
+          failedTables.push('user_face_identity');
+        }
+      } else {
+        console.log("ℹ️ No selfie image provided - skipping user_face_identity table save");
+      }
+      
+      // Save documents to appropriate table based on user role if provided
+      if (documentsUrl) {
+        console.log("=== SAVING DOCUMENTS ===");
+        console.log("Documents URL:", documentsUrl);
+        console.log("User role:", currentUserRole);
+        
+        try {
+          if (currentUserRole.toLowerCase() === 'tasker') {
+            // Save to user_documents table for taskers
+            console.log("Saving to user_documents table for tasker...");
+            
+            const { data: tableTest, error: tableTestError } = await supabase
+              .from('user_documents')
+              .select('tasker_id, user_document_link')
+              .limit(1);
+              
+            if (tableTestError && tableTestError.code === '42P01') {
+              console.error("❌ user_documents table does not exist");
+              failedTables.push('user_documents (table missing)');
+            } else if (tableTestError && tableTestError.code === '42703') {
+              console.error("❌ user_documents table missing required columns");
+              failedTables.push('user_documents (incorrect structure)');
+            } else {
+              const documentData: any = {
+                tasker_id: userId, // Note: this table uses tasker_id instead of user_id
+                user_document_link: documentsUrl,
+                valid: false, // Set to false initially, admin will validate
+              };
+              
+              console.log("Attempting to save tasker document data:", documentData);
+              
+              // Check if record already exists
+              const { data: existingDocRecord, error: checkDocError } = await supabase
+                .from('user_documents')
+                .select('tasker_id')
+                .eq('tasker_id', userId)
+                .maybeSingle();
+              
+              let documentInsertResult, documentError;
+              
+              if (existingDocRecord) {
+                // Update existing record
+                console.log("Updating existing document record...");
+                const updateResult = await supabase
+                  .from('user_documents')
+                  .update({ 
+                    user_document_link: documentsUrl,
+                    valid: false 
+                  })
+                  .eq('tasker_id', userId)
+                  .select();
+                documentInsertResult = updateResult.data;
+                documentError = updateResult.error;
+              } else {
+                // Insert new record
+                console.log("Inserting new document record...");
+                const insertResult = await supabase
+                  .from('user_documents')
+                  .insert(documentData)
+                  .select();
+                documentInsertResult = insertResult.data;
+                documentError = insertResult.error;
+              }
+              
+              if (documentError) {
+                console.error("❌ Error saving tasker documents:", documentError);
+                console.error("Document Error Details:", {
+                  code: documentError.code,
+                  message: documentError.message,
+                  details: documentError.details,
+                  hint: documentError.hint
+                });
+                
+                // Provide specific guidance based on error type
+                if (documentError.code === '23503') {
+                  console.error("Foreign key constraint violation - user may not exist in user table");
+                } else if (documentError.code === '23505') {
+                  console.error("Unique constraint violation - tasker_id may already exist in user_documents table");
+                } else if (documentError.code === '42501') {
+                  console.error("Permission denied - check RLS policies and API key permissions");
+                }
+                
+                failedTables.push('user_documents');
+              } else {
+                console.log("✅ Successfully saved documents to user_documents table");
+                console.log("Saved data:", documentInsertResult);
+                savedFiles.documents = true;
+              }
+            }
+          } else if (currentUserRole.toLowerCase() === 'client') {
+            // Save to user_documents table for clients (using same structure as taskers)
+            console.log("Saving to user_documents table for client...");
+            
+            const { data: tableTest, error: tableTestError } = await supabase
+              .from('user_documents')
+              .select('tasker_id, user_document_link')
+              .limit(1);
+              
+            if (tableTestError && tableTestError.code === '42P01') {
+              console.error("❌ user_documents table does not exist");
+              failedTables.push('user_documents (table missing)');
+            } else if (tableTestError && tableTestError.code === '42703') {
+              console.error("❌ user_documents table missing required columns");
+              failedTables.push('user_documents (incorrect structure)');
+            } else {
+              const documentData: any = {
+                tasker_id: userId, // Note: using tasker_id column for both taskers and clients
+                user_document_link: documentsUrl,
+                valid: false, // Set to false initially, admin will validate
+              };
+              
+              console.log("Attempting to save client document data:", documentData);
+              
+              // Check if record already exists
+              const { data: existingDocRecord, error: checkDocError } = await supabase
+                .from('user_documents')
+                .select('tasker_id')
+                .eq('tasker_id', userId)
+                .maybeSingle();
+              
+              let documentInsertResult, documentError;
+              
+              if (existingDocRecord) {
+                // Update existing record
+                console.log("Updating existing document record...");
+                const updateResult = await supabase
+                  .from('user_documents')
+                  .update({ 
+                    user_document_link: documentsUrl,
+                    valid: false 
+                  })
+                  .eq('tasker_id', userId)
+                  .select();
+                documentInsertResult = updateResult.data;
+                documentError = updateResult.error;
+              } else {
+                // Insert new record
+                console.log("Inserting new document record...");
+                const insertResult = await supabase
+                  .from('user_documents')
+                  .insert(documentData)
+                  .select();
+                documentInsertResult = insertResult.data;
+                documentError = insertResult.error;
+              }
+              
+              if (documentError) {
+                console.error("❌ Error saving client documents:", documentError);
+                console.error("Document Error Details:", {
+                  code: documentError.code,
+                  message: documentError.message,
+                  details: documentError.details,
+                  hint: documentError.hint
+                });
+                
+                // Provide specific guidance based on error type
+                if (documentError.code === '23503') {
+                  console.error("Foreign key constraint violation - user may not exist in user table");
+                } else if (documentError.code === '23505') {
+                  console.error("Unique constraint violation - tasker_id may already exist in user_documents table");
+                } else if (documentError.code === '42501') {
+                  console.error("Permission denied - check RLS policies and API key permissions");
+                }
+                
+                failedTables.push('user_documents');
+              } else {
+                console.log("✅ Successfully saved documents to user_documents table");
+                console.log("Saved data:", documentInsertResult);
+                savedFiles.documents = true;
+              }
+            }
+          } else {
+            console.warn("⚠️ Unknown user role for document storage:", currentUserRole);
+            failedTables.push(`documents (unsupported role: ${currentUserRole})`);
+          }
+        } catch (error) {
+          console.error("❌ Exception while saving documents:", error);
+          failedTables.push('documents');
+        }
+      } else {
+        console.log("ℹ️ No documents provided - skipping document table save");
+      }
+      
+      // Update overall verification success based on file saves
+      if (failedTables.length > 0) {
+        verificationSuccess = false;
+        console.warn("⚠️ Some files failed to save:", failedTables);
+      }
+      
+      console.log("=== FILE SAVE SUMMARY ===");
+      console.log("Files saved successfully:", savedFiles);
+      console.log("Failed tables:", failedTables);
+      console.log("Overall file save success:", verificationSuccess);
+      
+      // Step 4: Prepare response
+      console.log("=== PREPARING RESPONSE ===");
+      
+      let message;
+      let verificationSavedSuccessfully = !verifyError;
+      
+      if (isUpdateMode) {
+        message = (verificationSuccess && verificationSavedSuccessfully)
+          ? "Your verification information has been updated successfully!" 
+          : `Your verification information was partially updated. ${failedTables.length > 0 ? `There were problems with: ${failedTables.join(', ')}.` : ''} Your main profile information was saved successfully.`;
+      } else {
+        message = (verificationSuccess && verificationSavedSuccessfully)
           ? "Verification submitted successfully! Your information will be reviewed shortly." 
-          : `Verification submitted with some issues. Your basic information was saved, but there were problems with: ${failedTables.join(', ')}. Please contact support if verification fails.`;
+          : `Verification submitted successfully! Your main information and files were saved. ${failedTables.length > 0 ? `Note: Some additional data could not be saved to: ${failedTables.join(', ')}.` : ''} Your verification will be reviewed shortly.`;
       }
 
-      // Return success response
-      return res.status(verificationSuccess ? 200 : 207).json({
+      const overallSuccess = verificationSavedSuccessfully; // Main criteria is user_verify table save
+      
+      console.log("=== VERIFICATION SUBMISSION COMPLETE ===");
+      console.log("Overall success:", overallSuccess);
+      console.log("Message:", message);
+      
+      return res.status(overallSuccess ? 200 : 207).json({
+        success: overallSuccess,
         message,
-        status: verificationSuccess ? "success" : "partial_success",
-        idImageUrl,
-        selfieImageUrl,
-        documentsUrl
+        status: overallSuccess ? "success" : "partial_success",
+        data: {
+          verificationSaved: verificationSavedSuccessfully,
+          userTableUpdated: Object.keys(updateUser).length > 0,
+          filesUploaded: {
+            idImage: !!idImageUrl,
+            selfieImage: !!selfieImageUrl,
+            documents: !!documentsUrl
+          },
+          filesSavedToTables: savedFiles,
+          urls: {
+            idImageUrl,
+            selfieImageUrl,
+            documentsUrl
+          },
+          tablesSaved: {
+            user_verify: verificationSavedSuccessfully,
+            user_id: savedFiles.idImage,
+            user_face_identity: savedFiles.selfieImage,
+            user_documents: savedFiles.documents
+          }
+        },
+        failedTables: failedTables.length > 0 ? failedTables : undefined
       });
+      
     } catch (error) {
       console.error("Unexpected error in submitUserVerification:", error);
       return res
         .status(500)
         .json({
           error: error instanceof Error ? error.message : "Unknown error",
+          hint: "Check server logs for detailed error information"
         });
     }
   }
@@ -2037,32 +2596,8 @@ class UserAccountController {
           additionalData = { ...additionalData, taskerDocuments: taskerDocs };
         }
         
-        // For taskers, also check the tasker table for bio and social_media_links
-        const { data: taskerData, error: taskerError } = await supabase
-          .from("tasker")
-          .select("bio, social_media_links")
-          .eq("tasker_id", userId)
-          .maybeSingle();
-          
-        if (!taskerError && taskerData) {
-          // Add tasker-specific bio and social_media_links to the verification data
-          if (verification) {
-            // Only override if these fields don't exist in verification or are empty
-            if (!verification.bio && taskerData.bio) {
-              verification.bio = taskerData.bio;
-            }
-            if (!verification.social_media_links && taskerData.social_media_links) {
-              verification.social_media_links = taskerData.social_media_links;
-            }
-          } else {
-            // If no verification record exists, add tasker data to additionalData
-            additionalData = { 
-              ...additionalData, 
-              taskerBio: taskerData.bio,
-              taskerSocialMediaLinks: taskerData.social_media_links 
-            };
-          }
-        }
+        // Note: We no longer read bio and social_media_links from tasker table
+        // All verification data should come from user_verify table only
       }
 
       // Prepare the verification data with image URLs
@@ -2126,41 +2661,516 @@ class UserAccountController {
    */
   private static async ensureUserVerifyTable(): Promise<void> {
     try {
-      // Check if the table exists by trying to query it
+      console.log("Checking if user_verify table exists...");
+      
+      // Check if the table exists by trying to query it with minimal columns
       const { data, error } = await supabase
         .from('user_verify')
-        .select('id')
+        .select('user_id')
         .limit(1);
       
       // If we got data or a "no rows found" error, the table exists
-      if (data || (error && error.code !== 'PGRST116')) {
-        console.log("user_verify table exists");
+      if (data !== null || (error && error.code === 'PGRST116')) {
+        console.log("user_verify table exists and is accessible");
         return;
       }
       
-      // If we get here, the table likely doesn't exist or we don't have access
-      console.log("user_verify table might not exist, checking further...");
-      
-      // Try a direct approach without custom RPC functions
-      const createTableQuery = `
-        CREATE TABLE IF NOT EXISTS user_verify (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER NOT NULL UNIQUE REFERENCES "user"(user_id),
-          gender TEXT,
-          phone_number TEXT,
-          bio TEXT,
-          social_media_links JSONB,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        )
-      `;
-      
-      // This is just a placeholder - with updated policies, we should
-      // be able to interact with the table directly using supabase client
-      console.log("Assuming user_verify table exists or will be created by the database admin");
+      // If we get a different error, log it
+      if (error) {
+        console.error("Error checking user_verify table:", error);
+        console.error("Error details:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        // If table doesn't exist or has wrong structure, provide SQL
+        if (error.code === '42P01' || error.code === '42703' || error.message.includes('does not exist')) {
+          console.log("Table doesn't exist or has wrong structure. Please run this SQL in your database:");
+          console.log(`
+            -- Drop existing table if it has wrong structure
+            DROP TABLE IF EXISTS user_verify;
+            
+            -- Create the correct user_verify table
+            CREATE TABLE user_verify (
+              user_id INTEGER NOT NULL UNIQUE REFERENCES "user"(user_id) ON DELETE CASCADE,
+              bio TEXT,
+              social_media_links JSONB DEFAULT '{}',
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (user_id)
+            );
+            
+            -- Create index for faster lookups
+            CREATE INDEX IF NOT EXISTS idx_user_verify_user_id ON user_verify(user_id);
+            
+            -- Enable Row Level Security (RLS) if needed
+            ALTER TABLE user_verify ENABLE ROW LEVEL SECURITY;
+            
+            -- Create policy to allow authenticated users to read their own data
+            CREATE POLICY "Users can view own verification data" ON user_verify
+              FOR SELECT USING (auth.uid()::text = user_id::text);
+              
+            -- Create policy to allow authenticated users to insert/update their own data
+            CREATE POLICY "Users can insert own verification data" ON user_verify
+              FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+              
+            CREATE POLICY "Users can update own verification data" ON user_verify
+              FOR UPDATE USING (auth.uid()::text = user_id::text);
+              
+            -- OR if you prefer to disable RLS for this table (simpler but less secure):
+            -- ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
+          `);
+          
+          console.log("\n=== TROUBLESHOOTING GUIDE ===");
+          console.log("1. If table doesn't exist: Run the CREATE TABLE command above");
+          console.log("2. If permission denied: Check your Supabase API key has write permissions");
+          console.log("3. If using service role key: Make sure it's properly configured");
+          console.log("4. If using anon key: You might need to disable RLS or create proper policies");
+          console.log("5. Check your Supabase dashboard for any error logs");
+        }
+      }
       
     } catch (err) {
-      console.error("Error checking/creating user_verify table:", err);
-      // Continue execution - we'll assume the table exists with the correct structure
+      console.error("Error in ensureUserVerifyTable:", err);
+      // Continue execution - we'll assume the table exists or will be created manually
+    }
+  }
+
+  static async testUserVerifyTable(req: Request, res: Response): Promise<any> {
+    try {
+      console.log("Testing user_verify table accessibility...");
+      
+      // Test 1: Check if table exists
+      const { data: tableCheck, error: tableError } = await supabase
+        .from('user_verify')
+        .select('*')
+        .limit(1);
+      
+      if (tableError) {
+        console.error("Table check failed:", tableError);
+        return res.status(500).json({
+          success: false,
+          error: "user_verify table is not accessible",
+          details: {
+            code: tableError.code,
+            message: tableError.message,
+            hint: tableError.hint
+          }
+        });
+      }
+      
+      // Test 2: Try to insert a test record
+      const testUserId = 999999; // Use a non-existent user ID for testing
+      const testData = {
+        user_id: testUserId,
+        bio: 'test',
+        social_media_links: '{"test": "test"}',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      const { data: insertTest, error: insertError } = await supabase
+        .from('user_verify')
+        .insert(testData)
+        .select();
+      
+      if (insertError) {
+        console.error("Insert test failed:", insertError);
+        
+        // Clean up any partial insert
+        await supabase
+          .from('user_verify')
+          .delete()
+          .eq('user_id', testUserId);
+          
+        return res.status(200).json({
+          success: false,
+          message: "Table exists but insert failed (this might be expected due to foreign key constraints)",
+          tableAccessible: true,
+          insertWorking: false,
+          error: {
+            code: insertError.code,
+            message: insertError.message,
+            hint: insertError.hint
+          }
+        });
+      }
+      
+      // Clean up test record
+      await supabase
+        .from('user_verify')
+        .delete()
+        .eq('user_id', testUserId);
+      
+      return res.status(200).json({
+        success: true,
+        message: "user_verify table is fully functional",
+        tableAccessible: true,
+        insertWorking: true,
+        testData: insertTest
+      });
+      
+    } catch (error) {
+      console.error("Test failed with exception:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Test failed with exception",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  static async debugUserVerifyInsert(req: Request, res: Response): Promise<any> {
+    try {
+      console.log("=== Debug User Verify Insert ===");
+      
+      const userId = Number(req.params.id || 291); // Default to user 291
+      console.log("Testing with user ID:", userId);
+      
+      // Step 1: Check if table exists and is accessible
+      console.log("Step 1: Checking table accessibility...");
+      const { data: tableCheck, error: tableError } = await supabase
+        .from('user_verify')
+        .select('*')
+        .limit(1);
+      
+      if (tableError) {
+        console.error("Table access failed:", tableError);
+        return res.status(500).json({
+          success: false,
+          step: "table_check",
+          error: tableError
+        });
+      }
+      
+      console.log("✅ Table is accessible");
+      console.log("Current records in table:", tableCheck?.length || 0);
+      
+      // Step 2: Check existing record for this user
+      console.log("Step 2: Checking for existing record...");
+      const { data: existingRecord, error: existingError } = await supabase
+        .from('user_verify')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+        
+      if (existingError) {
+        console.error("Error checking existing record:", existingError);
+        return res.status(500).json({
+          success: false,
+          step: "existing_check",
+          error: existingError
+        });
+      }
+      
+      console.log("Existing record:", existingRecord);
+      
+      // Step 3: Try simple insert/update
+      console.log("Step 3: Attempting upsert...");
+      const testData = {
+        user_id: userId,
+        bio: 'Debug test bio - ' + new Date().toISOString(),
+        social_media_links: JSON.stringify({
+          test: 'debug',
+          timestamp: new Date().toISOString()
+        }),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log("Test data to insert:", testData);
+      
+      const { data: insertResult, error: insertError } = await supabase
+        .from('user_verify')
+        .upsert(testData, { onConflict: 'user_id' })
+        .select();
+      
+      if (insertError) {
+        console.error("❌ Insert failed:", insertError);
+        return res.status(500).json({
+          success: false,
+          step: "insert",
+          error: insertError,
+          testData: testData
+        });
+      }
+      
+      console.log("✅ Insert successful:", insertResult);
+      
+      // Step 4: Verify the record was saved
+      console.log("Step 4: Verifying record was saved...");
+      const { data: verifyResult, error: verifyError } = await supabase
+        .from('user_verify')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+        
+      if (verifyError) {
+        console.error("Verification failed:", verifyError);
+        return res.status(500).json({
+          success: false,
+          step: "verification",
+          error: verifyError
+        });
+      }
+      
+      console.log("✅ Record verified:", verifyResult);
+      
+      return res.status(200).json({
+        success: true,
+        message: "Debug test completed successfully",
+        steps: {
+          table_accessible: true,
+          insert_successful: true,
+          record_verified: true
+        },
+        data: {
+          inserted: insertResult,
+          verified: verifyResult,
+          testData: testData
+        }
+      });
+      
+    } catch (error) {
+      console.error("Debug test failed with exception:", error);
+      return res.status(500).json({
+        success: false,
+        step: "exception",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  /**
+   * Validates that the user_verify table has the correct structure
+   */
+  private static async validateUserVerifyTableStructure(): Promise<{ valid: boolean; missingColumns: string[]; error?: any }> {
+    try {
+      console.log("Validating user_verify table structure...");
+      
+      // Try to select specific columns to check if they exist
+      const { data, error } = await supabase
+        .from('user_verify')
+        .select('user_id, bio, social_media_links, created_at, updated_at')
+        .limit(1);
+      
+      if (error) {
+        console.error("Table structure validation failed:", error);
+        
+        // Check for specific error types
+        if (error.code === '42P01') {
+          return {
+            valid: false,
+            missingColumns: ['table_does_not_exist'],
+            error: error
+          };
+        } else if (error.code === '42703') {
+          // Column doesn't exist - identify which one from the error message
+          const missingColumns = [];
+          
+          if (error.message.includes('updated_at')) {
+            missingColumns.push('updated_at');
+          }
+          if (error.message.includes('created_at')) {
+            missingColumns.push('created_at');
+          }
+          if (error.message.includes('bio')) {
+            missingColumns.push('bio');
+          }
+          if (error.message.includes('social_media_links')) {
+            missingColumns.push('social_media_links');
+          }
+          if (error.message.includes('user_id')) {
+            missingColumns.push('user_id');
+          }
+          
+          // If we couldn't parse the error, test individual columns
+          if (missingColumns.length === 0) {
+            const columnsToTest = ['user_id', 'bio', 'social_media_links', 'created_at', 'updated_at'];
+            for (const column of columnsToTest) {
+              try {
+                const { error: colError } = await supabase
+                  .from('user_verify')
+                  .select(column)
+                  .limit(1);
+                  
+                if (colError && colError.code === '42703') {
+                  missingColumns.push(column);
+                }
+              } catch (colError: any) {
+                if (colError.code === '42703') {
+                  missingColumns.push(column);
+                }
+              }
+            }
+          }
+          
+          return {
+            valid: false,
+            missingColumns: missingColumns,
+            error: error
+          };
+        }
+        
+        return {
+          valid: false,
+          missingColumns: ['unknown_error'],
+          error: error
+        };
+      }
+      
+      console.log("✅ user_verify table structure is valid");
+      return {
+        valid: true,
+        missingColumns: []
+      };
+      
+    } catch (err) {
+      console.error("Error validating table structure:", err);
+      return {
+        valid: false,
+        missingColumns: ['validation_failed'],
+        error: err
+      };
+    }
+  }
+
+  static async testImageDocumentTables(req: Request, res: Response): Promise<any> {
+    try {
+      console.log("=== TESTING IMAGE AND DOCUMENT TABLES ===");
+      
+      const tableTests = [];
+      
+      // Test user_id table
+      try {
+        const { data: idTableData, error: idTableError } = await supabase
+          .from('user_id')
+          .select('user_id, id_image, created_at, updated_at')
+          .limit(1);
+          
+        tableTests.push({
+          table: 'user_id',
+          exists: !idTableError || idTableError.code !== '42P01',
+          accessible: !idTableError,
+          correctStructure: !idTableError || idTableError.code !== '42703',
+          purpose: 'Stores ID/identification images',
+          columns: 'user_id (FK), id_image (URL), created_at, updated_at',
+          error: idTableError ? {
+            code: idTableError.code,
+            message: idTableError.message
+          } : null,
+          recordCount: idTableData?.length || 0
+        });
+      } catch (error) {
+        tableTests.push({
+          table: 'user_id',
+          exists: false,
+          accessible: false,
+          correctStructure: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+      
+      // Test user_face_identity table
+      try {
+        const { data: faceTableData, error: faceTableError } = await supabase
+          .from('user_face_identity')
+          .select('user_id, face_image, created_at, updated_at')
+          .limit(1);
+          
+        tableTests.push({
+          table: 'user_face_identity',
+          exists: !faceTableError || faceTableError.code !== '42P01',
+          accessible: !faceTableError,
+          correctStructure: !faceTableError || faceTableError.code !== '42703',
+          purpose: 'Stores selfie/face verification images',
+          columns: 'user_id (FK), face_image (URL), created_at, updated_at',
+          error: faceTableError ? {
+            code: faceTableError.code,
+            message: faceTableError.message
+          } : null,
+          recordCount: faceTableData?.length || 0
+        });
+      } catch (error) {
+        tableTests.push({
+          table: 'user_face_identity',
+          exists: false,
+          accessible: false,
+          correctStructure: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+      
+      // Test user_documents table
+      try {
+        const { data: docTableData, error: docTableError } = await supabase
+          .from('user_documents')
+          .select('tasker_id, user_document_link, valid, created_at, updated_at')
+          .limit(1);
+          
+        tableTests.push({
+          table: 'user_documents',
+          exists: !docTableError || docTableError.code !== '42P01',
+          accessible: !docTableError,
+          correctStructure: !docTableError || docTableError.code !== '42703',
+          purpose: 'Stores tasker verification documents (PDFs, etc.)',
+          columns: 'tasker_id (FK), user_document_link (URL), valid (boolean), created_at, updated_at',
+          error: docTableError ? {
+            code: docTableError.code,
+            message: docTableError.message
+          } : null,
+          recordCount: docTableData?.length || 0
+        });
+      } catch (error) {
+        tableTests.push({
+          table: 'user_documents',
+          exists: false,
+          accessible: false,
+          correctStructure: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+      
+      // Check overall status
+      const allTablesOk = tableTests.every(test => test.exists && test.accessible && test.correctStructure);
+      const missingTables = tableTests.filter(test => !test.exists).map(test => test.table);
+      const inaccessibleTables = tableTests.filter(test => test.exists && !test.accessible).map(test => test.table);
+      const wrongStructureTables = tableTests.filter(test => test.exists && test.accessible && !test.correctStructure).map(test => test.table);
+      
+      return res.status(200).json({
+        success: allTablesOk,
+        message: allTablesOk ? "All image/document tables are properly configured" : "Some tables have issues",
+        summary: {
+          totalTables: tableTests.length,
+          workingTables: tableTests.filter(test => test.exists && test.accessible && test.correctStructure).length,
+          missingTables: missingTables.length,
+          inaccessibleTables: inaccessibleTables.length,
+          wrongStructureTables: wrongStructureTables.length
+        },
+        issues: {
+          missing: missingTables,
+          inaccessible: inaccessibleTables,
+          wrongStructure: wrongStructureTables
+        },
+        tableDetails: tableTests,
+        recommendations: [
+          "1. Ensure all tables exist in your Supabase database",
+          "2. Check that your API key has read/write permissions for these tables",
+          "3. Verify RLS (Row Level Security) policies allow your operations",
+          "4. Make sure foreign key constraints are properly set up",
+          "5. Check that column names match exactly: user_id, id_image, face_image, tasker_id, user_document_link"
+        ]
+      });
+      
+    } catch (error) {
+      console.error("Error testing image/document tables:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to test tables",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   }
 }
