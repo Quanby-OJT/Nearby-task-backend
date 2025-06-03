@@ -1691,7 +1691,7 @@ class NotificationController {
           );
 
           const { error: updateAmountError } = await supabase.rpc(
-            "update_tasker_amount",
+            "increment_tasker_amount",
             {
               addl_credits: task?.post_task.proposed_price,
               id: task?.tasker.tasker_id,

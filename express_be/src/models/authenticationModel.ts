@@ -112,7 +112,7 @@ class Auth {
 
   //This will be changed once we start to implement the reset password link, which is already built-in within the application.
   static async getUserEmail(email: string) {
-    const {data, error} = await supabase.from("user").select("email, acc_status").eq("email", email).single()
+    const {data, error} = await supabase.from("user").select("user_id, email, acc_status").eq("email", email).single()
 
     if(error) {
       if (error.code === "PGRST116") {
