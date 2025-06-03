@@ -372,7 +372,6 @@ class TaskController {
       const { data:   task, error } = await supabase
           .from("post_task")
           .select(
-          
           `
         *,
         tasker_specialization:specialization_id (specialization),
@@ -396,7 +395,8 @@ class TaskController {
       `
         )
         .not("clients", "is", null)
-        .eq("clients.user.user_role", "Client");
+        .eq("clients.user.user_role", "Client")
+        .eq("status", "Available");
 
       console.log("This is fetchTask");
       console.log("Taskers data:", task, "Error:", error);
