@@ -176,8 +176,8 @@ class TaskController {
         return;
       }
 
-      amount.amount = amount.amount - proposed_price;
-      await QTaskPayment.deductAmountfromUser(amount.user_role, amount.amount, user_id)
+      const remainingAmount = amount.amount - proposed_price;
+      await QTaskPayment.deductAmountfromUser(amount.user_role, remainingAmount, user_id)
 
       res.status(201).json({
         success: true,
@@ -807,6 +807,16 @@ class TaskController {
         return;
       }
 
+      const clientTask = await taskModel.getTaskById(taskId);
+      if (!clientTask) {
+        res.status(404).json({ success: false, message: "Task not found" });
+        return;
+      }
+      if(clientTask.status === "Available") {
+        // Only If task status is available, only then the amount is refunded to client, else nothing happened.
+        await QTaskPayment.refundAvailableTaskAmountToClient(taskId);
+      }
+      // Check if the task is already closed
       const result = await taskModel.deleteTask(taskId);
       res.status(200).json(result);
     } catch (error) {
@@ -1274,7 +1284,17 @@ class TaskController {
       ];
 
       console.log("Updated Image IDs:", updatedImageIds);
-  
+
+      try {
+        await QTaskPayment.updateAmount(parsedPrice, parsedClientId, taskId);
+      } catch (err) {
+        res.status(400).json({
+          success: false,
+          error: err instanceof Error ? err.message : 'Failed to update client balance',
+        });
+        return;
+      }
+
       // Update task
       const { data, error } = await supabase
         .from('post_task')

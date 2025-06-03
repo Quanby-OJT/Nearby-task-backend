@@ -90,7 +90,7 @@ class DisputeController {
 
           await ClientTaskerModeration.updateADispute(task_taken_id, task_status, dispute_id, "Release Full Payment to Tasker", addl_dispute_notes, moderator_id)
           const { error: updateAmountError } = await supabase.rpc(
-            "update_tasker_amount",
+            "increment_tasker_amount",
             {
               addl_credits: task?.post_task.proposed_price,
               id: task?.tasker.tasker_id,

@@ -14,9 +14,9 @@ class ActivityLogging{
 
         const { data, error } = await supabase.from("activity_logs").insert({
             user_id: userId,
-            activity_type: activityType,
-            activity_description: activityDescription,
-            timestamp: timestamp
+            activity: activityType,
+            description: activityDescription,
+            date_of_activity: timestamp
         });
 
         if (error) throw new Error(error.message);

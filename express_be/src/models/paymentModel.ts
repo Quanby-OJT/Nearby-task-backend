@@ -2,6 +2,7 @@ import {Request, Response} from "express";
 import { authHeader, supabase, nextpay_api_key, nextpay_secret_key } from "../config/configuration";
 import taskModel from "./taskModel";
 import Crypto from "crypto";
+import { Client } from "socket.io/dist/client";
 
 interface Payment {
   payment_history_id?: number;
@@ -257,6 +258,7 @@ class QTaskPayment {
     };
   }
 
+  //Only for Admin and Moderator
   static async getPaymentDetails(transactionId: string, payment_type: string) {
     if (!transactionId) {
       throw new Error("Transaction ID is required to fetch payment details");
@@ -517,30 +519,34 @@ class QTaskPayment {
     if (!data) return {error: "User not found or no amount available"};
     amount = data.amount;
 
-
-    // if(roleData.user_role == "Tasker"){
-    //   const {data: tasker, error: taskerError} = await supabase.from("tasker").select("amount").eq("user_id", user_id).single()
-    //   if(taskerError) throw new Error(taskerError.message)
-    //   amount = tasker.amount
-    // }else if(roleData.user_role == "Client"){
-    //   const {data: client, error: clientError} = await supabase.from("clients").select("amount").eq("user_id", user_id).single()
-    //   if(clientError) throw new Error(clientError.message)
-    //   amount = client.amount
-    // }
-
     return {amount, user_role: roleData.user_role};
   }
 
   //In Case of Dispute raised by either user/
-  static async refundCreditstoClient(task_taken_id: number, task_id: number, task_status?: string) {
-    let task_amount = await taskModel.getTaskAmount(task_taken_id);
+  static async refundCreditstoClient(task_id: number, task_taken_id?: number, task_status?: string) {
+    let task_amount = await taskModel.getTaskAmount(task_taken_id ?? 0);
     if(!task_amount) return {error: "Unable to retrieve task payment. Please Try Again."}
+    let clientAmount: number = 0
+    let taskerAmount: number = 0
 
-    if(task_status == "Cancelled") task_amount.post_task.proposed_price = task_amount.post_task.proposed_price * 0.7
+    if(task_status == "Cancelled") {
+      clientAmount = task_amount.post_task.proposed_price * 0.7
+      taskerAmount = task_amount.post_task.proposed_price * 0.3
+    }
 
-    const {error: UpdateClientCreditsError} = await supabase.rpc('increment_client_credits', { addl_credits: task_amount.post_task.proposed_price, id: task_amount.post_task.client_id})
+    const {error: updateClientCreditsError} = await supabase.rpc('increment_client_credits', { addl_credits: clientAmount, id: task_amount.post_task.client_id})
+    const { error: updateTaskerCreditsError } = await supabase.rpc('increment_tasker_amount', { addl_credits: taskerAmount, id: task_amount?.tasker.tasker_id });
 
-    if(UpdateClientCreditsError) throw new Error(UpdateClientCreditsError.message)
+    if(updateClientCreditsError || updateTaskerCreditsError) throw new Error(updateClientCreditsError?.message ?? updateTaskerCreditsError?.message)
+  }
+
+  //If client decides to delete a task that is available, the payment will be refunded to the client.
+  static async refundAvailableTaskAmountToClient(task_id: number) {
+    const {data: amount, error: amountError} = await supabase.from("post_task").select("proposed_price, client_id").eq("task_id", task_id).single();
+    if(amountError) throw new Error(amountError.message);
+    const {error: updateClientCreditsError} = await supabase.rpc('increment_client_credits', { addl_credits: amount.proposed_price, id: amount.client_id})
+
+    if(updateClientCreditsError) throw new Error(updateClientCreditsError.message)
   }
 
   //If the Moderator hasn't made a decision after 14 days or more, the payment will be paid half to both tasker and client.
@@ -556,7 +562,7 @@ class QTaskPayment {
     if(UpdateClientCreditsError) throw new Error(UpdateClientCreditsError.message)
 
     const { error: updateTaskerCreditsError } = await supabase
-    .rpc('update_tasker_amount', {
+    .rpc('increment_tasker_amount', {
       addl_credits: amountSplitted, 
       id: task_amount?.tasker.tasker_id,
     });
@@ -565,13 +571,54 @@ class QTaskPayment {
   }
 
   static async deductAmountfromUser(role: string, amount: number, user_id: number) {
-    const { error: deductionError } = await supabase.rpc('decrement_user_credits_by_role', {
-      subtract_credits: amount,
-      inp_user_id: user_id,
-      user_role: role
-    });
+    // const { error: deductionError } = await supabase.rpc('decrement_user_credits_by_role', {
+    //   subtract_credits: amount,
+    //   inp_user_id: user_id,
+    //   user_role: role
+    // });
+    if(role == "Tasker") {
+      const {error} = await supabase.rpc('decrement_tasker_credits', {deduct_credits: amount, input_user_id: user_id});
 
-    if(deductionError) throw new Error(deductionError.message)
+      if(error) throw new Error(error.message);
+    }else if(role == "Client") {
+      const {error} = await supabase.rpc('deduct_client_credits', {deduct_credits: amount, _client_id: user_id});
+
+      if(error) throw new Error(error.message);
+    }
+  }
+
+  // Updated method to handle task budget change
+  static async updateAmount(updatedAmount: number, user_id: number, task_id: string) {
+    // Fetch previous price from the specific task
+    const { data, error: checkError } = await supabase
+      .from('post_task')
+      .select('proposed_price')
+      .eq('task_id', task_id)
+      .single();
+
+    if (checkError) throw new Error(checkError.message);
+    if (!data) throw new Error("Task not found");
+
+    const previousPrice = Number(data.proposed_price);
+    const difference = updatedAmount - previousPrice;
+
+    if (difference > 0) {
+      // Deduct additional credits if budget increased
+      const { error: deductError } = await supabase.rpc('deduct_client_credits', {
+        deduct_credits: difference,
+        _client_id: user_id,
+      });
+      if (deductError) throw new Error(`Deduction failed: ${deductError.message}`);
+    } else if (difference < 0) {
+      // Refund if budget decreased
+      const { error: refundError } = await supabase.rpc('increment_client_credits', {
+        addl_credits: Math.abs(difference),
+        id: user_id,
+      });
+      if (refundError) throw new Error(`Refund failed: ${refundError.message}`);
+    }
+
+    return { success: true, previousPrice, updatedPrice: updatedAmount };
   }
 }
 
