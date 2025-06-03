@@ -738,7 +738,7 @@ class AuthorityAccountController {
 
   static async addAddress(req: Request, res: Response): Promise<void> {
     try {
-      const { user_id, street, barangay, city, province, postal_code, country, latitude, longitude, default: isDefault } = req.body;
+      const { user_id, street, barangay, city, province, postal_code, country, default: isDefault } = req.body;
 
       if (!user_id || !street || !barangay || !city || !province || !postal_code || !country) {
         res.status(400).json({ error: "Required fields (user_id, street, barangay, city, province, postal_code, country) are missing" });
@@ -753,8 +753,6 @@ class AuthorityAccountController {
         province,
         postal_code,
         country,
-        latitude: latitude || null,
-        longitude: longitude || null,
         default: isDefault || false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -774,7 +772,7 @@ class AuthorityAccountController {
   static async updateAddress(req: Request, res: Response): Promise<void> {
     try {
       const addressId = req.params.addressId;
-      const { street, barangay, city, province, postal_code, country, latitude, longitude,formatted_Address, region, remarks} = req.body;
+      const { street, barangay, city, province, postal_code, country, formatted_Address, region, remarks} = req.body;
 
       console.log("Received address data:", req.body);
 
@@ -790,8 +788,6 @@ class AuthorityAccountController {
         province,
         postal_code,
         country,
-        latitude: latitude || null,
-        longitude: longitude || null,
         formatted_Address: formatted_Address || null,
         region: region || null,
         remarks: remarks || null,

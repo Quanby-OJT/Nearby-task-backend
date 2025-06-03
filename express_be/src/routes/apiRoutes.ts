@@ -172,6 +172,7 @@ router.get("/get-token-balance/:userId", TaskController.getTokenBalance);
 router.get("/getUserConversation", ConversationController.getUserConversation);
 router.post("/banUser/:id", ConversationController.banUser);
 router.post("/warnUser/:id", ConversationController.warnUser);
+router.post("/appealUser/:id",ConversationController.appealUser)
 
 // Display all records
 router.get("/userDisplay", UserAccountController.getAllUsers);
