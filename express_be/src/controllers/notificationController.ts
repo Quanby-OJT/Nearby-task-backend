@@ -1434,21 +1434,8 @@ class NotificationController {
       visit_tasker = true;
     }
 
-    // Check if the taskTakenId exists
-    const { data: taskData, error: taskError } = await supabase
-      .from("task_taken")
-      .select("*")
-      .eq("task_taken_id", taskTakenId)
-      .maybeSingle();
+   
 
-    if (taskError) {
-      console.error(taskError.message);
-      res.status(500).json({
-        success: false,
-        error: "An Error Occurred while starting the request.",
-      });
-      return;
-    }
     
 
     switch (value) {
@@ -1460,22 +1447,9 @@ class NotificationController {
           visit_tasker
         );
 
-        const { data: taskData, error: taskError } = await supabase
-          .from("task_taken")
-          .select("*")
-          .eq("task_taken_id", taskTakenId)
-          .maybeSingle();
+        const acceptedTask = await TaskAssignment.getTask(taskTakenId);
 
-        if (taskError) {
-          console.error(taskError.message);
-          res.status(500).json({
-            success: false,
-            error: "An Error Occurred while starting the request.",
-          });
-          return;
-        }
-
-        await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
+        await TaskAssignment.updateTaskStatus(acceptedTask.task_id, "Already Taken", false);
         
         break;
       case "Reworking":
@@ -1484,7 +1458,7 @@ class NotificationController {
             taskTakenId,
             "Reworking",
             visit_client,
-            visit_tasker,
+            visit_tasker, 
             undefined,
             false,
             false,
@@ -1508,6 +1482,10 @@ class NotificationController {
             undefined,
         );
 
+        const dataExpired= await TaskAssignment.getTask(taskTakenId);
+
+        await TaskAssignment.updateTaskStatus(dataExpired.task_id, "Available", true);
+
         
         break;
       case "Start":
@@ -1518,22 +1496,10 @@ class NotificationController {
           visit_tasker
         );
 
-        await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
+        const data= await TaskAssignment.getTask(taskTakenId);
 
-        // const { data: postTaskData, error: postTaskError } = await supabase
-        //   .from("post_task")
-        //   .update({ status: "Already Taken" })
-        //   .eq("task_id", taskData.task_id)
-        //   .maybeSingle();
+        await TaskAssignment.updateTaskStatus(data.task_id, "In Progress", false);
 
-        // if (postTaskError) {
-        //   console.error(postTaskError.message);
-        //   res.status(500).json({
-        //     success: false,
-        //     error: "An Error Occurred while starting the request.",
-        //   });
-        //   return;
-        // }
         break;
       case "Reject":
         await TaskAssignment.updateStatus(
@@ -1578,28 +1544,50 @@ class NotificationController {
           return;
         }
 
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Cancelled",
-          visit_client,
-          visit_tasker,
-          reason_for_rejection_or_cancellation
-        );
+        const cancelledTask = await TaskAssignment.getTask(taskTakenId);
 
-        //30 percent of the contract price will be belong to the platform, while 70 percent will be returned to the client.
-        const taskAmount = await taskModel.getTaskAmount(taskTakenId);
+        // console.log("Cancelled Task:", cancelledTask);
+        if(cancelledTask.task_status == "Confirmed") {
+            await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Cancelled",
+            visit_client,
+            visit_tasker,
+            reason_for_rejection_or_cancellation
+          );
 
-        if(!taskAmount) {
-          res.status(404).json({
-            success: false,
-            error: "Task not found.",
-          });
-          return;
+          const taskAmount = await taskModel.getTaskAmount(taskTakenId);
+
+          console.log("Task Amount:", taskAmount);
+
+          if(!taskAmount) {
+            res.status(404).json({
+              success: false,
+              error: "Task not found.",
+            });
+            return;
+          }
+        
+          await QTaskPayment.refundCreditstoClient(taskAmount.task_id, taskTakenId)
+          const data= await TaskAssignment.getTask(taskTakenId);
+
+          await TaskAssignment.updateTaskStatus(data.task_id, "Available", true);
+        }
+        else {
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Cancelled",
+            visit_client,
+            visit_tasker,
+            reason_for_rejection_or_cancellation
+          );
+
+          const data= await TaskAssignment.getTask(taskTakenId);
+
+          await TaskAssignment.updateTaskStatus(data.task_id, "Available", true);
         }
 
-        //Update task status from post_task to On Hold
-        await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
-        await QTaskPayment.refundCreditstoClient(taskTakenId, taskData.task_id, "Cancelled")
+        
         break;
       case "Disputed":
         await TaskAssignment.updateStatus(
@@ -1669,6 +1657,7 @@ class NotificationController {
           await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
         }
 
+        const taskData = await TaskAssignment.getTask(taskTakenId);
         await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
         break
       case "Finish":
@@ -1698,23 +1687,6 @@ class NotificationController {
             }
           );
 
-          const { data: taskDataFinish, error: taskErrorFinish } = await supabase
-          .from("task_taken")
-          .select("*")
-          .eq("task_taken_id", taskTakenId)
-          .maybeSingle();
-
-        if (taskErrorFinish) {
-          console.error(taskErrorFinish.message);
-          res.status(500).json({
-            success: false,
-            error: "An Error Occurred while starting the request.",
-          });
-          return;
-        }
-
-        await TaskAssignment.updateTaskStatus(taskDataFinish.task_id, "Closed", true);
-
           if (updateAmountError) {
             console.error(updateAmountError.message);
             res.status(500).json({
@@ -1724,7 +1696,9 @@ class NotificationController {
             return;
           }
 
-          await TaskAssignment.updateTaskStatus(taskData.task_id, "Closed", true);
+          const data= await TaskAssignment.getTask(taskTakenId);
+
+          await TaskAssignment.updateTaskStatus(data.task_id, "Closed", true);
           break;
         }
       default:
@@ -1741,6 +1715,8 @@ class NotificationController {
       message: "Successfully Updated the Task Status.",
     });
   }
+
+
 
   static async updateNotification(req: Request, res: Response): Promise<void> {
     const taskTakenId = req.params.taskTakenId;
