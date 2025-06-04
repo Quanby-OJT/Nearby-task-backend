@@ -490,7 +490,7 @@ class TaskController {
         )
         .not("clients", "is", null)
         .eq("clients.user.user_role", "Client")
-        .eq("status", "Available");
+        .eq("status", "Available")
 
       console.log("This is fetchTask");
       console.log("Taskers data:", task, "Error:", error);
