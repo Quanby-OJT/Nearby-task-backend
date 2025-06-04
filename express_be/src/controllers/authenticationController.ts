@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { supabase } from "../config/configuration";
+import { supabase, mailer } from "../config/configuration";
 import { randomUUID } from "crypto";
 import ActivityLogging from "../models/activityLogs";
 import renderEmail from "../emails/renderEmail";
@@ -15,17 +15,17 @@ declare module "express-session" {
 }
 
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.MAIL_USERNAME,
-    pass: process.env.MAIL_PASSWORD
-  },
-  debug: true
-});
+// const transporter = nodemailer.createTransport({
+//   service: 'g,
+//   host: 'smtp.gmail.com',
+//   port: 587,
+//   secure: false,
+//   auth: {
+//     user: process.env.MAIL_USERNAME,
+//     pass: process.env.MAIL_PASSWORD
+//   },
+//   debug: true
+// });
 
 class AuthenticationController {
   static async loginAuthentication(req: Request, res: Response): Promise<void> {
@@ -34,12 +34,12 @@ class AuthenticationController {
       const verifyLogin = await Auth.authenticateLogin(email);
 
       if (!verifyLogin) {
-        res.status(404).json({error: "Sorry, your email does not exist, or you have entered an incorrect email.",});
+        res.status(404).json({ error: "Sorry, your email does not exist, or you have entered an incorrect email.", });
         return;
       }
 
       if (verifyLogin.acc_status === "Ban" || verifyLogin.acc_status === "Block") {
-        res.status(401).json({error: "You are banned/blocked for using this application. Please contact our team to appeal to your ban.",});
+        res.status(401).json({ error: "You are banned/blocked for using this application. Please contact our team to appeal to your ban.", });
         return;
       }
 
@@ -168,16 +168,16 @@ class AuthenticationController {
       `;
 
       try {
-        await transporter.verify();
+        await mailer.verify();
         console.log('SMTP connection verified');
       } catch (verifyError) {
         console.error('SMTP verification failed:', verifyError);
         throw new Error('Email service not available');
       }
 
-      
+
       try {
-        await transporter.sendMail({
+        await mailer.sendMail({
           from: `"QTask" <${process.env.MAIL_USERNAME}>`,
           to: email,
           subject: 'NearbyTask Login Verification',
@@ -189,7 +189,7 @@ class AuthenticationController {
         throw new Error('Failed to send OTP email');
       }
 
-      res.status(200).json({ 
+      res.status(200).json({
         user_id: verifyLogin.user_id,
         otp: otp
       });
@@ -202,7 +202,7 @@ class AuthenticationController {
   }
 
   static async forgotPassword(req: Request, res: Response): Promise<void> {
-    const {email} = req.body;
+    const { email } = req.body;
 
     try {
       const verifyEmail = await Auth.getUserEmail(email);
@@ -216,17 +216,17 @@ class AuthenticationController {
       }
 
       if (verifyEmail.acc_status === "Ban" || verifyEmail.acc_status === "Block") {
-        res.status(401).json({error: "You are banned/blocked for using this application. Please contact our team to appeal to your ban.", });
+        res.status(401).json({ error: "You are banned/blocked for using this application. Please contact our team to appeal to your ban.", });
         return;
       }
 
       const verificationToken = randomUUID()
 
-      const {data, error} = await supabase.from("user").update({verification_token: verificationToken}).eq("email", email)
+      const { data, error } = await supabase.from("user").update({ verification_token: verificationToken }).eq("email", email)
 
       console.log(data, error)
 
-      if(error) throw new Error(error.message)
+      if (error) throw new Error(error.message)
 
 
       const verificationLink = `myapp://verify?token=${verificationToken}&email=${email}`;
@@ -245,7 +245,7 @@ class AuthenticationController {
         <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
       </div>`;
 
-      await transporter.sendMail({
+      await mailer.sendMail({
         from: "noreply@nearbytask.com",
         to: verifyEmail.email,
         subject: "Rest IMONALICK Password",
@@ -257,17 +257,17 @@ class AuthenticationController {
         "Forgot Password",
         `User with email ${email} requested a password reset. Verification token generated.`
       );
-      res.status(200).json({message: "Password reset link has been sent to your email. Please check your inbox."});
+      res.status(200).json({ message: "Password reset link has been sent to your email. Please check your inbox." });
 
-    }catch(error){
+    } catch (error) {
       console.error(error instanceof Error ? error.message : "Internal Server Error")
-      res.status(500).json({error: "An error occured while verifying your email. Please Try Again. If the problem persists. Contact us."})
+      res.status(500).json({ error: "An error occured while verifying your email. Please Try Again. If the problem persists. Contact us." })
     }
   }
 
   //To be changed 
   static async resetPassword(req: Request, res: Response): Promise<void> {
-    const {email, password, verification_token} = req.body
+    const { email, password, verification_token } = req.body
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
@@ -286,28 +286,28 @@ class AuthenticationController {
         }
       }
 
-      const {error} = await supabase
+      const { error } = await supabase
         .from("user")
-        .update({hashed_password: hashedPassword})
+        .update({ hashed_password: hashedPassword })
         .eq("email", email);
-  
-        if(error) throw new Error(error.message)
-  
-        const {error: errorDelete} = await supabase.from("user").update({verification_token: null}).eq("email", email).eq("verification_token", verification_token)
-  
-        if(errorDelete) throw new Error(errorDelete.message)
-  
-        await ActivityLogging.logActivity(
-          email,
-          "Reset Password",
-          `User with email ${email} has successfully reset their password.`
-        );
-        console.log(`User with email ${email} has successfully reset their password.`);
-        res.status(200).json({message: "Password has been reset successfully. Please login to your account."})
-      }catch(error){
-        console.error(error instanceof Error ? error.message : "Internal Server Error")
-        res.status(500).json({error: "An error occured while resetting your password. Please Try Again. If the problem persists. Contact us."})
-      }
+
+      if (error) throw new Error(error.message)
+
+      const { error: errorDelete } = await supabase.from("user").update({ verification_token: null }).eq("email", email).eq("verification_token", verification_token)
+
+      if (errorDelete) throw new Error(errorDelete.message)
+
+      await ActivityLogging.logActivity(
+        email,
+        "Reset Password",
+        `User with email ${email} has successfully reset their password.`
+      );
+      console.log(`User with email ${email} has successfully reset their password.`);
+      res.status(200).json({ message: "Password has been reset successfully. Please login to your account." })
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Internal Server Error")
+      res.status(500).json({ error: "An error occured while resetting your password. Please Try Again. If the problem persists. Contact us." })
+    }
   }
 
   static async generateOTP(req: Request, res: Response): Promise<void> {
@@ -449,9 +449,9 @@ class AuthenticationController {
       );
 
       // Return OTP directly in response instead of sending email
-      res.status(200).json({ 
-        message: "OTP reset successfully", 
-        otp: otp 
+      res.status(200).json({
+        message: "OTP reset successfully",
+        otp: otp
       });
     } catch (error) {
       console.error("Error in resetOTP:", error);
