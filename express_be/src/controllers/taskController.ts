@@ -287,6 +287,99 @@ class TaskController {
     }
   }
 
+  static async activateTask(req: Request, res: Response): Promise<void> {
+    try {
+      const taskId = parseInt(req.params.id);
+      const { loggedInUserId, reason } = req.body;
+
+      if (isNaN(taskId)) {
+        res.status(400).json({ success: false, message: "Invalid task ID" });
+        return;
+      }
+
+      if (!loggedInUserId || isNaN(loggedInUserId)) {
+        res
+          .status(400)
+          .json({ success: false, message: "Invalid logged-in user ID" });
+        return;
+      }
+
+      if (!reason) {
+        res.status(400).json({ success: false, message: "Reason for activating task is required" });
+        return;
+      }
+
+      // Validate that loggedInUserId exists in the user table
+      const { data: userExists, error: userCheckError } = await supabase
+        .from("user")
+        .select("user_id")
+        .eq("user_id", parseInt(loggedInUserId))
+        .single();
+
+      if (userCheckError || !userExists) {
+        console.error("User does not exist:", userCheckError || "No user found");
+        res.status(400).json({
+          success: false,
+          message: "Logged-in user does not exist in the system",
+        });
+        return;
+      }
+
+      // Insert into action_taken_by with user_id and reason
+      const { data: actionData, error: actionError } = await supabase
+        .from("action_taken_by")
+        .insert({
+          user_id: parseInt(loggedInUserId),
+          action_reason: reason,
+          created_at: new Date().toISOString(),
+          task_id: taskId
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Supabase insert error for action_taken_by:", actionError);
+        res.status(500).json({
+          success: false,
+          message: `Failed to log action: ${actionError.message}`,
+        });
+        return;
+      }
+
+      console.log("Action taken by data inserted:", actionData); 
+
+      // Update post_task with loggedInUserId as action_by
+      const { data, error } = await supabase
+        .from("post_task")
+        .update({ status: "Available", action_by: parseInt(loggedInUserId) })
+        .eq("task_id", taskId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase update error:", error);
+        res.status(500).json({
+          success: false,
+          message: `Failed to activate task: ${error.message}`,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Task activated successfully",
+        task: data,
+      });
+    } catch (error) {
+      console.error("Error in activateTask:", error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while activating the task",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
   static async getTaskWithSpecialization(
     req: Request,
     res: Response
@@ -398,7 +491,7 @@ class TaskController {
         )
         .not("clients", "is", null)
         .eq("clients.user.user_role", "Client")
-        .eq("status", "Available");
+        .eq("status", "Available")
 
       console.log("This is fetchTask");
       console.log("Taskers data:", task, "Error:", error);

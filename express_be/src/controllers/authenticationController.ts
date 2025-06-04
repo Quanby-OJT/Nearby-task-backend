@@ -2,15 +2,30 @@ import { Request, Response } from "express";
 import { Auth } from "../models/authenticationModel";
 import bcrypt from "bcrypt";
 import generateOTP from "otp-generator";
-import { mailer, supabase } from "../config/configuration";
+import { supabase } from "../config/configuration";
 import { randomUUID } from "crypto";
-import renderEmail from "../emails/renderEmail";
 import ActivityLogging from "../models/activityLogs";
+import renderEmail from "../emails/renderEmail";
+import nodemailer from "nodemailer";
+
 declare module "express-session" {
   interface SessionData {
     userId: string;
   }
 }
+
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.MAIL_USERNAME,
+    pass: process.env.MAIL_PASSWORD
+  },
+  debug: true
+});
 
 class AuthenticationController {
   static async loginAuthentication(req: Request, res: Response): Promise<void> {
@@ -47,7 +62,8 @@ class AuthenticationController {
         two_fa_code: otp.toString(),
       });
 
-      const name = `${verifyLogin.first_name} ${verifyLogin.last_name}`;
+      const name = verifyLogin.first_name;
+      const last_name = verifyLogin.last_name;
 
       await ActivityLogging.logActivity(
         verifyLogin.user_id,
@@ -56,29 +72,131 @@ class AuthenticationController {
       );
       req.session.userId = verifyLogin.user_id;
 
-      // const loginEmail = await renderEmail.renderOTPEmail(name, otp);
+      const html = `
+     <!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      text-align: left;
+    }
+    .heading {
+      color: #000000;
+      text-transform: uppercase;
+      font-size: 13px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 90px;
+    }
+    .greeting {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .body-text {
+      font-size: 14px;
+      margin-bottom: 15px;
+      color: #333333;
+    }
+    .body-text.last {
+      margin-bottom: 30px;
+    }
+    .otp {
+      font-size: 14px;
+      margin: 20px 0;
+      color: #333333;
+    }
+    .otp .code {
+      font-weight: bold;
+      color: #007bff;
+    }
+    .closing {
+      font-size: 14px;
+      margin-bottom: 30px;
+      color: #333333;
+    }
+    .footer {
+      text-align: right;
+      font-size: 12px;
+      color: #777777;
+      margin-top: 20px;
+    }
+    .footer img {
+      width: 40px;
+      height: auto;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <img src="https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/email-template-images//NearbTask.png" alt="NearbTask" style="width: 60px; height: auto; display: inline-block; vertical-align: middle;">
+    </div>
 
-      // if (loginEmail.error) {
-      //   throw new Error('Failed to render email template');
-      // }
+    <h1 class="heading">Welcome to QTask</h1>
 
-      // await mailer.sendMail({
-      //   from: '"QTask" <noreply@qtask.com>',
-      //   to: email,
-      //   subject: 'QTask OTP Code',
-      //   html: loginEmail.toString(),
-      // });
+    <p class="greeting">Hi ${name} ${last_name} !</p>
+    <p class="body-text">We received a request to login to your account. Please use the One-Time Password (OTP) below to proceed:</p>
+    <p class="otp">Your OTP Code: <span class="code">${otp}</span></p>
+    <p class="body-text last">This code is valid for the next 5 minutes. If you didn't request a login, you can safely ignore this email.</p>
+
+    <p class="closing">Thank you,<br>The QTask Team</p>
+
+    <div class="footer">
+      <img src="https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/email-template-images//Quanby.png" alt="Quanby">
+      <span>From Quanby Solutions Inc</span>
+    </div>
+  </div>
+</body>
+</html>
+      `;
+
+      try {
+        await transporter.verify();
+        console.log('SMTP connection verified');
+      } catch (verifyError) {
+        console.error('SMTP verification failed:', verifyError);
+        throw new Error('Email service not available');
+      }
 
       
+      try {
+        await transporter.sendMail({
+          from: `"QTask" <${process.env.MAIL_USERNAME}>`,
+          to: email,
+          subject: 'NearbyTask Login Verification',
+          html: html
+        });
+        console.log('Email sent successfully');
+      } catch (emailError) {
+        console.error('Failed to send email:', emailError);
+        throw new Error('Failed to send OTP email');
+      }
+
       res.status(200).json({ 
         user_id: verifyLogin.user_id,
-        otp: otp // Include OTP directly in response
+        otp: otp
       });
     } catch (error) {
       console.error(error);
       res.status(500).json({
-        error:
-          "An error occurred while verifying your email. If the issue persists, contact our team to resolve your issue.",
+        error: error instanceof Error ? error.message : "An error occurred while verifying your email. If the issue persists, contact our team to resolve your issue.",
       });
     }
   }
@@ -127,7 +245,7 @@ class AuthenticationController {
         <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
       </div>`;
 
-      await mailer.sendMail({
+      await transporter.sendMail({
         from: "noreply@nearbytask.com",
         to: verifyEmail.email,
         subject: "Rest IMONALICK Password",
