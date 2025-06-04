@@ -1385,12 +1385,18 @@ class NotificationController {
 
   static async updateRequest(req: Request, res: Response): Promise<void> {
     const taskTakenId = parseInt(req.params.taskTakenId);
-    const { value, role, reason_for_dispute, dispute_details, rejection_reason } = req.body;
-    // console.log("Role:", req.body);
-    // console.log("Task Taken ID:", taskTakenId);
-    // console.log("Value:", value);
-    // console.log("Role:", role);
-    // console.log("Rejection Reason:", rejection_reason);
+    const {
+      value,
+      role,
+      reason_for_dispute,
+      dispute_details,
+      rejection_reason,
+    } = req.body;
+    console.log("Role:", req.body);
+    console.log("Task Taken ID:", taskTakenId);
+    console.log("Value:", value);
+    console.log("Role:", role);
+    console.log("Rejection Reason:", rejection_reason);
     const reason_for_rejection_or_cancellation = rejection_reason;
 
     if (!taskTakenId) {
@@ -1409,129 +1415,146 @@ class NotificationController {
       visit_tasker = true;
     }
 
-    /**
-     * This is MANDATORY for all methods on the backend.
-     */
-    try {
-      // Check if the taskTakenId exists
-      const { data: taskData, error: taskError } = await supabase
-        .from("task_taken")
-        .select("*")
-        .eq("task_taken_id", taskTakenId)
-        .maybeSingle();
+   
 
-      if (taskError) {
-        console.error(taskError.message);
-        res.status(500).json({
-          success: false,
-          error: "An Error Occurred while starting the request.",
-        });
-        return;
-      }
+    
 
+    switch (value) {
+      case "Accept":
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Confirmed",
+          visit_client,
+          visit_tasker
+        );
 
-      switch (value) {
-        case "Accept":
-          await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Confirmed",
-            visit_client,
-            visit_tasker
-          );
+        const acceptedTask = await TaskAssignment.getTask(taskTakenId);
 
-          await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
-
-          break;
-        case "Reworking":
-          const rework = 1;
-          await TaskAssignment.updateStatus(
+        await TaskAssignment.updateTaskStatus(acceptedTask.task_id, "Already Taken", false);
+        
+        break;
+      case "Reworking":
+        const rework = 1; 
+        await TaskAssignment.updateStatus(
             taskTakenId,
             "Reworking",
             visit_client,
-            visit_tasker,
+            visit_tasker, 
             undefined,
             false,
             false,
             undefined,
             rework
-          );
+        );
 
-
-          break;
+        
+        break;
 
         case "Expired":
-          await TaskAssignment.updateStatus(taskTakenId, "Expired", visit_client, visit_tasker, undefined, false, false, undefined, undefined,);
-
-
-          break;
-        case "Start":
-          await TaskAssignment.updateStatus(
+        await TaskAssignment.updateStatus(
             taskTakenId,
-            "Ongoing",
+            "Expired",
             visit_client,
-            visit_tasker
-          );
+            visit_tasker,
+            undefined,
+            false,
+            false,
+            undefined,
+            undefined,
+        );
 
-          await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
+        const dataExpired= await TaskAssignment.getTask(taskTakenId);
 
-          // const { data: postTaskData, error: postTaskError } = await supabase
-          //   .from("post_task")
-          //   .update({ status: "Already Taken" })
-          //   .eq("task_id", taskData.task_id)
-          //   .maybeSingle();
+        await TaskAssignment.updateTaskStatus(dataExpired.task_id, "Available", true);
 
-          // if (postTaskError) {
-          //   console.error(postTaskError.message);
-          //   res.status(500).json({
-          //     success: false,
-          //     error: "An Error Occurred while starting the request.",
-          //   });
-          //   return;
-          // }
-          break;
-        case "Reject":
-          await TaskAssignment.updateStatus(
+        
+        break;
+      case "Start":
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Ongoing",
+          visit_client,
+          visit_tasker
+        );
+
+        const data= await TaskAssignment.getTask(taskTakenId);
+
+        await TaskAssignment.updateTaskStatus(data.task_id, "In Progress", false);
+
+        break;
+      case "Reject":
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Rejected",
+          visit_client,
+          visit_tasker,
+          reason_for_rejection_or_cancellation
+        );
+        break;
+      case "Declined":
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Declined",
+          visit_client,
+          visit_tasker,
+          reason_for_rejection_or_cancellation
+        );
+
+        break;
+      case "Review":
+        const endDate = DateTime.now().setZone("Asia/Manila");
+        const endDateISO = endDate.toISO();
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Review",
+          visit_client,
+          visit_tasker,
+          reason_for_rejection_or_cancellation,
+          undefined,
+          undefined,
+          endDateISO as string
+        );
+        break;
+      case "Cancel":
+        //This is 
+        if(!reason_for_rejection_or_cancellation) {
+          res.status(400).json({
+            success: false,
+            error: "Reason for cancellation is required.",
+          });
+          return;
+        }
+
+        const cancelledTask = await TaskAssignment.getTask(taskTakenId);
+
+        // console.log("Cancelled Task:", cancelledTask);
+        if(cancelledTask.task_status == "Confirmed") {
+            await TaskAssignment.updateStatus(
             taskTakenId,
-            "Rejected",
+            "Cancelled",
             visit_client,
             visit_tasker,
             reason_for_rejection_or_cancellation
           );
-          break;
-        case "Declined":
-          await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Declined",
-            visit_client,
-            visit_tasker,
-            reason_for_rejection_or_cancellation
-          );
 
-          break;
-        case "Review":
-          const endDate = DateTime.now().setZone("Asia/Manila");
-          const endDateISO = endDate.toISO();
-          await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Review",
-            visit_client,
-            visit_tasker,
-            reason_for_rejection_or_cancellation,
-            undefined,
-            undefined,
-            endDateISO as string
-          );
-          break;
-        case "Cancel":
-          //This is 
-          if (!reason_for_rejection_or_cancellation) {
-            res.status(400).json({
+          const taskAmount = await taskModel.getTaskAmount(taskTakenId);
+
+          console.log("Task Amount:", taskAmount);
+
+          if(!taskAmount) {
+            res.status(404).json({
               success: false,
-              error: "Reason for cancellation is required.",
+              error: "Task not found.",
             });
             return;
           }
+        
+          await QTaskPayment.refundCreditstoClient(taskAmount.task_id, taskTakenId)
+          const data= await TaskAssignment.getTask(taskTakenId);
 
+          await TaskAssignment.updateTaskStatus(data.task_id, "Available", true);
+        }
+        else {
           await TaskAssignment.updateStatus(
             taskTakenId,
             "Cancelled",
@@ -1540,47 +1563,21 @@ class NotificationController {
             reason_for_rejection_or_cancellation
           );
 
-          //30 percent of the contract price will be belong to the platform, while 70 percent will be returned to the client.
-          const taskAmount = await taskModel.getTaskAmount(taskTakenId);
+          const data= await TaskAssignment.getTask(taskTakenId);
 
-          if (!taskAmount) {
-            res.status(404).json({
-              success: false,
-              error: "Task not found.",
-            });
-            return;
-          }
+          await TaskAssignment.updateTaskStatus(data.task_id, "Available", true);
+        }
 
-          //Update task status from post_task to On Hold
-          await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
-          await QTaskPayment.refundCreditstoClient(taskTakenId, taskData.task_id, "Cancelled")
-          break;
-        case "Disputed":
-          await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Disputed",
-            visit_client,
-            visit_tasker
-          );
-
-          const { data: taskDataDisputed, error: taskErrorDisputed } = await supabase
-            .from("task_taken")
-            .select("*")
-            .eq("task_taken_id", taskTakenId)
-            .maybeSingle();
-
-          if (taskErrorDisputed) {
-            console.error(taskErrorDisputed.message);
-            res.status(500).json({
-              success: false,
-              error: "An Error Occurred while starting the request.",
-            });
-            return;
-          }
-
-          await TaskAssignment.updateTaskStatus(taskDataDisputed.task_id, "On Hold", false);
-
-          const imageEvidence = (req.files as { [fieldname: string]: Express.Multer.File[] })["imageEvidence"];
+        
+        break;
+      case "Disputed":
+        await TaskAssignment.updateStatus(
+          taskTakenId,
+          "Disputed",
+          visit_client,
+          visit_tasker
+        );
+      const imageEvidence = (req.files as { [fieldname: string]: Express.Multer.File[] })["imageEvidence"];
 
 
           console.log("Image Evidence:", imageEvidence);
@@ -1623,86 +1620,66 @@ class NotificationController {
             await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
           }
 
+        const taskData = await TaskAssignment.getTask(taskTakenId);
+        await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
+        break
+      case "Finish":
+        if (role == "Tasker") {
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Review",
+            visit_client,
+            visit_tasker
+          );
+        } else {
+          const task = await taskModel.getTaskAmount(taskTakenId);
 
-          await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
-          break
-        case "Finish":
-          if (role == "Tasker") {
-            await TaskAssignment.updateStatus(
-              taskTakenId,
-              "Review",
-              visit_client,
-              visit_tasker
-            );
-          } else {
-            const task = await taskModel.getTaskAmount(taskTakenId);
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Completed",
+            visit_client,
+            visit_tasker,
+            reason_for_rejection_or_cancellation
+          );
 
-            await TaskAssignment.updateStatus(
-              taskTakenId,
-              "Completed",
-              visit_client,
-              visit_tasker,
-              reason_for_rejection_or_cancellation
-            );
-
-            const { error: updateAmountError } = await supabase.rpc(
-              "increment_tasker_amount",
-              {
-                addl_credits: task?.post_task.proposed_price,
-                id: task?.tasker.tasker_id,
-              }
-            );
-
-            const { data: taskDataFinish, error: taskErrorFinish } = await supabase
-              .from("task_taken")
-              .select("*")
-              .eq("task_taken_id", taskTakenId)
-              .maybeSingle();
-
-            if (taskErrorFinish) {
-              console.error(taskErrorFinish.message);
-              res.status(500).json({
-                success: false,
-                error: "An Error Occurred while starting the request.",
-              });
-              return;
+          const { error: updateAmountError } = await supabase.rpc(
+            "increment_tasker_amount",
+            {
+              addl_credits: task?.post_task.proposed_price,
+              id: task?.tasker.tasker_id,
             }
+          );
 
-            await TaskAssignment.updateTaskStatus(taskDataFinish.task_id, "Closed", true);
-
-            if (updateAmountError) {
-              console.error(updateAmountError.message);
-              res.status(500).json({
-                success: false,
-                error: "An Error Occurred while updating tasker amount.",
-              });
-              return;
-            }
-
-            await TaskAssignment.updateTaskStatus(taskData.task_id, "Closed", true);
-            break;
+          if (updateAmountError) {
+            console.error(updateAmountError.message);
+            res.status(500).json({
+              success: false,
+              error: "An Error Occurred while updating tasker amount.",
+            });
+            return;
           }
-        default:
-          res.status(400).json({
-            success: false,
-            error:
-              "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'",
-          });
-          return;
-      }
 
-      res.status(200).json({
-        success: true,
-        message: "Successfully Updated the Task Status.",
-      });
-    } catch (error) {
-      console.error("Error in updateRequest:", error);
-      res.status(500).json({
-        success: false,
-        error: "An Error Occurred while starting the request.",
-      });
+          const data= await TaskAssignment.getTask(taskTakenId);
+
+          await TaskAssignment.updateTaskStatus(data.task_id, "Closed", true);
+          break;
+        }
+      default:
+        res.status(400).json({
+          success: false,
+          error:
+            "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'",
+        });
+        return;
     }
+
+    res.status(200).json({
+      success: true,
+      message: "Successfully Updated the Task Status.",
+    });
   }
+
+
 
   static async updateNotification(req: Request, res: Response): Promise<void> {
     const taskTakenId = req.params.taskTakenId;

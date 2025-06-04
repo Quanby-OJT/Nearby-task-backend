@@ -521,16 +521,18 @@ class QTaskPayment {
   }
 
   //In Case of Dispute raised by either user/
-  static async refundCreditstoClient(task_id: number, task_taken_id?: number, task_status?: string) {
+  static async refundCreditstoClient(task_id: number, task_taken_id?: number) {
     let task_amount = await taskModel.getTaskAmount(task_taken_id ?? 0);
+
+    console.log("Task Amount:", task_amount);
     if(!task_amount) return {error: "Unable to retrieve task payment. Please Try Again."}
     let clientAmount: number = 0
     let taskerAmount: number = 0
 
-    if(task_status == "Cancelled") {
-      clientAmount = task_amount.post_task.proposed_price * 0.7
-      taskerAmount = task_amount.post_task.proposed_price * 0.3
-    }
+    clientAmount = task_amount.post_task.proposed_price * 0.7
+    taskerAmount = task_amount.post_task.proposed_price * 0.3
+
+    console.log("Client Amount:", clientAmount, "Tasker Amount:", taskerAmount);
 
     const {error: updateClientCreditsError} = await supabase.rpc('increment_client_credits', { addl_credits: clientAmount, id: task_amount.post_task.client_id})
     const { error: updateTaskerCreditsError } = await supabase.rpc('increment_tasker_amount', { addl_credits: taskerAmount, id: task_amount?.tasker.tasker_id });
