@@ -576,6 +576,7 @@ class QTaskPayment {
     //   inp_user_id: user_id,
     //   user_role: role
     // });
+    console.log("Deducting Amount:", amount, "from User ID:", user_id, "with Role:", role);
     if(role == "Tasker") {
       const {error} = await supabase.rpc('decrement_tasker_credits', {deduct_credits: amount, input_user_id: user_id});
 
