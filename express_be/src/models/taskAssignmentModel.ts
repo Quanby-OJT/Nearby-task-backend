@@ -30,6 +30,18 @@ class TaskAssignment{
         if (error) throw new Error(error.message)
     }
 
+    static async getTask(task_id: number): Promise<any> {  
+        const { data: taskData, error: taskError } = await supabase
+          .from("task_taken")
+          .select("*")
+          .eq("task_taken_id", task_id)
+          .maybeSingle();
+
+        if (taskError) throw new Error(taskError.message);
+
+        return taskData;
+    }
+
     static async createDispute(task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof?: string[]){
 
 
