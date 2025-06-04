@@ -1391,6 +1391,7 @@ class NotificationController {
       reason_for_dispute,
       dispute_details,
       rejection_reason,
+      user_id
     } = req.body;
     console.log("Role:", req.body);
     console.log("Task Taken ID:", taskTakenId);
@@ -1614,10 +1615,10 @@ class NotificationController {
             }
 
             console.log("Image Proof URLs:", imageProof);
-            await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
+            await TaskAssignment.createDispute(user_id, taskTakenId, reason_for_dispute, dispute_details, imageProof);
           } else {
             console.log("No image evidence provided, proceeding with text dispute.");
-            await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
+            await TaskAssignment.createDispute(user_id, taskTakenId, reason_for_dispute, dispute_details);
           }
 
         const taskData = await TaskAssignment.getTask(taskTakenId);

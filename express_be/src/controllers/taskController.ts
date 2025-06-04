@@ -40,14 +40,14 @@ class TaskController {
       if (!amount) {
         res.status(404).json({ error: "User not found or insufficient funds." });
         return;
-      }else if (!amount?.amount || amount.amount <= 0) {
-        res.status(403).json({ error: `You have no money in your wallet. Please Deposit an additional P${proposed_price} in order to create this task.`  });
+      } else if (!amount?.amount || amount.amount <= 0) {
+        res.status(403).json({ error: `You have no money in your wallet. Please Deposit an additional P${proposed_price} in order to create this task.` });
         return;
       }
 
-      if(proposed_price > amount.amount){
+      if (proposed_price > amount.amount) {
         const remainingAmount = proposed_price - amount.amount
-        res.status(403).json({error: `You have insufficient funds to create this task. Please Deposit An Additional P${remainingAmount} in order to create this task.`})
+        res.status(403).json({ error: `You have insufficient funds to create this task. Please Deposit An Additional P${remainingAmount} in order to create this task.` })
         return
       }
 
@@ -90,57 +90,61 @@ class TaskController {
 
       // Handle photo upload to Supabase Storage
       let imageIds: number[] = [];
-    if (photos && photos.length > 0) {
-      for (const photo of photos) {
-        const fileName = `task_images/image_${user_id}_${Date.now()}_${photo.originalname}`;
-        console.log("Uploading Image File:", fileName);
+      if (photos && photos.length > 0) {
+        for (const photo of photos) {
+          const fileName = `task_images/image_${user_id}_${Date.now()}_${photo.originalname}`;
+          console.log("Uploading Image File:", fileName);
 
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from("crud_bucket")
-          .upload(fileName, photo.buffer, {
-            contentType: photo.mimetype,
-            cacheControl: "3600",
-            upsert: true,
-          });
+          // Upload to Supabase Storage
+          const { error: uploadError } = await supabase.storage
+            .from("crud_bucket")
+            .upload(fileName, photo.buffer, {
+              contentType: photo.mimetype,
+              cacheControl: "3600",
+              upsert: true,
+            });
 
-        if (uploadError) {
-          res.status(500).json({
-            success: false,
-            error: `Error uploading image: ${uploadError.message}`,
-          });
-          return;
-        }
+          if (uploadError) {
+            res.status(500).json({
+              success: false,
+              error: `Error uploading image: ${uploadError.message}`,
+            });
+            return;
+          }
 
-        const image_url = supabase.storage
-          .from("crud_bucket")
-          .getPublicUrl(fileName).data.publicUrl;
+          const image_url = supabase.storage
+            .from("crud_bucket")
+            .getPublicUrl(fileName).data.publicUrl;
 
-        // Insert into post_task_images
-        const { data: imageData, error: imageInsertError } = await supabase
-          .from("post_task_images")
-          .insert([
-            {
-              image_link: image_url,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              user_id: client_id,
-            },
-          ])
-          .select("id")
-          .single();
+          // Insert into post_task_images
+          const { data: imageData, error: imageInsertError } = await supabase
+            .from("post_task_images")
+            .insert([
+              {
+                image_link: image_url,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                user_id: client_id,
+              },
+            ])
+            .select("id")
+            .single();
 
-        if (imageInsertError) {
-          res.status(500).json({
-            success: false,
-            error: `Error saving image metadata: ${imageInsertError.message}`,
-          });
-          return;
-        }
+          if (imageInsertError) {
+            res.status(500).json({
+              success: false,
+              error: `Error saving image metadata: ${imageInsertError.message}`,
+            });
+            return;
+          }
 
           imageIds.push(imageData.id);
         }
       }
+
+      // const remainingAmount = amount.amount - proposed_price;
+      // console.log("Remaining Amount:", remainingAmount);
+      await QTaskPayment.deductAmountfromUser(amount.user_role, proposed_price, user_id)
 
       // Insert task into Supabase
       const { data, error } = await supabase
@@ -175,9 +179,6 @@ class TaskController {
         });
         return;
       }
-
-      const remainingAmount = amount.amount - proposed_price;
-      await QTaskPayment.deductAmountfromUser(amount.user_role, remainingAmount, user_id)
 
       res.status(201).json({
         success: true,
@@ -443,7 +444,7 @@ class TaskController {
             const dateB = new Date(b.created_at).getTime();
             return dateB - dateA; // Descending order
           });
-          
+
           // Get the most recent action
           const latestAction = sortedActions[0];
           task.action_reason = latestAction.action_reason;
@@ -451,7 +452,7 @@ class TaskController {
         }
         return task;
       });
-  
+
       res.status(200).json({ tasks: processedTasks });
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -463,9 +464,9 @@ class TaskController {
 
   static async fetchAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const { data:   task, error } = await supabase
-          .from("post_task")
-          .select(
+      const { data: task, error } = await supabase
+        .from("post_task")
+        .select(
           `
         *,
         tasker_specialization:specialization_id (specialization),
@@ -686,7 +687,7 @@ class TaskController {
 
   static async getTaskforClient(req: Request, res: Response): Promise<void> {
     const clientId = req.params.clientId;
-    
+
     try {
       const { data: task, error } = await supabase
         .from("post_task")
@@ -719,20 +720,20 @@ class TaskController {
         `)
         .eq("client_id", clientId)
         .eq("clients.user.user_role", "Client");
-    
-      console.log("Tasks data:", task, "Error:", error);
-    
+
+      // console.log("Tasks data:", task, "Error:", error);
+
       if (error) {
         console.error("Error fetching tasks:", error.message);
         res.status(500).json({ error: error.message });
         return;
       }
-    
+
       if (!task || task.length === 0) {
         res.status(200).json({ error: "No active tasks found." });
         return;
       }
-    
+
       res.status(200).json({ tasks: task });
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -842,7 +843,7 @@ class TaskController {
       client_id,
       role,
       days_available,
-    
+
     } = req.body;
 
     console.log("Role this is: " + role);
@@ -911,7 +912,7 @@ class TaskController {
         res.status(404).json({ success: false, message: "Task not found" });
         return;
       }
-      if(clientTask.status === "Available") {
+      if (clientTask.status === "Available") {
         // Only If task status is available, only then the amount is refunded to client, else nothing happened.
         await QTaskPayment.refundAvailableTaskAmountToClient(taskId);
       }
@@ -956,7 +957,7 @@ class TaskController {
     }
   }
 
-  
+
   static async getAllImages(
     req: Request,
     res: Response
@@ -987,7 +988,7 @@ class TaskController {
 
       let images: TaskImage[] = [];
       if (task.image_ids && task.image_ids.length > 0) {
-        
+
         const { data: imageData, error: imageError } = await supabase
           .from('post_task_images')
           .select('id, image_link, created_at, updated_at')
@@ -1042,8 +1043,8 @@ class TaskController {
           ...specialization,
           created_at: specialization.created_at
             ? new Date(specialization.created_at).toLocaleString("en-US", {
-                timeZone: "Asia/Manila",
-              })
+              timeZone: "Asia/Manila",
+            })
             : null,
         })
       );
@@ -1077,7 +1078,7 @@ class TaskController {
         res.status(400).json({ error: "Reason for adding specialization is required" });
         return;
       }
-  
+
       // Validate that user_id exists in the user table
       const { data: userExists, error: userCheckError } = await supabase
         .from("user")
@@ -1115,7 +1116,7 @@ class TaskController {
       }
 
       console.log("Action taken by data inserted:", actionData);
-  
+
       // Insert specialization into tasker_specialization
       const { data, error } = await supabase
         .from("tasker_specialization")
@@ -1197,7 +1198,7 @@ class TaskController {
 
       console.log("Task ID:", taskId);
       console.log("Task Data:", req.body);
-  
+
       // Validate required fields
       if (!task_title || !task_description || !proposed_price) {
         res.status(400).json({
@@ -1206,30 +1207,30 @@ class TaskController {
         });
         return;
       }
-  
+
       // Parse numeric fields
       const parsedPrice = Number(proposed_price);
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
         res.status(400).json({ success: false, error: 'Invalid proposed price' });
         return;
       }
-  
+
       const parsedClientId = Number(client_id);
       if (isNaN(parsedClientId)) {
         res.status(400).json({ success: false, error: 'Invalid client_id' });
         return;
       }
-  
+
       const parsedSpecializationId = specialization_id ? Number(specialization_id) : null;
       if (specialization_id && isNaN(Number(specialization_id))) {
         res.status(400).json({ success: false, error: 'Invalid specialization_id' });
         return;
       }
-  
+
       // Parse boolean fields
       const isUrgent = urgent === 'true' || urgent === true;
       const isVerified = is_verified === 'true' || is_verified === true;
-  
+
       // Parse array fields
       let parsedRelatedSpecializations: number[] | null = null;
       if (related_specializations) {
@@ -1250,7 +1251,7 @@ class TaskController {
           return;
         }
       }
-  
+
       let currentImageIds: number[] = [];
       if (image_ids) {
         try {
@@ -1270,7 +1271,7 @@ class TaskController {
           return;
         }
       }
-  
+
       let imagesToDelete: number[] = [];
       if (images_to_delete) {
         try {
@@ -1290,45 +1291,45 @@ class TaskController {
           return;
         }
       }
-  
+
       // Remove deleted images
       if (imagesToDelete.length > 0) {
         const { data: imagesToRemove, error: imageError } = await supabase
           .from('post_task_images')
           .select('id, image_link')
           .in('id', imagesToDelete);
-  
+
         if (imageError) {
           res.status(500).json({ success: false, error: imageError.message });
           return;
         }
-  
+
         if (imagesToRemove.length > 0) {
           const filePaths = imagesToRemove.map((img) =>
             img.image_link.split('/').slice(-2).join('/')
           );
-  
+
           const { error: storageError } = await supabase.storage
             .from('crud_bucket')
             .remove(filePaths);
-  
+
           if (storageError) {
             res.status(500).json({ success: false, error: storageError.message });
             return;
           }
-  
+
           const { error: deleteError } = await supabase
             .from('post_task_images')
             .delete()
             .in('id', imagesToDelete);
-  
+
           if (deleteError) {
             res.status(500).json({ success: false, error: deleteError.message });
             return;
           }
         }
       }
-  
+
       // Upload new images
       let newImageIds: number[] = [];
       if (photos && photos.length > 0) {
@@ -1341,7 +1342,7 @@ class TaskController {
               cacheControl: '3600',
               upsert: true,
             });
-  
+
           if (uploadError) {
             res.status(500).json({
               success: false,
@@ -1349,11 +1350,11 @@ class TaskController {
             });
             return;
           }
-  
+
           const imageUrl = supabase.storage
             .from('crud_bucket')
             .getPublicUrl(fileName).data.publicUrl;
-  
+
           const { data: imageData, error: imageInsertError } = await supabase
             .from('post_task_images')
             .insert({
@@ -1363,7 +1364,7 @@ class TaskController {
             })
             .select('id')
             .single();
-  
+
           if (imageInsertError) {
             res.status(500).json({
               success: false,
@@ -1371,11 +1372,11 @@ class TaskController {
             });
             return;
           }
-  
+
           newImageIds.push(imageData.id);
         }
       }
-  
+
       // Update image IDs
       const updatedImageIds = [
         ...currentImageIds.filter((id) => !imagesToDelete.includes(id)),
@@ -1417,12 +1418,12 @@ class TaskController {
         .eq('task_id', taskId)
         .select()
         .single();
-  
+
       if (error) {
         res.status(500).json({ success: false, error: error.message });
         return;
       }
-  
+
       res.status(200).json({
         success: true,
         message: 'Task updated successfully',
@@ -1459,10 +1460,10 @@ class TaskController {
 
       const transactionId = await QTaskPayment.fetchTransactionId(taskTakenId);
 
-      if(task_status == "Rejected" || task_status == "Cancelled"){
-        if(task_status == "Cancelled"){
+      if (task_status == "Rejected" || task_status == "Cancelled") {
+        if (task_status == "Cancelled") {
           await QTaskPayment.cancelTransaction(transactionId, reason_for_rejection_or_cancellation);
-          res.status(200).json({ message: "You had cancelled your task."});
+          res.status(200).json({ message: "You had cancelled your task." });
 
         }
 
@@ -1793,9 +1794,8 @@ class TaskController {
 
       console.log(image, document);
 
-      const profileImagePath = `profile_pictures/${user_id}_${Date.now()}_${
-        image[0].originalname
-      }`;
+      const profileImagePath = `profile_pictures/${user_id}_${Date.now()}_${image[0].originalname
+        }`;
       const { error: profilePicError } = await supabase.storage
         .from("documents")
         .upload(profileImagePath, image[0].buffer, {
@@ -1809,9 +1809,8 @@ class TaskController {
           "Error uploading profile picture: " + profilePicError.message
         );
 
-      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${
-        document[0].originalname
-      }`;
+      const documentPath = `tesda_documents/${user_id}_${Date.now()}_${document[0].originalname
+        }`;
       const { error: tesdaDocError } = await supabase.storage
         .from("documents")
         .upload(documentPath, document[0].buffer, {
@@ -1863,11 +1862,11 @@ class TaskController {
           user_document_link: tesdaDocUrl,
           updated_at: new Date().toISOString()
         };
-        
+
         const { error: docError } = await supabase
           .from('user_documents')
           .upsert(documentData);
-          
+
         if (docError) {
           console.warn("Could not update user_documents table:", docError);
           // Don't fail the entire operation, just log the warning
@@ -2213,8 +2212,8 @@ class TaskController {
           )
         )
       `)
-      .eq("task_taken_id", taskId)
-      .maybeSingle();
+        .eq("task_taken_id", taskId)
+        .maybeSingle();
 
       console.log("Task Data: ", data, "Task Error: ", error)
 

@@ -287,9 +287,9 @@ class QTaskPayment {
         }
 
         const paymentData = await fetch(`${process.env.PAYMONGO_URL}/payment_intents/${transactionId}`, options);
+        console.log("Payment Data:", paymentData);
         if (!paymentData.ok) {
           const errorData = await paymentData.json();
-          this.handlePayMongoErrors(errorData);
           throw new Error(`PayMongo API failed: ${errorData.message}`);
         }
 
@@ -576,6 +576,7 @@ class QTaskPayment {
     //   inp_user_id: user_id,
     //   user_role: role
     // });
+    console.log("Deducting Amount:", amount, "from User ID:", user_id, "with Role:", role);
     if(role == "Tasker") {
       const {error} = await supabase.rpc('decrement_tasker_credits', {deduct_credits: amount, input_user_id: user_id});
 

@@ -26,6 +26,10 @@ class DisputeController {
       const task_taken_id = parseInt(req.params.id)
       const dispute_details = await ClientTaskerModeration.getDispute(task_taken_id)
 
+      if(dispute_details == null){
+        res.status(200).json({message: "This task is not disputed or does not exist."})
+        return
+      }
       res.status(200).json(dispute_details)
     }catch(error){
       console.error(error instanceof Error ? error.message : "Error Unknown")
