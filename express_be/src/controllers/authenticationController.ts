@@ -114,25 +114,25 @@ class AuthenticationController {
       const verificationLink = `myapp://verify?token=${verificationToken}&email=${email}`;
       console.log(verificationLink);
 
-      // const html = `
-      // <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-      //   <h2 class="text-xl font-bold text-gray-800">Your Reset Password Link</h2>
-      //   <p class="text-gray-700 mt-4">Do you request to reset your password? If not, please ignore this message. If so, please click this link here: </p>
-      //   <div class="mt-4 text-center">
-      //     <span class="text-3xl font-bold text-blue-600">${verificationLink}</span>
-      //   </div>
-      //   <p class="text-red-500 mt-4">Note: This verification link will expire 30 minutes from now.</p>
-      //   <p class="text-gray-500 mt-6 text-sm">Should you have any concerns, please don't hesitate to contact us.</p>
-      //   <p class="text-gray-500 mt-6 text-sm">Cheers.</p>
-      //   <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
-      // </div>`;
+      const html = `
+      <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+        <h2 class="text-xl font-bold text-gray-800">Your Reset Password Link</h2>
+        <p class="text-gray-700 mt-4">Do you request to reset your password? If not, please ignore this message. If so, please click this link here: </p>
+        <div class="mt-4 text-center">
+          <span class="text-3xl font-bold text-blue-600">${verificationLink}</span>
+        </div>
+        <p class="text-red-500 mt-4">Note: This verification link will expire 30 minutes from now.</p>
+        <p class="text-gray-500 mt-6 text-sm">Should you have any concerns, please don't hesitate to contact us.</p>
+        <p class="text-gray-500 mt-6 text-sm">Cheers.</p>
+        <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
+      </div>`;
 
-      // await mailer.sendMail({
-      //   from: "noreply@nearbytask.com",
-      //   to: verifyEmail.email,
-      //   subject: "Rest IMONALICK Password",
-      //   html: html,
-      // });
+      await mailer.sendMail({
+        from: "noreply@nearbytask.com",
+        to: verifyEmail.email,
+        subject: "Rest IMONALICK Password",
+        html: html,
+      });
 
       await ActivityLogging.logActivity(
         verifyEmail.user_id,

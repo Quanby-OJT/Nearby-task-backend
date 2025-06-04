@@ -95,12 +95,11 @@ class NotificationController {
             // Format the name of the other party
             const otherUserName =
               userData?.first_name && userData?.last_name
-                ? `${userData.first_name} ${userData.middle_name || ""} ${
-                    userData.last_name
+                ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                   }`.trim()
                 : column === "client_id"
-                ? "Unknown Tasker"
-                : "Unknown Client";
+                  ? "Unknown Tasker"
+                  : "Unknown Client";
 
             return {
               id: task.task_taken_id,
@@ -220,8 +219,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -249,8 +247,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -351,8 +348,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -380,8 +376,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -482,8 +477,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -511,8 +505,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -613,8 +606,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -642,8 +634,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -744,8 +735,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -773,8 +763,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -879,8 +868,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -908,8 +896,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1011,8 +998,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1040,8 +1026,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1143,8 +1128,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1172,8 +1156,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1278,8 +1261,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1307,8 +1289,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
