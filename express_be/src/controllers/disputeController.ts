@@ -32,7 +32,7 @@ class DisputeController {
       }
       res.status(200).json(dispute_details)
     }catch(error){
-      console.error(error instanceof Error ? error.message : "Error Unknown")
+      console.error("Error in getting disputes..." , error instanceof Error ? error.message : "Error Unknown")
       res.status(500).json({error: "An Error Occured while displaying your dispute information. Please Try Again."})
     }
   }
