@@ -353,11 +353,6 @@ class AuthorityAccountController {
         return;
       }
   
-      if (!userData || !userData.acc_status || !userData.user_role) {
-        res.status(400).json({ success: false, message: "Missing required user data (acc_status or user_role)" });
-        return;
-      }
-  
       // Validate that loggedInUserId exists in the user table
       const { data: userExists, error: userCheckError } = await supabase
         .from("user")
@@ -399,25 +394,34 @@ class AuthorityAccountController {
   
       // Update user table with new status, user_role, and action_by
       const updateData = {
-        acc_status: userData.acc_status,
-        user_role: userData.user_role,
+        acc_status: userData.acc_status || null,
+        user_role: userData.user_role || null,
         action_by: parseInt(loggedInUserId),
         verified: userData.acc_status === "Active" ? true : false
       };
   
       const updatedUser = await AuthorityAccount.update(userId, {
         ...updateData,
-        first_name: userData.first_name,
-        middle_name: userData.middle_name,
-        last_name: userData.last_name,
-        birthdate: userData.birthday,
-        email: userData.email,
-        contact: userData.contact || "", 
-        gender: userData.gender || ""  
+        first_name: userData.first_name || null,
+        middle_name: userData.middle_name || null,
+        last_name: userData.last_name || null,
+        birthdate: userData.birthday || null,
+        email: userData.email || null,
+        contact: userData.contact || null, 
+        gender: userData.gender || null  
       });
   
-      if (userData.acc_status === "Active" && userData.user_role === "Tasker") {
-        await AuthorityAccount.updateTaskerDocumentsValid(userId.toString(), true);
+      // Update verified status in user table regardless of role
+      if (userData.acc_status === "Active") {
+        const { error: verifyError } = await supabase
+          .from("user")
+          .update({ verified: true })
+          .eq("user_id", userId);
+
+        if (verifyError) {
+          console.error("Error updating verified status:", verifyError);
+          throw new Error("Failed to update verified status");
+        }
       }
   
       res.status(200).json({
@@ -517,10 +521,10 @@ class AuthorityAccountController {
     try {
       const { email } = req.body;
 
-      // Check if email exists in the user table
+      // Check if email exists in the user table and get user details
       const { data: user, error: userError } = await supabase
         .from("user")
-        .select("user_id")
+        .select("user_id, first_name")
         .eq("email", email)
         .single();
 
@@ -532,8 +536,8 @@ class AuthorityAccountController {
       // Generate a 6-digit OTP
       const otp = crypto.randomInt(100000, 999999).toString();
 
-      // Set expiration time (10 minutes from now)
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      // Set expiration time (5 minutes from now)
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
       // Check if an OTP record already exists for this user
       const { data: existingOtpRecord, error: fetchError } = await supabase
@@ -653,10 +657,10 @@ class AuthorityAccountController {
 
     <h1 class="heading">Welcome to QTask</h1>
 
-    <p class="greeting">Hi there!</p>
+    <p class="greeting">Hi ${user.first_name}!</p>
     <p class="body-text">We received a request to reset the password for your account. Please use the One-Time Password (OTP) below to proceed:</p>
     <p class="otp">Your OTP Code: <span class="code">${otp}</span></p>
-    <p class="body-text last">This code is valid for the next 10 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
+    <p class="body-text last">This code is valid for the next 5 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
 
     <p class="closing">Thank you,<br>The QTask Team</p>
 
@@ -680,6 +684,7 @@ class AuthorityAccountController {
       res.status(200).json({ message: "OTP sent to your email" });
     } catch (error) {
       console.error("Error in sendOtp:", error);
+      console.log("Please Debug the file authorityAccountController in the method sendOtp");
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to send OTP" });
     }
   }
@@ -716,6 +721,7 @@ class AuthorityAccountController {
 
       if (otpError || !otpRecord) {
         console.log("OTP verification failed. Error:", otpError, "Record:", otpRecord);
+        console.log("Please Debug the file authorityAccountCOntroler in the method verifyOtp");
         res.status(400).json({ error: "Invalid OTP" });
         return;
       }
@@ -743,6 +749,7 @@ class AuthorityAccountController {
       res.status(200).json({ message: "OTP verified successfully" });
     } catch (error) {
       console.error("Error in verifyOtp:", error);
+      console.log("Please Debug the file authorityAccountCOntroler in the method verifyOtp");
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to verify OTP" });
     }
   }
@@ -787,6 +794,7 @@ class AuthorityAccountController {
       res.status(200).json({ message: "Password reset successfully" });
     } catch (error) {
       console.error("Error in resetPassword:", error);
+      console.log("Please Debug the file authorityAccountController in the method resetPassword");
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to reset password" });
     }
   }
@@ -810,6 +818,7 @@ class AuthorityAccountController {
 
       if (userError || !user) {
         res.status(404).json({ error: "Email not found" });
+        console.log("Please debug the file authorityAccountController in the method updatePassword");
         return;
       }
 
@@ -871,6 +880,7 @@ class AuthorityAccountController {
       res.status(201).json({ message: "Address added successfully", addresses: data });
     } catch (error) {
       console.error("Error in addAddress:", error);
+      console.log("Please debug the file authorityAccountController in the method addAddress");
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to add address" });
     }
   }
@@ -909,6 +919,7 @@ class AuthorityAccountController {
       res.status(200).json({ message: "Address updated successfully", addresses: data });
     } catch (error) {
       console.error("Error in updateAddress:", error);
+      console.log("Please debug the file authorityAccountController in the method updateAddress");
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to update address" });
     }
   }
@@ -924,6 +935,7 @@ class AuthorityAccountController {
       res.status(200).json({ message: "Addresses retrieved successfully", addresses: data });
     } catch (error) {
       console.error("Error in getAddresses:", error);
+      console.log("Please debug the file authorityAccountCOntroller in the method getAddress");
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to retrieve addresses" });
     }
   }
@@ -965,7 +977,7 @@ class AuthorityAccountController {
           return;
         }
         console.log('Fetched action_by users:', actionByUsers.length);
-
+        
         // Create a map of user_id to user details for quick lookup
         actionByUsersMap = new Map(
           actionByUsers.map(user => [user.user_id, user])
