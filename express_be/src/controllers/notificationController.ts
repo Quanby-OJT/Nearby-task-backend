@@ -1596,66 +1596,48 @@ class NotificationController {
           visit_client,
           visit_tasker
         );
+      const imageEvidence = (req.files as { [fieldname: string]: Express.Multer.File[] })["imageEvidence"];
 
-        const { data: taskDataDisputed, error: taskErrorDisputed } = await supabase
-        .from("task_taken")
-        .select("*")
-        .eq("task_taken_id", taskTakenId)
-        .maybeSingle();
 
-      if (taskErrorDisputed) {
-        console.error(taskErrorDisputed.message);
-        res.status(500).json({
-          success: false,
-          error: "An Error Occurred while starting the request.",
-        });
-        return;
-      }
+          console.log("Image Evidence:", imageEvidence);
 
-      await TaskAssignment.updateTaskStatus(taskDataDisputed.task_id, "On Hold", false);
+          const imageProof: string[] = [];
 
-        const imageEvidence = req.files as Express.Multer.File[];
+          if (imageEvidence && Array.isArray(imageEvidence)) {
+            for (const file of imageEvidence) {
+              try {
+                const fileName = `disputes/DISPUTE-${Date.now()}-${file.originalname}`;
+                console.log(`Uploading file: ${fileName}`);
 
-        console.log("Image Evidence:", imageEvidence);
+                const { error } = await supabase.storage.from("crud_bucket").upload(fileName, file.buffer, {
+                  contentType: file.mimetype,
+                  cacheControl: "3600",
+                  upsert: true,
+                });
+                if (error) throw new Error(`Failed to upload file: ${error.message}`);
 
-        const imageProof: string[] = [];
+                const { data: disputeProof } = await supabase.storage
+                  .from("crud_bucket")
+                  .getPublicUrl(fileName);
 
-        if (imageEvidence) {
-          for (const file of imageEvidence) {
-            try {
-              
-              const fileName = `disputes/DISPUTE-${Date.now()}-${file.originalname}`;
-              console.log(`Uploading file: ${fileName}`);
-
-              const {error} = await supabase.storage.from("crud_bucket").upload(fileName, file.buffer, {
-                contentType: file.mimetype,
-                cacheControl: "3600",
-                upsert: true,
-              })
-              if(error) throw new Error(`Failed to upload file: ${error.message}`);
-
-              const {data: disputeProof} = await supabase.storage
-                .from("crud_bucket").getPublicUrl(fileName);
-
-              console.log(`File uploaded successfully: ${disputeProof.publicUrl}`);
-
-              imageProof.push(disputeProof.publicUrl);
-            } catch (err: any) {
-              console.error(`Image skipped: ${file.originalname}`, err.message);
-              res.status(400).json({
-                success: false,
-                error: `Image upload failed for ${file.originalname}: ${err.message}`,
-              });
-              return
+                console.log(`File uploaded successfully: ${disputeProof.publicUrl}`);
+                imageProof.push(disputeProof.publicUrl);
+              } catch (err: any) {
+                console.error(`Image skipped: ${file.originalname}`, err.message);
+                res.status(400).json({
+                  success: false,
+                  error: `Image upload failed for ${file.originalname}: ${err.message}`,
+                });
+                return;
+              }
             }
-          }
 
-          console.log("Image Proof URLs:", imageProof);
-          await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
-        } else {
-          console.log("No image evidence provided, proceeding with text dispute.");
-          await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
-        }
+            console.log("Image Proof URLs:", imageProof);
+            await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
+          } else {
+            console.log("No image evidence provided, proceeding with text dispute.");
+            await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
+          }
 
         const taskData = await TaskAssignment.getTask(taskTakenId);
         await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
