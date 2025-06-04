@@ -95,12 +95,11 @@ class NotificationController {
             // Format the name of the other party
             const otherUserName =
               userData?.first_name && userData?.last_name
-                ? `${userData.first_name} ${userData.middle_name || ""} ${
-                    userData.last_name
+                ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                   }`.trim()
                 : column === "client_id"
-                ? "Unknown Tasker"
-                : "Unknown Client";
+                  ? "Unknown Tasker"
+                  : "Unknown Client";
 
             return {
               id: task.task_taken_id,
@@ -220,8 +219,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -249,8 +247,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -351,8 +348,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -380,8 +376,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -482,8 +477,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -511,8 +505,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -613,8 +606,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -642,8 +634,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -744,8 +735,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -773,8 +763,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -879,8 +868,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -908,8 +896,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1011,8 +998,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1040,8 +1026,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1143,8 +1128,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1172,8 +1156,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1278,8 +1261,7 @@ class NotificationController {
                 role: "Tasker",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1307,8 +1289,7 @@ class NotificationController {
                 role: "Client",
                 clientName:
                   userData?.first_name && userData?.last_name
-                    ? `${userData.first_name} ${userData.middle_name || ""} ${
-                        userData.last_name
+                    ? `${userData.first_name} ${userData.middle_name || ""} ${userData.last_name
                       }`.trim()
                     : "Unknown Client",
               };
@@ -1404,18 +1385,12 @@ class NotificationController {
 
   static async updateRequest(req: Request, res: Response): Promise<void> {
     const taskTakenId = parseInt(req.params.taskTakenId);
-    const {
-      value,
-      role,
-      reason_for_dispute,
-      dispute_details,
-      rejection_reason,
-    } = req.body;
-    console.log("Role:", req.body);
-    console.log("Task Taken ID:", taskTakenId);
-    console.log("Value:", value);
-    console.log("Role:", role);
-    console.log("Rejection Reason:", rejection_reason);
+    const { value, role, reason_for_dispute, dispute_details, rejection_reason } = req.body;
+    // console.log("Role:", req.body);
+    // console.log("Task Taken ID:", taskTakenId);
+    // console.log("Value:", value);
+    // console.log("Role:", role);
+    // console.log("Rejection Reason:", rejection_reason);
     const reason_for_rejection_or_cancellation = rejection_reason;
 
     if (!taskTakenId) {
@@ -1434,53 +1409,42 @@ class NotificationController {
       visit_tasker = true;
     }
 
-    // Check if the taskTakenId exists
-    const { data: taskData, error: taskError } = await supabase
-      .from("task_taken")
-      .select("*")
-      .eq("task_taken_id", taskTakenId)
-      .maybeSingle();
+    /**
+     * This is MANDATORY for all methods on the backend.
+     */
+    try {
+      // Check if the taskTakenId exists
+      const { data: taskData, error: taskError } = await supabase
+        .from("task_taken")
+        .select("*")
+        .eq("task_taken_id", taskTakenId)
+        .maybeSingle();
 
-    if (taskError) {
-      console.error(taskError.message);
-      res.status(500).json({
-        success: false,
-        error: "An Error Occurred while starting the request.",
-      });
-      return;
-    }
-    
+      if (taskError) {
+        console.error(taskError.message);
+        res.status(500).json({
+          success: false,
+          error: "An Error Occurred while starting the request.",
+        });
+        return;
+      }
 
-    switch (value) {
-      case "Accept":
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Confirmed",
-          visit_client,
-          visit_tasker
-        );
 
-        const { data: taskData, error: taskError } = await supabase
-          .from("task_taken")
-          .select("*")
-          .eq("task_taken_id", taskTakenId)
-          .maybeSingle();
+      switch (value) {
+        case "Accept":
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Confirmed",
+            visit_client,
+            visit_tasker
+          );
 
-        if (taskError) {
-          console.error(taskError.message);
-          res.status(500).json({
-            success: false,
-            error: "An Error Occurred while starting the request.",
-          });
-          return;
-        }
+          await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
 
-        await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
-        
-        break;
-      case "Reworking":
-        const rework = 1; 
-        await TaskAssignment.updateStatus(
+          break;
+        case "Reworking":
+          const rework = 1;
+          await TaskAssignment.updateStatus(
             taskTakenId,
             "Reworking",
             visit_client,
@@ -1490,256 +1454,254 @@ class NotificationController {
             false,
             undefined,
             rework
-        );
+          );
 
-        
-        break;
+
+          break;
 
         case "Expired":
-        await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Expired",
-            visit_client,
-            visit_tasker,
-            undefined,
-            false,
-            false,
-            undefined,
-            undefined,
-        );
+          await TaskAssignment.updateStatus(taskTakenId, "Expired", visit_client, visit_tasker, undefined, false, false, undefined, undefined,);
 
-        
-        break;
-      case "Start":
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Ongoing",
-          visit_client,
-          visit_tasker
-        );
 
-        await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
-
-        // const { data: postTaskData, error: postTaskError } = await supabase
-        //   .from("post_task")
-        //   .update({ status: "Already Taken" })
-        //   .eq("task_id", taskData.task_id)
-        //   .maybeSingle();
-
-        // if (postTaskError) {
-        //   console.error(postTaskError.message);
-        //   res.status(500).json({
-        //     success: false,
-        //     error: "An Error Occurred while starting the request.",
-        //   });
-        //   return;
-        // }
-        break;
-      case "Reject":
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Rejected",
-          visit_client,
-          visit_tasker,
-          reason_for_rejection_or_cancellation
-        );
-        break;
-      case "Declined":
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Declined",
-          visit_client,
-          visit_tasker,
-          reason_for_rejection_or_cancellation
-        );
-
-        break;
-      case "Review":
-        const endDate = DateTime.now().setZone("Asia/Manila");
-        const endDateISO = endDate.toISO();
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Review",
-          visit_client,
-          visit_tasker,
-          reason_for_rejection_or_cancellation,
-          undefined,
-          undefined,
-          endDateISO as string
-        );
-        break;
-      case "Cancel":
-        //This is 
-        if(!reason_for_rejection_or_cancellation) {
-          res.status(400).json({
-            success: false,
-            error: "Reason for cancellation is required.",
-          });
-          return;
-        }
-
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Cancelled",
-          visit_client,
-          visit_tasker,
-          reason_for_rejection_or_cancellation
-        );
-
-        //30 percent of the contract price will be belong to the platform, while 70 percent will be returned to the client.
-        const taskAmount = await taskModel.getTaskAmount(taskTakenId);
-
-        if(!taskAmount) {
-          res.status(404).json({
-            success: false,
-            error: "Task not found.",
-          });
-          return;
-        }
-
-        //Update task status from post_task to On Hold
-        await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
-        await QTaskPayment.refundCreditstoClient(taskTakenId, taskData.task_id, "Cancelled")
-        break;
-      case "Disputed":
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Disputed",
-          visit_client,
-          visit_tasker
-        );
-
-        const { data: taskDataDisputed, error: taskErrorDisputed } = await supabase
-        .from("task_taken")
-        .select("*")
-        .eq("task_taken_id", taskTakenId)
-        .maybeSingle();
-
-      if (taskErrorDisputed) {
-        console.error(taskErrorDisputed.message);
-        res.status(500).json({
-          success: false,
-          error: "An Error Occurred while starting the request.",
-        });
-        return;
-      }
-
-      await TaskAssignment.updateTaskStatus(taskDataDisputed.task_id, "On Hold", false);
-
-        const imageEvidence = req.files as Express.Multer.File[];
-
-        console.log("Image Evidence:", imageEvidence);
-
-        const imageProof: string[] = [];
-
-        if (imageEvidence) {
-          for (const file of imageEvidence) {
-            try {
-              
-              const fileName = `disputes/DISPUTE-${Date.now()}-${file.originalname}`;
-              console.log(`Uploading file: ${fileName}`);
-
-              const {error} = await supabase.storage.from("crud_bucket").upload(fileName, file.buffer, {
-                contentType: file.mimetype,
-                cacheControl: "3600",
-                upsert: true,
-              })
-              if(error) throw new Error(`Failed to upload file: ${error.message}`);
-
-              const {data: disputeProof} = await supabase.storage
-                .from("crud_bucket").getPublicUrl(fileName);
-
-              console.log(`File uploaded successfully: ${disputeProof.publicUrl}`);
-
-              imageProof.push(disputeProof.publicUrl);
-            } catch (err: any) {
-              console.error(`Image skipped: ${file.originalname}`, err.message);
-              res.status(400).json({
-                success: false,
-                error: `Image upload failed for ${file.originalname}: ${err.message}`,
-              });
-              return
-            }
-          }
-
-          console.log("Image Proof URLs:", imageProof);
-          await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
-        } else {
-          console.log("No image evidence provided, proceeding with text dispute.");
-          await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
-        }
-
-        await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
-        break
-      case "Finish":
-        if (role == "Tasker") {
+          break;
+        case "Start":
           await TaskAssignment.updateStatus(
             taskTakenId,
-            "Review",
+            "Ongoing",
             visit_client,
             visit_tasker
           );
-        } else {
-          const task = await taskModel.getTaskAmount(taskTakenId);
 
+          await TaskAssignment.updateTaskStatus(taskData.task_id, "Already Taken", false);
+
+          // const { data: postTaskData, error: postTaskError } = await supabase
+          //   .from("post_task")
+          //   .update({ status: "Already Taken" })
+          //   .eq("task_id", taskData.task_id)
+          //   .maybeSingle();
+
+          // if (postTaskError) {
+          //   console.error(postTaskError.message);
+          //   res.status(500).json({
+          //     success: false,
+          //     error: "An Error Occurred while starting the request.",
+          //   });
+          //   return;
+          // }
+          break;
+        case "Reject":
           await TaskAssignment.updateStatus(
             taskTakenId,
-            "Completed",
+            "Rejected",
+            visit_client,
+            visit_tasker,
+            reason_for_rejection_or_cancellation
+          );
+          break;
+        case "Declined":
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Declined",
             visit_client,
             visit_tasker,
             reason_for_rejection_or_cancellation
           );
 
-          const { error: updateAmountError } = await supabase.rpc(
-            "increment_tasker_amount",
-            {
-              addl_credits: task?.post_task.proposed_price,
-              id: task?.tasker.tasker_id,
-            }
+          break;
+        case "Review":
+          const endDate = DateTime.now().setZone("Asia/Manila");
+          const endDateISO = endDate.toISO();
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Review",
+            visit_client,
+            visit_tasker,
+            reason_for_rejection_or_cancellation,
+            undefined,
+            undefined,
+            endDateISO as string
           );
-
-          const { data: taskDataFinish, error: taskErrorFinish } = await supabase
-          .from("task_taken")
-          .select("*")
-          .eq("task_taken_id", taskTakenId)
-          .maybeSingle();
-
-        if (taskErrorFinish) {
-          console.error(taskErrorFinish.message);
-          res.status(500).json({
-            success: false,
-            error: "An Error Occurred while starting the request.",
-          });
-          return;
-        }
-
-        await TaskAssignment.updateTaskStatus(taskDataFinish.task_id, "Closed", true);
-
-          if (updateAmountError) {
-            console.error(updateAmountError.message);
-            res.status(500).json({
+          break;
+        case "Cancel":
+          //This is 
+          if (!reason_for_rejection_or_cancellation) {
+            res.status(400).json({
               success: false,
-              error: "An Error Occurred while updating tasker amount.",
+              error: "Reason for cancellation is required.",
             });
             return;
           }
 
-          await TaskAssignment.updateTaskStatus(taskData.task_id, "Closed", true);
-          break;
-        }
-      default:
-        res.status(400).json({
-          success: false,
-          error:
-            "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'",
-        });
-        return;
-    }
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Cancelled",
+            visit_client,
+            visit_tasker,
+            reason_for_rejection_or_cancellation
+          );
 
-    res.status(200).json({
-      success: true,
-      message: "Successfully Updated the Task Status.",
-    });
+          //30 percent of the contract price will be belong to the platform, while 70 percent will be returned to the client.
+          const taskAmount = await taskModel.getTaskAmount(taskTakenId);
+
+          if (!taskAmount) {
+            res.status(404).json({
+              success: false,
+              error: "Task not found.",
+            });
+            return;
+          }
+
+          //Update task status from post_task to On Hold
+          await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
+          await QTaskPayment.refundCreditstoClient(taskTakenId, taskData.task_id, "Cancelled")
+          break;
+        case "Disputed":
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Disputed",
+            visit_client,
+            visit_tasker
+          );
+
+          const { data: taskDataDisputed, error: taskErrorDisputed } = await supabase
+            .from("task_taken")
+            .select("*")
+            .eq("task_taken_id", taskTakenId)
+            .maybeSingle();
+
+          if (taskErrorDisputed) {
+            console.error(taskErrorDisputed.message);
+            res.status(500).json({
+              success: false,
+              error: "An Error Occurred while starting the request.",
+            });
+            return;
+          }
+
+          await TaskAssignment.updateTaskStatus(taskDataDisputed.task_id, "On Hold", false);
+
+          const imageEvidence = (req.files as { [fieldname: string]: Express.Multer.File[] })["imageEvidence"];
+
+
+          console.log("Image Evidence:", imageEvidence);
+
+          const imageProof: string[] = [];
+
+          if (imageEvidence && Array.isArray(imageEvidence)) {
+            for (const file of imageEvidence) {
+              try {
+                const fileName = `disputes/DISPUTE-${Date.now()}-${file.originalname}`;
+                console.log(`Uploading file: ${fileName}`);
+
+                const { error } = await supabase.storage.from("crud_bucket").upload(fileName, file.buffer, {
+                  contentType: file.mimetype,
+                  cacheControl: "3600",
+                  upsert: true,
+                });
+                if (error) throw new Error(`Failed to upload file: ${error.message}`);
+
+                const { data: disputeProof } = await supabase.storage
+                  .from("crud_bucket")
+                  .getPublicUrl(fileName);
+
+                console.log(`File uploaded successfully: ${disputeProof.publicUrl}`);
+                imageProof.push(disputeProof.publicUrl);
+              } catch (err: any) {
+                console.error(`Image skipped: ${file.originalname}`, err.message);
+                res.status(400).json({
+                  success: false,
+                  error: `Image upload failed for ${file.originalname}: ${err.message}`,
+                });
+                return;
+              }
+            }
+
+            console.log("Image Proof URLs:", imageProof);
+            await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details, imageProof);
+          } else {
+            console.log("No image evidence provided, proceeding with text dispute.");
+            await TaskAssignment.createDispute(taskTakenId, reason_for_dispute, dispute_details);
+          }
+
+
+          await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
+          break
+        case "Finish":
+          if (role == "Tasker") {
+            await TaskAssignment.updateStatus(
+              taskTakenId,
+              "Review",
+              visit_client,
+              visit_tasker
+            );
+          } else {
+            const task = await taskModel.getTaskAmount(taskTakenId);
+
+            await TaskAssignment.updateStatus(
+              taskTakenId,
+              "Completed",
+              visit_client,
+              visit_tasker,
+              reason_for_rejection_or_cancellation
+            );
+
+            const { error: updateAmountError } = await supabase.rpc(
+              "increment_tasker_amount",
+              {
+                addl_credits: task?.post_task.proposed_price,
+                id: task?.tasker.tasker_id,
+              }
+            );
+
+            const { data: taskDataFinish, error: taskErrorFinish } = await supabase
+              .from("task_taken")
+              .select("*")
+              .eq("task_taken_id", taskTakenId)
+              .maybeSingle();
+
+            if (taskErrorFinish) {
+              console.error(taskErrorFinish.message);
+              res.status(500).json({
+                success: false,
+                error: "An Error Occurred while starting the request.",
+              });
+              return;
+            }
+
+            await TaskAssignment.updateTaskStatus(taskDataFinish.task_id, "Closed", true);
+
+            if (updateAmountError) {
+              console.error(updateAmountError.message);
+              res.status(500).json({
+                success: false,
+                error: "An Error Occurred while updating tasker amount.",
+              });
+              return;
+            }
+
+            await TaskAssignment.updateTaskStatus(taskData.task_id, "Closed", true);
+            break;
+          }
+        default:
+          res.status(400).json({
+            success: false,
+            error:
+              "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'",
+          });
+          return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Successfully Updated the Task Status.",
+      });
+    } catch (error) {
+      console.error("Error in updateRequest:", error);
+      res.status(500).json({
+        success: false,
+        error: "An Error Occurred while starting the request.",
+      });
+    }
   }
 
   static async updateNotification(req: Request, res: Response): Promise<void> {
