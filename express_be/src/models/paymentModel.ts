@@ -287,9 +287,9 @@ class QTaskPayment {
         }
 
         const paymentData = await fetch(`${process.env.PAYMONGO_URL}/payment_intents/${transactionId}`, options);
+        console.log("Payment Data:", paymentData);
         if (!paymentData.ok) {
           const errorData = await paymentData.json();
-          this.handlePayMongoErrors(errorData);
           throw new Error(`PayMongo API failed: ${errorData.message}`);
         }
 

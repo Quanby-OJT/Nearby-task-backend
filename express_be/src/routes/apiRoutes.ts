@@ -234,7 +234,7 @@ router.get(
 router.put(
   "/update-request/:taskTakenId",
   upload.fields([
-    { name: "imageEvidence", maxCount: 10 }, 
+    { name: "imageEvidence", maxCount: 5 }, 
   ]),
   NotificationController.updateRequest
 );

@@ -42,12 +42,12 @@ class TaskAssignment{
         return taskData;
     }
 
-    static async createDispute(task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof?: string[]){
-
-
+    static async createDispute(user_id: number, task_taken_id: number, reason_for_dispute: string, dispute_details: string, image_proof?: string[]){
+        console.log("Creating dispute for task_taken_id:", " raised by: ", user_id, task_taken_id, "with reason:", reason_for_dispute, "and details:", dispute_details, "and image_proof:", image_proof);
         const { data, error } = await supabase
             .from('dispute_logs')
             .insert({
+                raised_by_user_id: user_id,
                 task_taken_id: task_taken_id, 
                 reason_for_dispute: reason_for_dispute,
                 dispute_details: dispute_details,
