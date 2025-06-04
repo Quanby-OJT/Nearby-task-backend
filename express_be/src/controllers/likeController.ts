@@ -39,10 +39,14 @@ class LikeController {
 
       const { data, error } = await supabase
         .from("likes")
-        .select("*")
+        .select(`
+          *,
+          post_task:job_post_id (*).eq("status", "Available")
+        `)  
         .eq("user_id", userId);
 
       console.log("Liked: " + data, "Errors :" + error);
+      console.log("This is data of my liked tasks: " + data, "This is error: " + error);
 
       if (error) {
         console.error("Error fetching liked tasks:", error.message);
