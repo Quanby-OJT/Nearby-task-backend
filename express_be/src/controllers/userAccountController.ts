@@ -1784,10 +1784,12 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         const fileName = `${currentUserRole.toLowerCase()}s/documents_${userId}_${Date.now()}_${documentFile.originalname}`;
 
         console.log("Uploading Documents:", fileName);
+        console.log("Document MIME Type:", documentFile.mimetype);
 
         const { error } = await supabase.storage
           .from("crud_bucket")
           .upload(fileName, documentFile.buffer, {
+            contentType: documentFile.mimetype, // Add this line to fix PDF viewing
             cacheControl: "3600",
             upsert: true,
           });
