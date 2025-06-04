@@ -7,7 +7,9 @@ const router = Router();
 
 router.get("/displayTask", TaskController.getAllTasks);
 
-router.patch("/displayTask/:id", TaskController.disableTask);
+router.patch("/disableTask/:id", TaskController.disableTask);
+
+router.patch("/activateTask/:id", TaskController.activateTask)
 
 router.get("/displayTask/:id", TaskController.getTaskById);
 

@@ -119,6 +119,112 @@ class AuthorityAccountController {
         throw new Error("Failed to log action: " + actionError.message);
       }
 
+      // Create HTML email template for credentials
+      const htmlTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      text-align: left;
+    }
+    .heading {
+      color: #000000;
+      text-transform: uppercase;
+      font-size: 13px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 90px;
+    }
+    .greeting {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .body-text {
+      font-size: 14px;
+      margin-bottom: 15px;
+      color: #333333;
+    }
+    .body-text.last {
+      margin-bottom: 30px;
+    }
+    .credentials {
+      font-size: 14px;
+      margin: 20px 0;
+      color: #333333;
+    }
+    .credentials .label {
+      font-weight: bold;
+    }
+    .closing {
+      font-size: 14px;
+      margin-bottom: 30px;
+      color: #333333;
+    }
+    .footer {
+      text-align: right;
+      font-size: 12px;
+      color: #777777;
+      margin-top: 20px;
+    }
+    .footer img {
+      width: 40px;
+      height: auto;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <img src="https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/email-template-images//NearbTask.png" alt="NearbTask" style="width: 60px; height: auto; display: inline-block; vertical-align: middle;">
+    </div>
+
+    <h1 class="heading">Welcome to QTask</h1>
+
+    <p class="greeting">Hi ${first_name}!</p>
+    <p class="body-text">Your account has been successfully created. Here are your login credentials:</p>
+    <div class="credentials">
+      <p><span class="label">Email:</span> ${email}</p>
+      <p><span class="label">Password:</span> ${password}</p>
+    </div>
+    <p class="body-text last">For security reasons, we recommend changing your password after your first login.</p>
+
+    <p class="closing">Thank you,<br>The QTask Team</p>
+
+    <div class="footer">
+      <img src="https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/email-template-images//Quanby.png" alt="Quanby">
+      <span>From Quanby Solutions Inc</span>
+    </div>
+  </div>
+</body>
+</html>
+      `;
+
+      // Send credentials via email
+      await mailer.sendMail({
+        from: process.env.MAIL_USERNAME,
+        to: email,
+        subject: "Your QTask Account Credentials",
+        html: htmlTemplate,
+      });
+
       res.status(201).json({
         message: "Authority user added successfully.",
         user: {
@@ -467,13 +573,108 @@ class AuthorityAccountController {
           throw new Error(insertError.message);
         }
       }
+      // Create HTML email template
+      const htmlTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      text-align: left;
+    }
+    .heading {
+      color: #000000;
+      text-transform: uppercase;
+      font-size: 13px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 90px;
+    }
+    .greeting {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .body-text {
+      font-size: 14px;
+      margin-bottom: 15px;
+      color: #333333;
+    }
+    .body-text.last {
+      margin-bottom: 30px;
+    }
+    .otp {
+      font-size: 14px;
+      margin: 20px 0;
+      color: #333333;
+    }
+    .otp .code {
+      font-weight: bold;
+      color: #007bff;
+    }
+    .closing {
+      font-size: 14px;
+      margin-bottom: 30px;
+      color: #333333;
+    }
+    .footer {
+      text-align: right;
+      font-size: 12px;
+      color: #777777;
+      margin-top: 20px;
+    }
+    .footer img {
+      width: 40px;
+      height: auto;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <img src="https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/email-template-images//NearbTask.png" alt="NearbTask" style="width: 60px; height: auto; display: inline-block; vertical-align: middle;">
+    </div>
+
+    <h1 class="heading">Welcome to QTask</h1>
+
+    <p class="greeting">Hi there!</p>
+    <p class="body-text">We received a request to reset the password for your account. Please use the One-Time Password (OTP) below to proceed:</p>
+    <p class="otp">Your OTP Code: <span class="code">${otp}</span></p>
+    <p class="body-text last">This code is valid for the next 10 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
+
+    <p class="closing">Thank you,<br>The QTask Team</p>
+
+    <div class="footer">
+      <img src="https://tzdthgosmoqepbypqbbu.supabase.co/storage/v1/object/public/email-template-images//Quanby.png" alt="Quanby">
+      <span>From Quanby Solutions Inc</span>
+    </div>
+  </div>
+</body>
+</html>
+      `;
 
       // Send OTP via email using the existing mailer configuration
       await mailer.sendMail({
         from: process.env.MAIL_USERNAME,
         to: email,
         subject: "Your OTP for Password Reset",
-        text: `Your OTP is: ${otp}. It will expire in 10 minutes.`,
+        html: htmlTemplate,
       });
 
       res.status(200).json({ message: "OTP sent to your email" });
@@ -643,7 +844,7 @@ class AuthorityAccountController {
 
   static async addAddress(req: Request, res: Response): Promise<void> {
     try {
-      const { user_id, street, barangay, city, province, postal_code, country, latitude, longitude, default: isDefault } = req.body;
+      const { user_id, street, barangay, city, province, postal_code, country, default: isDefault } = req.body;
 
       if (!user_id || !street || !barangay || !city || !province || !postal_code || !country) {
         res.status(400).json({ error: "Required fields (user_id, street, barangay, city, province, postal_code, country) are missing" });
@@ -658,8 +859,6 @@ class AuthorityAccountController {
         province,
         postal_code,
         country,
-        latitude: latitude || null,
-        longitude: longitude || null,
         default: isDefault || false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -679,7 +878,7 @@ class AuthorityAccountController {
   static async updateAddress(req: Request, res: Response): Promise<void> {
     try {
       const addressId = req.params.addressId;
-      const { street, barangay, city, province, postal_code, country, latitude, longitude,formatted_Address, region, remarks} = req.body;
+      const { street, barangay, city, province, postal_code, country, formatted_Address, region, remarks} = req.body;
 
       console.log("Received address data:", req.body);
 
@@ -695,8 +894,6 @@ class AuthorityAccountController {
         province,
         postal_code,
         country,
-        latitude: latitude || null,
-        longitude: longitude || null,
         formatted_Address: formatted_Address || null,
         region: region || null,
         remarks: remarks || null,

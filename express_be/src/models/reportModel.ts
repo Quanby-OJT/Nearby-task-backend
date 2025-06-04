@@ -9,7 +9,7 @@ interface Report {
   reported_whom?: number;
   reason?: string;
   status: boolean;
-  images?: string;
+  images?: string; 
 }
 
 // Interface for taskers with user details
@@ -61,43 +61,19 @@ class ReportModel {
     reason: string | undefined,
     imageUrls?: string[]
   ): Promise<Report[]> {
-    if (!imageUrls || imageUrls.length === 0) {
-      const reportData: Report = {
-        reported_by,
-        reported_whom,
-        reason,
-        status: false,
-        images: undefined,
-      };
-
-      console.log("Creating report with data (no images):", reportData);
-
-      const { data, error } = await supabase
-        .from("report")
-        .insert([reportData])
-        .select();
-
-      if (error) {
-        console.error("Supabase insertion error:", error);
-        throw new Error(error.message);
-      }
-
-      return data;
-    }
-
-    const reportRows = imageUrls.map((imageUrl) => ({
+    const reportData: Report = {
       reported_by,
       reported_whom,
       reason,
       status: false,
-      images: imageUrl,
-    }));
+      images: imageUrls ? JSON.stringify(imageUrls) : undefined,
+    };
 
-    console.log("Creating report rows with data:", reportRows);
+    console.log("Creating report with data:", reportData);
 
     const { data, error } = await supabase
       .from("report")
-      .insert(reportRows)
+      .insert([reportData])
       .select();
 
     if (error) {
