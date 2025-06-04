@@ -141,7 +141,7 @@ class ClientModel {
       }
 
       if (!data) {
-        res.status(200).json({ error: "No active client found." });
+        res.status(400).json({ error: "No active client found." });
         return;
       }
 
@@ -185,10 +185,10 @@ class ClientModel {
           ) 
         `
         )
-        .not("user", "is", null)
         .eq("user.acc_status", "Active")
         .eq("user.verified", true)
-        .eq("user.user_role", "Tasker");
+        .eq("user.user_role", "Tasker")
+        .eq("user.acc_status", "Review");
 
       console.log("Taskers data:", data, "Error:", error);
 
@@ -254,7 +254,7 @@ class ClientModel {
       }
 
       if (!data) {
-        res.status(200).json({ error: "No active client found." });
+        res.status(400).json({ error: "No active client found." });
         return;
       }
 

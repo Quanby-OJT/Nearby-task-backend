@@ -5,6 +5,7 @@ import generateOTP from "otp-generator";
 import { mailer, supabase } from "../config/configuration";
 import { randomUUID } from "crypto";
 import renderEmail from "../emails/renderEmail";
+import ActivityLogging from "../models/activityLogs";
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -18,29 +19,18 @@ class AuthenticationController {
       const verifyLogin = await Auth.authenticateLogin(email);
 
       if (!verifyLogin) {
-        res.status(404).json({
-          error:
-            "Sorry, your email does not exist, or you have entered an incorrect email.",
-        });
+        res.status(404).json({error: "Sorry, your email does not exist, or you have entered an incorrect email.",});
         return;
       }
 
       if (verifyLogin.acc_status === "Ban" || verifyLogin.acc_status === "Block") {
-        res.status(401).json({
-          error:
-            "You are banned/blocked for using this application. Please contact our team to appeal to your ban.",
-        });
+        res.status(401).json({error: "You are banned/blocked for using this application. Please contact our team to appeal to your ban.",});
         return;
       }
 
-      const isPasswordValid = await bcrypt.compare(
-        password,
-        verifyLogin.hashed_password
-      );
+      const isPasswordValid = await bcrypt.compare(password, verifyLogin.hashed_password);
       if (!isPasswordValid) {
-        res
-          .status(414)
-          .json({ error: "Password is incorrect. Please try again." });
+        res.status(414).json({ error: "Password is incorrect. Please try again." });
         return;
       }
 
@@ -58,6 +48,13 @@ class AuthenticationController {
       });
 
       const name = `${verifyLogin.first_name} ${verifyLogin.last_name}`;
+
+      await ActivityLogging.logActivity(
+        verifyLogin.user_id,
+        "Login",
+        `User ${name} logged in successfully. Generating OTP for two-factor authentication.`
+      );
+      req.session.userId = verifyLogin.user_id;
 
       // const loginEmail = await renderEmail.renderOTPEmail(name, otp);
 
@@ -137,7 +134,11 @@ class AuthenticationController {
       //   html: html,
       // });
 
-      
+      await ActivityLogging.logActivity(
+        verifyEmail.user_id,
+        "Forgot Password",
+        `User with email ${email} requested a password reset. Verification token generated.`
+      );
       res.status(200).json({message: "Password reset link has been sent to your email. Please check your inbox."});
 
     }catch(error){
@@ -178,6 +179,12 @@ class AuthenticationController {
   
         if(errorDelete) throw new Error(errorDelete.message)
   
+        await ActivityLogging.logActivity(
+          email,
+          "Reset Password",
+          `User with email ${email} has successfully reset their password.`
+        );
+        console.log(`User with email ${email} has successfully reset their password.`);
         res.status(200).json({message: "Password has been reset successfully. Please login to your account."})
       }catch(error){
         console.error(error instanceof Error ? error.message : "Internal Server Error")
@@ -267,6 +274,12 @@ class AuthenticationController {
         session: userLogin.session,
       });
 
+      await ActivityLogging.logActivity(
+        user_id,
+        "Login",
+        `User with ID ${user_id} logged in successfully. Session token generated: ${sessionToken}`
+      );
+      // Clear OTP after successful login
       res.status(200).json({
         user_id: user_id,
         user_role: user.user_role,
@@ -311,6 +324,12 @@ class AuthenticationController {
         two_fa_code: otp,
       });
 
+      await ActivityLogging.logActivity(
+        user_id,
+        "Reset OTP",
+        `User with ID ${user_id} has successfully reset their OTP.`
+      );
+
       // Return OTP directly in response instead of sending email
       res.status(200).json({ 
         message: "OTP reset successfully", 
@@ -329,8 +348,12 @@ class AuthenticationController {
     console.log("User ID for logout:", user_id);
     console.log("Session for logout:", session);
 
-    Auth.logout(user_id, session);
-
+    await Auth.logout(user_id, session);
+    await ActivityLogging.logActivity(
+      user_id,
+      "Logout",
+      `User with ID ${user_id} logged out successfully.`
+    );
     if (req.session.id) {
       req.session.destroy((error) => {
         if (error) {
@@ -340,7 +363,6 @@ class AuthenticationController {
         }
 
         res.clearCookie("cookie.sid");
-
         res.status(200).json({ message: "Successfully logged out." });
       });
     } else {

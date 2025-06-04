@@ -117,8 +117,8 @@ router.post(
   upload.single("image"),
   UserAccountController.registerUser
 );
-router.post("/addTask", upload.single("photo"), TaskController.createTask);
-router.put("/updateTask/:id", upload.single("photo"), TaskController.updateTask);
+router.post("/addTask", upload.array("photos[]"), TaskController.createTask);
+router.put("/updateTask/:taskId", upload.array("photos[]"), TaskController.updateTask);
 router.get("/displayTask", TaskController.getAllTasks);
 router.get("/fetchTasks", TaskController.fetchAllTasks);
 router.get(
@@ -180,6 +180,7 @@ router.get("/specializations", TaskController.getAllSpecializations);
 router.delete("/deleteUser/:id", UserAccountController.deleteUser);
 router.get("/getUserData/:id", UserAccountController.getUserData);
 router.get("/get-specializations", TaskController.getAllSpecializations);
+router.get("/get-images/:taskId", TaskController.getAllImages);
 router.put(
   "/updateUserInfo/:id/",
   upload.single("image"),
@@ -245,7 +246,7 @@ router.put(
   "/update-specialization/:user_id",
   SettingController.updateSpecialization
 );
-
+// router.put("/set-default-address/:user_id", SettingController.setLocationAsDefault);
 router.put("/update-distance/:user_id", SettingController.updateDistance);
 router.get("/get-address/:user_id", SettingController.getAddress);
 router.get("/get-addresses/:user_id", SettingController.getAddresses);
@@ -282,8 +283,6 @@ router.put(
   ]),
   profileController.TaskerController.updateTaskerLogin
 );
-
-
 
 // updating client with both profile and ID images
 router.put(
