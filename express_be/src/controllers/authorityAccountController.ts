@@ -416,8 +416,17 @@ class AuthorityAccountController {
         gender: userData.gender || ""  
       });
   
-      if (userData.acc_status === "Active" && userData.user_role === "Tasker") {
-        await AuthorityAccount.updateTaskerDocumentsValid(userId.toString(), true);
+      // Update verified status in user table regardless of role
+      if (userData.acc_status === "Active") {
+        const { error: verifyError } = await supabase
+          .from("user")
+          .update({ verified: true })
+          .eq("user_id", userId);
+
+        if (verifyError) {
+          console.error("Error updating verified status:", verifyError);
+          throw new Error("Failed to update verified status");
+        }
       }
   
       res.status(200).json({
@@ -517,10 +526,10 @@ class AuthorityAccountController {
     try {
       const { email } = req.body;
 
-      // Check if email exists in the user table
+      // Check if email exists in the user table and get user details
       const { data: user, error: userError } = await supabase
         .from("user")
-        .select("user_id")
+        .select("user_id, first_name")
         .eq("email", email)
         .single();
 
@@ -653,7 +662,7 @@ class AuthorityAccountController {
 
     <h1 class="heading">Welcome to QTask</h1>
 
-    <p class="greeting">Hi there!</p>
+    <p class="greeting">Hi ${user.first_name}!</p>
     <p class="body-text">We received a request to reset the password for your account. Please use the One-Time Password (OTP) below to proceed:</p>
     <p class="otp">Your OTP Code: <span class="code">${otp}</span></p>
     <p class="body-text last">This code is valid for the next 10 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
