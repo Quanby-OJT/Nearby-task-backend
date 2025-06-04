@@ -133,7 +133,7 @@ class Auth {
 
     const otp = {
       ...otp_input,
-      two_fa_code_expires_at: addMinutes(Date.now(), 20),
+      two_fa_code_expires_at: addMinutes(Date.now(), 5),
     };
 
     console.log("Creating OTP with data:", otp); // Add logging

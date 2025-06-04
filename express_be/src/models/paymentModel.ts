@@ -18,29 +18,6 @@ interface Payment {
   account_no?: string;
 }
 
-interface PaymentMethodResponse {
-  data: {
-    id: string;
-    type: string;
-    attributes: {
-      billing: {
-        name: string;
-        phone: string;
-        email: string;
-      };
-      type: string;
-      created_at: string;
-      updated_at: string;
-      status: string;
-      brand: string;
-      last4: string;
-      exp_month: number;
-      exp_year: number;
-    };
-  };
-  errors?: Array<{ detail: string }>; // For error cases
-}
-
 interface AttachedPaymentResponse {
   data: {
     id: string;
@@ -73,39 +50,60 @@ interface AttachedPaymentResponse {
   };
   errors?: Array<{ detail: string }>; // For error cases
 }
-
-// Updated to match PayMongo's checkout_sessions response structure
-interface PayMongoIntentResponse {
-  data: {
-    id: string;
-    type: string;
-    attributes: {
-      amount: number,
-      capture_type: string;
-      currency: string;
-      checkout_url: string;
-      client_key: string;
-      description: string;
-      livemode: boolean;
-      original_amount: number;
-      statement_descriptor: string;
-      last_payment_error: null | object;
-      payment_method_allowed: string[];
-      payments: Array<object>;
-      next_action: null | object;
-      status: string; 
-      send_email_receipt: boolean;
-      metadata: object | null;
-      setup_future_usage: null | string;
-      created_at: number;
-      updated_at: number;
-    };
-  };
-  errors?: Array<{ detail: string }>; // For error cases
-}
-
 class QTaskPayment {
   static async checkoutPayment(paymentInfo: Payment) {
+    
+    interface PaymentMethodResponse {
+      data: {
+        id: string;
+        type: string;
+        attributes: {
+          billing: {
+            name: string;
+            phone: string;
+            email: string;
+          };
+          type: string;
+          created_at: string;
+          updated_at: string;
+          status: string;
+          brand: string;
+          last4: string;
+          exp_month: number;
+          exp_year: number;
+        };
+      };
+      errors?: Array<{ detail: string }>; // For error cases
+    }
+   // Updated to match PayMongo's checkout_sessions response structure
+    interface PayMongoIntentResponse {
+      data: {
+        id: string;
+        type: string;
+        attributes: {
+          amount: number,
+          capture_type: string;
+          currency: string;
+          checkout_url: string;
+          client_key: string;
+          description: string;
+          livemode: boolean;
+          original_amount: number;
+          statement_descriptor: string;
+          last_payment_error: null | object;
+          payment_method_allowed: string[];
+          payments: Array<object>;
+          next_action: null | object;
+          status: string; 
+          send_email_receipt: boolean;
+          metadata: object | null;
+          setup_future_usage: null | string;
+          created_at: number;
+          updated_at: number;
+        };
+      };
+      errors?: Array<{ detail: string }>; // For error cases
+    }
     interface UserEmailResponse {
       first_name: string, 
       middle_name: string, 

@@ -603,19 +603,25 @@ class TaskController {
           address (*),
           clients!client_id (
             user (
+              user_id,
+              first_name,
+              middle_name,
+              last_name,
+              email,
+              contact,
+              gender,
+              birthdate,
+              user_role,
+              acc_status,
+              verified,
+              image_link
+            )
+          ),
+          action_by:user!action_by (
             user_id,
             first_name,
             middle_name,
-            last_name,
-            email,
-            contact,
-            gender,
-            birthdate,
-            user_role,
-            acc_status,
-            verified,
-            image_link
-            )
+            last_name
           )
         `)
         .eq("client_id", clientId)
