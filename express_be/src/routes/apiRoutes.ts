@@ -346,6 +346,28 @@ router.post(
   UserAccountController.submitUserVerification
 );
 
+// Submit client verification to the client table
+router.post(
+  "/submit-client-verification/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },
+    { name: "selfieImage", maxCount: 1 },
+    { name: "documents", maxCount: 1 },
+  ]),
+  UserAccountController.submitClientVerification
+);
+
+// Submit tasker verification to the tasker table
+router.post(
+  "/submit-tasker-verification-new/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },
+    { name: "selfieImage", maxCount: 1 },
+    { name: "documents", maxCount: 1 },
+  ]),
+  UserAccountController.submitTaskerVerification
+);
+
 // Get user verification status
 router.get(
   "/user-verification-status/:id",
