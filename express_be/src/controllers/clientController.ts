@@ -413,13 +413,12 @@ class ClientModel {
 
   static async getLikedTask(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.params.id; // Get userId from URL parameter
+      const userId = req.params.id; 
       console.log("pass to get the user ID: " + userId);
 
-      // Filter likes by user_id
       const { data, error } = await supabase
         .from("saved_tasker")
-        .select("*") // Join with tasks/jobs table if needed
+        .select("*") 
         .eq("client_id", userId);
 
       console.log("Liked: " + data, "Errors :" + error);
