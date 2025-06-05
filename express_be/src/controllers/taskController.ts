@@ -554,7 +554,21 @@ class TaskController {
           .from("post_task")
           .select(
             `
-            *,
+            task_id,
+            task_title,
+            task_description,
+            proposed_price,
+            urgent,
+            remarks,
+            client_id,
+            task_begin_date,
+            status,
+            work_type,
+            created_at,
+            updated_at,
+            related_specializations,
+            scope,
+            image_ids,
             tasker_specialization:specialization_id (specialization),
             address (*),
             clients!client_id (
@@ -721,7 +735,7 @@ class TaskController {
         .eq("client_id", clientId)
         .eq("clients.user.user_role", "Client");
 
-      // console.log("Tasks data:", task, "Error:", error);
+      console.log("Tasks data:", task, "Error:", error);
 
       if (error) {
         console.error("Error fetching tasks:", error.message);
@@ -1945,10 +1959,25 @@ class TaskController {
         task_id,
         task_status,
         created_at,
+        updated_at,
         client_id,
         tasker_id,
         post_task:task_id (
-          *,
+            task_id,
+            task_title,
+            task_description,
+            proposed_price,
+            urgent,
+            remarks,
+            client_id,
+            task_begin_date,
+            status,
+            work_type,
+            created_at,
+            updated_at,
+            related_specializations,
+            scope,
+            image_ids,
           tasker_specialization:specialization_id (specialization),
           address:address (*)
         ),
@@ -2015,6 +2044,7 @@ class TaskController {
           task_id,
           task_status,
           created_at,
+          updated_at,
           client_id,
           tasker_id,
           task:post_task (
