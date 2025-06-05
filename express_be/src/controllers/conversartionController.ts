@@ -283,110 +283,58 @@ class ConversationController {
         }
     }
 
-    static async appealUser(req: Request, res: Response): Promise<void> {
-        console.log('appealUser Request:', {
-            method: req.method,
-            url: req.url,
-            params: req.params,
-            body: req.body
-        });
+    // Add helper function to check authorization
+    private static async checkAuthorization(req: Request, res: Response): Promise<{authorized: boolean, message?: string}> {
         try {
             const userId = parseInt(req.params.id, 10);
-            if (isNaN(userId)) {
-                res.status(400).json({ error: "Invalid user ID" });
-                return;
+            const { loggedInUserId, taskTakenId } = req.body;
+
+            // Get logged in user's role
+            const { data: loggedInUser, error: loggedInUserError } = await supabase
+                .from("user")
+                .select("user_role")
+                .eq("user_id", loggedInUserId)
+                .single();
+
+            if (loggedInUserError || !loggedInUser) {
+                return { authorized: false, message: "Could not verify user role" };
             }
 
-            const { loggedInUserId, taskTakenId, reason } = req.body;
-            if (!loggedInUserId || isNaN(loggedInUserId)) {
-                res.status(400).json({ error: "Logged-in user ID is required and must be a valid number" });
-                return;
-            }
-            if (!taskTakenId || isNaN(taskTakenId)) {
-                res.status(400).json({ error: "Task taken ID is required and must be a valid number" });
-                return;
-            }
-            if (!reason) {
-                res.status(400).json({ error: "Reason for appealing is required" });
-                return;
-            }
-
-            // Get the latest convo_id for this user and taskTakenId
-            const { data: convoRow, error: convoIdError } = await supabase
+            // Get prior action information
+            const { data: priorAction, error: priorActionError } = await supabase
                 .from("conversation_history")
-                .select("convo_id")
+                .select(`
+                    action_by,
+                    user!conversation_history_action_by_fkey (
+                        user_role
+                    )
+                `)
                 .eq("task_taken_id", taskTakenId)
                 .eq("user_id", userId)
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .single();
 
-            if (convoIdError || !convoRow) {
-                res.status(400).json({ error: "Could not find conversation for this user and task." });
-                return;
+            if (priorActionError) {
+                return { authorized: false, message: "Could not verify prior actions" };
             }
 
-            // Insert into action_taken_by with convo_id
-            const { data: actionData, error: actionError } = await supabase
-                .from("action_taken_by")
-                .insert({
-                    user_id: loggedInUserId,
-                    action_reason: reason,
-                    created_at: new Date().toISOString(),
-                    convo_id: convoRow.convo_id
-                })
-                .select()
-                .single();
+            // Type assertion for loggedInUser
+            const currentUserRole = (loggedInUser as unknown as { user_role: string }).user_role;
+            // Type assertion for priorAction
+            const priorActionBy = (priorAction?.user as unknown as { user_role: string } | undefined)?.user_role || null;
 
-            if (actionError) {
-                console.error("Supabase insert error for action_taken_by:", actionError);
-                res.status(500).json({
-                    success: false,
-                    message: `Failed to log action: ${actionError.message}`,
-                });
-                return;
+            // Check authorization based on roles and prior actions
+            if (currentUserRole === "Moderator" && priorActionBy === "Admin") {
+                return { authorized: false, message: "You don't have authority to modify an Admin's action" };
             }
 
-            const { data: userData, error: userError } = await supabase
-                .from("user")
-                .update({ acc_status: "Active", action_by: loggedInUserId })
-                .eq("user_id", userId)
-                .select()
-                .single();
-
-            if (userError) {
-                console.error("Supabase update error (user table):", userError);
-                throw userError;
-            }
-
-            if (!userData) {
-                console.log(`User with ID ${userId} not found`);
-                res.status(404).json({ error: "User not found" });
-                return;
-            }
-
-            const { data: convoData, error: convoError } = await supabase
-                .from("conversation_history")
-                .update({ action_by: loggedInUserId, reported: true  })
-                .eq("task_taken_id", taskTakenId)
-                .eq("user_id", userId);
-
-            if (convoError) {
-                console.error("Supabase update error (conversation_history table):", convoError);
-                throw convoError;
-            }
-
-            console.log(`User with ID ${userId} has been appealed by user ${loggedInUserId} for task_taken_id ${taskTakenId} with reason: ${reason}`);
-            res.status(200).json({ message: "User has been appealed successfully" });
+            return { authorized: true };
         } catch (error) {
-            if (error instanceof Error) {
-                res.status(500).json({ error: error.message });
-            } else {
-                res.status(500).json({ error: "Unknown error occurred" });
-            }
+            console.error("Error in checkAuthorization:", error);
+            return { authorized: false, message: "Error checking authorization" };
         }
     }
-
 
     static async banUser(req: Request, res: Response): Promise<void> {
         console.log('banUser Request:', {
@@ -413,6 +361,13 @@ class ConversationController {
             }
             if (!reason) {
                 res.status(400).json({ error: "Reason for banning is required" });
+                return;
+            }
+
+            // Check authorization
+            const authCheck = await ConversationController.checkAuthorization(req, res);
+            if (!authCheck.authorized) {
+                res.status(403).json({ error: authCheck.message });
                 return;
             }
 
@@ -492,16 +447,13 @@ class ConversationController {
         }
     }
 
-
     static async warnUser(req: Request, res: Response): Promise<void> {
-        console.log('warnUser Request:', 
-            {
+        console.log('warnUser Request:', {
             method: req.method,
             url: req.url,
             params: req.params,
             body: req.body
-            });
-            
+        });
         try {
             const userId = parseInt(req.params.id, 10);
             if (isNaN(userId)) {
@@ -520,6 +472,13 @@ class ConversationController {
             }
             if (!reason) {
                 res.status(400).json({ error: "Reason for warning is required" });
+                return;
+            }
+
+            // Check authorization
+            const authCheck = await ConversationController.checkAuthorization(req, res);
+            if (!authCheck.authorized) {
+                res.status(403).json({ error: authCheck.message });
                 return;
             }
 
@@ -590,6 +549,117 @@ class ConversationController {
 
             console.log(`User with ID ${userId} has been warned by user ${loggedInUserId} for task_taken_id ${taskTakenId} with reason: ${reason}`);
             res.status(200).json({ message: "User has been warned successfully" });
+        } catch (error) {
+            if (error instanceof Error) {
+                res.status(500).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "Unknown error occurred" });
+            }
+        }
+    }
+
+    static async appealUser(req: Request, res: Response): Promise<void> {
+        console.log('appealUser Request:', {
+            method: req.method,
+            url: req.url,
+            params: req.params,
+            body: req.body
+        });
+        try {
+            const userId = parseInt(req.params.id, 10);
+            if (isNaN(userId)) {
+                res.status(400).json({ error: "Invalid user ID" });
+                return;
+            }
+
+            const { loggedInUserId, taskTakenId, reason } = req.body;
+            if (!loggedInUserId || isNaN(loggedInUserId)) {
+                res.status(400).json({ error: "Logged-in user ID is required and must be a valid number" });
+                return;
+            }
+            if (!taskTakenId || isNaN(taskTakenId)) {
+                res.status(400).json({ error: "Task taken ID is required and must be a valid number" });
+                return;
+            }
+            if (!reason) {
+                res.status(400).json({ error: "Reason for appealing is required" });
+                return;
+            }
+
+            // Check authorization
+            const authCheck = await ConversationController.checkAuthorization(req, res);
+            if (!authCheck.authorized) {
+                res.status(403).json({ error: authCheck.message });
+                return;
+            }
+
+            // Get the latest convo_id for this user and taskTakenId
+            const { data: convoRow, error: convoIdError } = await supabase
+                .from("conversation_history")
+                .select("convo_id")
+                .eq("task_taken_id", taskTakenId)
+                .eq("user_id", userId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single();
+
+            if (convoIdError || !convoRow) {
+                res.status(400).json({ error: "Could not find conversation for this user and task." });
+                return;
+            }
+
+            // Insert into action_taken_by with convo_id
+            const { data: actionData, error: actionError } = await supabase
+                .from("action_taken_by")
+                .insert({
+                    user_id: loggedInUserId,
+                    action_reason: reason,
+                    created_at: new Date().toISOString(),
+                    convo_id: convoRow.convo_id
+                })
+                .select()
+                .single();
+
+            if (actionError) {
+                console.error("Supabase insert error for action_taken_by:", actionError);
+                res.status(500).json({
+                    success: false,
+                    message: `Failed to log action: ${actionError.message}`,
+                });
+                return;
+            }
+
+            const { data: userData, error: userError } = await supabase
+                .from("user")
+                .update({ acc_status: "Active", action_by: loggedInUserId })
+                .eq("user_id", userId)
+                .select()
+                .single();
+
+            if (userError) {
+                console.error("Supabase update error (user table):", userError);
+                throw userError;
+            }
+
+            if (!userData) {
+                console.log(`User with ID ${userId} not found`);
+                res.status(404).json({ error: "User not found" });
+                return;
+            }
+
+            const { data: convoData, error: convoError } = await supabase
+                .from("conversation_history")
+                .update({ action_by: loggedInUserId, reported: true  })
+                .eq("task_taken_id", taskTakenId)
+                .eq("user_id", userId);
+
+            if (convoError) {
+                console.error("Supabase update error (conversation_history table):", convoError);
+                throw convoError;
+            }
+
+            console.log(`User with ID ${userId} has been appealed by user ${loggedInUserId} for task_taken_id ${taskTakenId} with reason: ${reason}`);
+            res.status(200).json({ message: "User has been appealed successfully" });
         } catch (error) {
             if (error instanceof Error) {
                 res.status(500).json({ error: error.message });
