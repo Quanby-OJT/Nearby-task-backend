@@ -128,7 +128,21 @@ class TaskModel {
     const { data, error } = await supabase
     .from("post_task")
     .select(`
-      *,
+            task_id,
+            task_title,
+            task_description,
+            proposed_price,
+            urgent,
+            remarks,
+            client_id,
+            task_begin_date,
+            status,
+            work_type,
+            created_at,
+            updated_at,
+            related_specializations,
+            scope,
+            image_ids,
       tasker_specialization:specialization_id (specialization),
       address (*),
       clients!client_id (
