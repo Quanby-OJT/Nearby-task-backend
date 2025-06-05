@@ -28,7 +28,7 @@ class ConversationModel {
             last_name,
             user_id
           ),
-          action_taken:action_taken_by!fk_convo (
+          action_taken:action_taken_by!action_taken_by_convo_id_fkey (
             action_reason,
             user_id
           ),
