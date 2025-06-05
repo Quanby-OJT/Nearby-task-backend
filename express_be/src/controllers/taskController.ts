@@ -1438,9 +1438,6 @@ class TaskController {
     }
   }
 
-
-
-
   static async updateTaskStatusforTasker(
     req: Request,
     res: Response
@@ -1543,115 +1540,6 @@ class TaskController {
     }
   }
 
-  static async releasePayment(req: Request, res: Response): Promise<void> {
-    try {
-      const { task_taken_id, amount, status } = req.body;
-
-      const { data: userEmail, error: emailError } = await supabase
-        .from("task_taken")
-        .select(
-          `
-          clients (
-            user:user_id (email)
-          ),
-          tasker:tasker_id (
-            user:user_id (email)
-          )
-        `
-        )
-        .eq("task_taken_id", task_taken_id)
-        .single();
-      if (emailError) {
-        console.error(
-          "Error while retrieving Data: ",
-          emailError.message,
-          emailError.stack
-        );
-        res
-          .status(500)
-          .json({ error: "An Error Occurred while processing your payment." });
-        return;
-      }
-
-      const taskerEmail = userEmail?.tasker;
-      const clientEmail = userEmail?.clients;
-
-      if (!clientEmail || !taskerEmail) {
-        throw new Error("Could not retrieve client or tasker email");
-      }
-      const escrowResponse = await fetch(
-        `${process.env.ESCROW_API_URL}/transaction`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer${process.env.ESCROW_API_KEY}`,
-          },
-          body: JSON.stringify({
-            parties: [
-              {
-                role: "buyer",
-                email: taskerEmail,
-              },
-              {
-                role: "seller",
-                email: clientEmail,
-              },
-            ],
-            amount: amount,
-            description: "Initial Deposit for Task Assignment.",
-            currency: "PHP",
-            return_url: `${process.env.ESCROW_API_URL}/transaction/${task_taken_id}/deposit`,
-          }),
-        }
-      );
-
-      const escrowData = (await escrowResponse.json()) as {
-        id: string;
-        url: string;
-      };
-
-      if (!escrowResponse.ok) {
-        console.error("Escrow API Error: ", escrowData);
-        res.status(500).json({
-          error:
-            "An error occured while processing your transaction. Please Try Again Later.",
-        });
-        return;
-      }
-
-      const escrowTransactionId = escrowData.id;
-      const { data: escrowLog, error: escrowError } = await supabase
-        .from("escrow_payment_logs")
-        .insert({
-          task_taken_id: task_taken_id,
-          contract_price: amount,
-          status: status,
-          escrow_transaction_id: escrowTransactionId,
-        })
-        .eq("task_id", task_taken_id);
-
-      if (escrowError) {
-        console.error(
-          "Error while processing your payment: ",
-          escrowError.message,
-          escrowError.stack
-        );
-        res
-          .status(500)
-          .json({ error: "An Error Occurred while processing your payment." });
-      } else {
-        res.status(200).json({
-          message: "Processing your payment...",
-          payment_url: escrowData.url,
-        });
-      }
-    } catch (error) {
-      console.error(error instanceof Error ? error.message : "Error Unknown.");
-      res.status(500).json({ error: "Internal Server error" });
-    }
-  }
-
   static async getTokenBalance(req: Request, res: Response): Promise<void> {
     try {
       const userId = parseInt(req.params.userId); // Assume authenticated client ID
@@ -1737,13 +1625,17 @@ class TaskController {
     }
   }
 
-  // static notifyClient(clientId: number, amount: number) {
-  //   ws.clients.forEach((client) => {
-  //     if (client.readyState === WebSocket.OPEN) {
-  //       client.send(JSON.stringify({ clientId, amount }));
-  //     }
-  //   });
-  // }
+  static async getAllTransactions(req: Request, res: Response): Promise<void> {
+    try {
+      const {id, role} = req.params;
+      const transactions = await taskModel.getTransactions(parseInt(id), role)
+
+      res.status(200).json({ transactions: transactions });
+    } catch (error) {
+      console.error("Error in getAllTransactions:", error);
+      res.status(500).json({success: false, error: "An error occured while fetching transactions. Please Try Again."});
+    }
+  }
 
   static async getDocumentLink(req: Request, res: Response): Promise<any> {
     try {
@@ -2127,7 +2019,14 @@ class TaskController {
           tasker_id,
           task:post_task (
             *,
-            tasker_specialization:specialization_id (specialization),
+            action_by:user!action_by (
+              first_name,
+              middle_name,
+              last_name
+            ),
+            tasker_specialization:specialization_id (
+              specialization
+            ),
             address (*),
             client:clients!client_id (
               client_id,

@@ -14,7 +14,7 @@ class TaskModel {
     remarks: string,
     task_begin_date: string,
     user_id?: number,
-    work_type?: string 
+    work_type?: string
   ) {
     let statuses: string = "Available";
     console.log(
@@ -126,8 +126,8 @@ class TaskModel {
 
   async getTaskById(jobPostId: number) {
     const { data, error } = await supabase
-    .from("post_task")
-    .select(`
+      .from("post_task")
+      .select(`
       *,
       tasker_specialization:specialization_id (specialization),
       address (*),
@@ -148,8 +148,8 @@ class TaskModel {
         )
       )
     `)
-    .eq("task_id", jobPostId)
-    .single();
+      .eq("task_id", jobPostId)
+      .single();
 
     if (error) throw new Error(error.message);
     return data;
@@ -165,11 +165,11 @@ class TaskModel {
       console.error("Error fetching tasks by client ID:", error);
       throw new Error(error.message);
     }
-    
+
     return data;
   }
 
-  async getAssignedTask(task_taken_id: number){
+  async getAssignedTask(task_taken_id: number) {
     // Get the main task data without tasker table references
     const { data, error } = await supabase.from("task_taken").
       select(`
@@ -182,9 +182,9 @@ class TaskModel {
       ).
       eq("task_taken_id", task_taken_id).
       single();
-      
+
     if (error) throw new Error(error.message);
-    
+
     // Get user basic info
     let userData = null;
     if (data?.tasker_id) {
@@ -193,14 +193,14 @@ class TaskModel {
         .select("first_name, middle_name, last_name, email")
         .eq("user_id", data.tasker_id)
         .maybeSingle();
-        
+
       if (userError) {
         console.warn("User Query Warning:", userError.message);
       } else {
         userData = user;
       }
     }
-    
+
     // Get bio and social_media_links from user_verify table
     let verifyData = null;
     if (data?.tasker_id) {
@@ -209,14 +209,14 @@ class TaskModel {
         .select("bio, social_media_links")
         .eq("user_id", data.tasker_id)
         .maybeSingle();
-        
+
       if (verifyError) {
         console.warn("User Verify Query Warning:", verifyError.message);
       } else {
         verifyData = verify;
       }
     }
-    
+
     // Combine the data (simplified structure without tasker table data)
     const result = {
       ...data,
@@ -226,7 +226,7 @@ class TaskModel {
         social_media_links: verifyData?.social_media_links || '{}'
       }
     };
-    
+
     console.log(result, error);
     return result;
   }
@@ -245,25 +245,25 @@ class TaskModel {
     console.log("Updating task:", taskId, taskData);
 
     let parsedRelatedSpecializations: number[] | null = null;
-      if (taskData.related_specializations) {
-        try {
-          parsedRelatedSpecializations = JSON.parse(taskData.related_specializations);
-          if (!Array.isArray(parsedRelatedSpecializations)) {
-            throw new Error("Invalid related specializations format");
-          }
-        } catch (e) {
-          console.error("Failed to parse related specializations:", e);
-          throw new Error("Failed to parse related specializations");
+    if (taskData.related_specializations) {
+      try {
+        parsedRelatedSpecializations = JSON.parse(taskData.related_specializations);
+        if (!Array.isArray(parsedRelatedSpecializations)) {
+          throw new Error("Invalid related specializations format");
         }
+      } catch (e) {
+        console.error("Failed to parse related specializations:", e);
+        throw new Error("Failed to parse related specializations");
       }
-    
+    }
+
     const cleanedData = { ...taskData, address: taskData.address_id, related_specializations: parsedRelatedSpecializations, updated_at: new Date() };
     delete cleanedData.task_id;
     delete cleanedData.client_id;
     delete cleanedData.address_id;
-    
+
     console.log("Cleaned data for update:", cleanedData);
-    
+
     const { data, error } = await supabase
       .from("post_task")
       .update(cleanedData)
@@ -275,7 +275,7 @@ class TaskModel {
       console.error("Error updating task:", error);
       throw new Error(error.message);
     }
-    
+
     return { success: true, message: "Task updated successfully", task: data };
   }
 
@@ -323,7 +323,7 @@ class TaskModel {
       `)
       .eq('task_taken_id', taskTakenId)
       .single() as { data: TaskTakenResponse | null; error: any };
-  
+
     if (error) throw new Error(error.message);
     return data;
   }
@@ -345,15 +345,68 @@ class TaskModel {
       .eq("task_id", taskId)
       .select()
       .single();
-  
+
     if (error) {
       console.error("Error disabling task in model:", error);
       throw new Error(error.message);
     }
-  
+
     return { success: true, message: "Task closed successfully", task: data };
   }
 
+  async getTransactions(taskerClientId: number, role: string) {
+    if (role !== "Tasker" && role !== "Client") {
+      throw new Error("Invalid role. Must be either 'tasker' or 'client'.");
+    }
+
+    let columnName
+
+    role == "Tasker" ? columnName = "tasker_id" : columnName = "client_id";
+
+    const { data, error } = await supabase
+      .from("transaction_history")
+      .select(`
+        *,
+        task_taken!task_taken_id (
+          *,
+          post_task:task_id (
+          *,
+            address!address (*)
+          ),
+          tasker:tasker_id (
+            tasker_specialization:specialization_id (specialization),
+            skills,
+            user:user_id (
+              user_id,
+              first_name,
+              middle_name,
+              last_name
+            )
+          ),
+          clients:client_id (
+            user:user_id (
+              user_id,
+              first_name,
+              middle_name,
+              last_name,
+              image_link
+            )
+          )
+        )
+      `)
+      .eq(`task_taken.${columnName}`, taskerClientId)
+      .order("created_at", { ascending: false });
+
+
+    // console.log("Transactions data:", data);
+
+    if (error) {
+      console.error("Error fetching transactions:", error);
+      throw new Error(error.message);
+    }
+
+    return data;
+  }
 }
 
 const taskModel = new TaskModel();
