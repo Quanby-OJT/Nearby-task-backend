@@ -30,7 +30,8 @@ class ConversationModel {
           ),
           action_taken:action_taken_by!action_taken_by_convo_id_fkey (
             action_reason,
-            user_id
+            user_id,
+            created_at
           ),
           task_taken!task_taken_id (
             task_taken_id,
@@ -99,9 +100,16 @@ class ConversationModel {
         // Find the action_reason for the moderator
         let actionReason = 'Empty';
         if (Array.isArray(conversation.action_taken) && conversation.action_taken.length > 0 && moderatorUserId) {
-          const found = conversation.action_taken.find((a: any) => a.user_id == moderatorUserId);
-          if (found && found.action_reason) {
-            actionReason = found.action_reason;
+          // Sort action_taken by created_at in descending order to get the latest action
+          const sortedActions = [...conversation.action_taken].sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+          });
+          // Get the latest action for this moderator
+          const latestAction = sortedActions.find((a: any) => a.user_id == moderatorUserId);
+          if (latestAction && latestAction.action_reason) {
+            actionReason = latestAction.action_reason;
           }
         }
 
