@@ -1,19 +1,31 @@
 import { supabase } from "../config/configuration";
 
 class TaskerModel {
-  static async createTasker(
-    tasker: {
-      user_id: number;
-      bio: Text;
-      specialization_id: number;
-      skills: string; 
-      availability: boolean;
-      wage_per_hour: number;
-      tesda_documents_id: number;
-      social_media_links: JSON;
-      address: JSON;
-    }) {
-    const { data, error } = await supabase.from("tasker").insert([tasker]);
+  static async createTasker(tasker: {
+    user_id: number;
+    bio?: string;
+    specialization_id?: number;
+    skills?: string;
+    availability?: boolean;
+    wage_per_hour?: number;
+    social_media_links?: object;
+    pay_period?: string;
+    rating?: number;
+  }) {
+    const { data, error } = await supabase.from("tasker").insert([{
+      user_id: tasker.user_id,
+      bio: tasker.bio || '',
+      specialization_id: tasker.specialization_id || null,
+      skills: tasker.skills || '',
+      availability: tasker.availability || true,
+      wage_per_hour: tasker.wage_per_hour || 0,
+      social_media_links: tasker.social_media_links || {},
+      pay_period: tasker.pay_period || 'Hourly',
+      rating: tasker.rating || 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }]);
+    
     console.log(data, error);
     if (error) throw new Error(error.message);
     return data;
@@ -31,6 +43,112 @@ class TaskerModel {
       .eq("user_id", user_id);
     if (error) throw new Error(error.message);
     return data;
+  }
+
+  static async getTaskerByUserId(user_id: number) {
+    const { data, error } = await supabase
+      .from("tasker")
+      .select("*")
+      .eq("user_id", user_id)
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async updateTasker(tasker: {
+    user_id: number;
+    bio?: string;
+    skills?: string;
+    availability?: boolean;
+    wage_per_hour?: number;
+    social_media_links?: object;
+    specialization_id?: number;
+    pay_period?: string;
+    rating?: number;
+  }) {
+    const { data, error } = await supabase
+      .from("tasker")
+      .update({
+        bio: tasker.bio,
+        skills: tasker.skills,
+        availability: tasker.availability,
+        wage_per_hour: tasker.wage_per_hour,
+        social_media_links: tasker.social_media_links,
+        specialization_id: tasker.specialization_id,
+        pay_period: tasker.pay_period,
+        rating: tasker.rating,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", tasker.user_id)
+      .select();
+    
+    console.log(data, error);
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  // Submit tasker verification data
+  static async submitTaskerVerification(verificationData: {
+    user_id: number;
+    bio?: string;
+    social_media_links?: object;
+    specialization_id?: number;
+    skills?: string;
+    wage_per_hour?: number;
+    pay_period?: string;
+    availability?: boolean;
+  }) {
+    try {
+      // Check if tasker record exists
+      const { data: existingTasker, error: checkError } = await supabase
+        .from("tasker")
+        .select("*")
+        .eq("user_id", verificationData.user_id)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw new Error(checkError.message);
+      }
+
+      const taskerData = {
+        user_id: verificationData.user_id,
+        bio: verificationData.bio || '',
+        social_media_links: verificationData.social_media_links || {},
+        specialization_id: verificationData.specialization_id || null,
+        skills: verificationData.skills || '',
+        wage_per_hour: verificationData.wage_per_hour || 0,
+        pay_period: verificationData.pay_period || 'Hourly',
+        availability: verificationData.availability !== false,
+        updated_at: new Date().toISOString()
+      };
+
+      if (existingTasker) {
+        // Update existing tasker
+        const { data, error } = await supabase
+          .from("tasker")
+          .update(taskerData)
+          .eq("user_id", verificationData.user_id)
+          .select();
+        
+        if (error) throw new Error(error.message);
+        return data;
+      } else {
+        // Create new tasker record
+        const { data, error } = await supabase
+          .from("tasker")
+          .insert([{
+            ...taskerData,
+            rating: 0,
+            created_at: new Date().toISOString()
+          }])
+          .select();
+        
+        if (error) throw new Error(error.message);
+        return data;
+      }
+    } catch (error: any) {
+      throw new Error(`Failed to submit tasker verification: ${error.message}`);
+    }
   }
 
   /**
