@@ -120,9 +120,36 @@ class SettingController {
 static async deleteAddress(req: Request, res: Response): Promise<any> {
   const { address_id } = req.params;
 
+  if (!address_id) {
+    res.status(400).json({ status: false, error: "Address ID is required" });
+    return;
+  }
+
   console.log("Address ID to be deleted: ", address_id);
 
   try {
+
+    const { data: addressUsed, error: addressUsedError } = await supabase
+    .from('post_task')
+    .select('task_id')
+    .eq('address', address_id)
+    .limit(1);
+
+    console.log("This is the task id: ", addressUsed);
+    
+
+  if (addressUsedError) {
+    console.error('Error checking address usage:', addressUsedError.message);
+    res.status(500).json({ status: false, error: 'Failed to check address usage' });
+    return;
+  }
+
+  if (addressUsed.length > 0) {
+    res.status(400).json({ status: false, message: 'Address is used in a task' });
+    console.log("Address is used in a task");
+    return;
+  } else {
+    console.log("Address is not used in a task"); 
     const { data: existingData, error: fetchError } = await supabase
       .from("address")
       .delete()
@@ -135,7 +162,15 @@ static async deleteAddress(req: Request, res: Response): Promise<any> {
       return;
     }
 
+    if(!existingData) {
+     res.status(400).json({ status: false, error: 'Address not found' });
+     return;
+    }
+
     res.status(200).json({ status: true, message: "Address has been deleted successfully" });
+  }
+
+    
   } catch (e) {
     console.error(e);
     res.status(500).json({ status: false, error: "An Error Occurred while Deleting the Address" });
