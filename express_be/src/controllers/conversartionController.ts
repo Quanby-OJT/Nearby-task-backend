@@ -283,11 +283,23 @@ class ConversationController {
         }
     }
 
-    // Add helper function to check authorization
-    private static async checkAuthorization(req: Request, res: Response): Promise<{authorized: boolean, message?: string}> {
+    static async checkAuthorization(req: Request, res: Response): Promise<void> {
         try {
             const userId = parseInt(req.params.id, 10);
+            if (isNaN(userId)) {
+                res.status(400).json({ error: "Invalid user ID" });
+                return;
+            }
+
             const { loggedInUserId, taskTakenId } = req.body;
+            if (!loggedInUserId || isNaN(loggedInUserId)) {
+                res.status(400).json({ error: "Logged-in user ID is required and must be a valid number" });
+                return;
+            }
+            if (!taskTakenId || isNaN(taskTakenId)) {
+                res.status(400).json({ error: "Task taken ID is required and must be a valid number" });
+                return;
+            }
 
             // Get logged in user's role
             const { data: loggedInUser, error: loggedInUserError } = await supabase
@@ -297,7 +309,8 @@ class ConversationController {
                 .single();
 
             if (loggedInUserError || !loggedInUser) {
-                return { authorized: false, message: "Could not verify user role" };
+                res.status(500).json({ error: "Could not verify user role" });
+                return;
             }
 
             // Get prior action information
@@ -316,7 +329,8 @@ class ConversationController {
                 .single();
 
             if (priorActionError) {
-                return { authorized: false, message: "Could not verify prior actions" };
+                res.status(500).json({ error: "Could not verify prior actions" });
+                return;
             }
 
             // Type assertion for loggedInUser
@@ -326,13 +340,14 @@ class ConversationController {
 
             // Check authorization based on roles and prior actions
             if (currentUserRole === "Moderator" && priorActionBy === "Admin") {
-                return { authorized: false, message: "You don't have authority to modify an Admin's action" };
+                res.status(403).json({ error: "You don't have authority to modify an Admin's action" });
+                return;
             }
 
-            return { authorized: true };
+            res.status(200).json({ authorized: true });
         } catch (error) {
             console.error("Error in checkAuthorization:", error);
-            return { authorized: false, message: "Error checking authorization" };
+            res.status(500).json({ error: "Error checking authorization" });
         }
     }
 
@@ -361,13 +376,6 @@ class ConversationController {
             }
             if (!reason) {
                 res.status(400).json({ error: "Reason for banning is required" });
-                return;
-            }
-
-            // Check authorization
-            const authCheck = await ConversationController.checkAuthorization(req, res);
-            if (!authCheck.authorized) {
-                res.status(403).json({ error: authCheck.message });
                 return;
             }
 
@@ -475,13 +483,6 @@ class ConversationController {
                 return;
             }
 
-            // Check authorization
-            const authCheck = await ConversationController.checkAuthorization(req, res);
-            if (!authCheck.authorized) {
-                res.status(403).json({ error: authCheck.message });
-                return;
-            }
-
             // Get the latest convo_id for this user and taskTakenId
             const { data: convoRow, error: convoIdError } = await supabase
                 .from("conversation_history")
@@ -583,13 +584,6 @@ class ConversationController {
             }
             if (!reason) {
                 res.status(400).json({ error: "Reason for appealing is required" });
-                return;
-            }
-
-            // Check authorization
-            const authCheck = await ConversationController.checkAuthorization(req, res);
-            if (!authCheck.authorized) {
-                res.status(403).json({ error: authCheck.message });
                 return;
             }
 
