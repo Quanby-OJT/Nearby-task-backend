@@ -15,39 +15,51 @@ declare module "express-session" {
 }
 
 
-// const transporter = nodemailer.createTransport({
-//   service: 'g,
-//   host: 'smtp.gmail.com',
-//   port: 587,
-//   secure: false,
-//   auth: {
-//     user: process.env.MAIL_USERNAME,
-//     pass: process.env.MAIL_PASSWORD
-//   },
-//   debug: true
-// });
-
 class AuthenticationController {
   static async loginAuthentication(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
+
+      // Check login attempts
+      const attempts = await Auth.getLoginAttempts(email);
+      if (attempts >= 3) {
+        res.status(429).json({ 
+          error: "Too many failed login attempts. Please try again after 5 minutes.",
+          remainingTime: 300 // 5 minutes in seconds
+        });
+        return;
+      }
+
       const verifyLogin = await Auth.authenticateLogin(email);
 
       if (!verifyLogin) {
-        res.status(404).json({ error: "Sorry, your email does not exist, or you have entered an incorrect email.", });
+        await Auth.incrementLoginAttempts(email);
+        res.status(404).json({ 
+          error: "Sorry, your email does not exist, or you have entered an incorrect email.",
+          attemptsLeft: 3 - (attempts + 1)
+        });
         return;
       }
 
       if (verifyLogin.acc_status === "Ban" || verifyLogin.acc_status === "Block") {
-        res.status(401).json({ error: "You are banned/blocked for using this application. Please contact our team to appeal to your ban.", });
+        res.status(401).json({ 
+          error: "You are banned/blocked for using this application. Please contact our team to appeal to your ban." 
+        });
         return;
       }
 
       const isPasswordValid = await bcrypt.compare(password, verifyLogin.hashed_password);
       if (!isPasswordValid) {
-        res.status(414).json({ error: "Password is incorrect. Please try again." });
+        await Auth.incrementLoginAttempts(email);
+        res.status(414).json({ 
+          error: "Password is incorrect. Please try again.",
+          attemptsLeft: 3 - (attempts + 1)
+        });
         return;
       }
+
+      // Reset login attempts on successful login
+      await Auth.resetLoginAttempts(email);
 
       const otp = generateOTP.generate(6, {
         digits: true,
