@@ -351,21 +351,9 @@ class ClientModel {
     return data;
   }
 
-  // fetch data from user where user has role of tasker and acc_status is "Active"
-  // static async getActiveTaskers() {
-  //   const { data, error } = await supabase
-  //     .from("users")
-  //     .select("*")
-  //     .eq("users.role", "tasker")
-  //     .eq("users.acc_status", "active");
-  //   if (error) throw new Error(error.message);
-
-  //   return data;
-  // }
-
   static async createLike(req: Request, res: Response) {
     try {
-      console.log("Received insert data:", req.body);
+     
       const { user_id, task_post_id } = req.body;
 
       const client_id = user_id;

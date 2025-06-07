@@ -22,7 +22,7 @@ class UserAccountController {
         acc_status,
         user_role,
       } = req.body;
-      const imageFile = req.file;
+      
       console.log("Received insert account data:", req.body);
 
       // Check if the email exists
@@ -40,33 +40,11 @@ class UserAccountController {
         throw new Error(findError.message);
       }
 
-      // Generate verification token
       const verificationToken = randomUUID();
 
-      // Hash password with bcrypt
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Handle image upload if provided
-      let imageUrl = "";
-      if (imageFile) {
-        const fileName = `users/${Date.now()}_${imageFile.originalname}`;
-        const { error: uploadError } = await supabase.storage
-          .from("crud_bucket")
-          .upload(fileName, imageFile.buffer, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-        if (uploadError) {
-          throw new Error(uploadError.message);
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from("crud_bucket")
-          .getPublicUrl(fileName);
-
-        imageUrl = publicUrlData?.publicUrl || "";
-      }
+      
 
       // Define userData object for insertion
       const userData = {
@@ -76,11 +54,11 @@ class UserAccountController {
         birthdate: birthday,
         email,
         hashed_password: hashedPassword,
-        acc_status: acc_status || "Pending", // Default to "Pending" if not provided
+        acc_status: acc_status || "Pending", 
         user_role,
         verification_token: verificationToken,
-        emailVerified: false, // Default to false until verified
-        image_link: imageUrl || null, // Use image URL if available, otherwise null
+        emailVerified: false,
+        image_link: null, 
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -96,7 +74,6 @@ class UserAccountController {
         throw new Error(insertError.message);
       }
 
-      // Insert into clients table based on user_role (removed tasker table insertion)
       if (user_role === "Client") {
         const { error: errorInsert } = await supabase
           .from("clients")
@@ -115,37 +92,28 @@ class UserAccountController {
           throw new Error(errorInsert.message);
         }
       }
-      // Note: Removed tasker table insertion - only user_verify table is used for verification data
 
-      // Send verification email (uncomment and configure as needed)
-      /*
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });*/
 
-      const verificationLink = `${process.env.URL}/verify?token=${verificationToken}&email=${email}`;
-      console.log(verificationLink);
-      /*
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: "Verify your email for NearbyTask",
-        html: `
-          <h1>Welcome to NearbyTask!</h1>
-          <p>Please click the link below to verify your email address:</p>
-          <a href="${verificationLink}">Verify Email</a>
-          <p>If you didn't create an account, please ignore this email.</p>
-        `,
-      });
-      */
+      if (user_role === "Tasker") {
+        const { error: errorInsert } = await supabase
+          .from("tasker")
+          .insert([
+            {
+              tasker_id: newUser.user_id,
+              user_id: newUser.user_id,
+            },
+          ]);
+
+        console.log("New user ID: " + newUser.user_id);
+
+        if (errorInsert) {
+          throw new Error(errorInsert.message);
+        }
+      }
 
       res.status(201).json({
         message: password
-          ? "Registration successful! Please check your email to verify your account."
+          ? "Registration successful! You can now login to your account."
           : "User added successfully.",
         user: {
           id: newUser.user_id,
