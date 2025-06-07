@@ -30,7 +30,7 @@ app.use(
     origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Accept", "Authorization"],
+    allowedHeaders: ["Content-Type", "Accept", "Authorization", "Access-Control-Allow-Credentials"],
   })
 );
 
@@ -43,7 +43,9 @@ const httpsServer = https.createServer(sslOptions, app);
 const io = new Server(httpsServer, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"] 
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Accept", "Authorization", "Access-Control-Allow-Credentials"],
+    credentials: true
   }
 });
 
