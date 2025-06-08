@@ -294,45 +294,56 @@ router.put(
   UserAccountController.updateUserWithImages
 );
 
-// updating tasker with both profile and PDF images
-router.put(
-  "/update-tasker-with-file-profile/:id",
+// // updating tasker with both profile and PDF images
+// router.put(
+//   "/update-tasker-with-file-profile/:id",
+//   upload.fields([
+//     { name: "file", maxCount: 1 },
+//     { name: "image", maxCount: 1 },
+//   ]),
+//   UserAccountController.updateTaskerWithFileandImage
+// );
+
+// // updating tasker with PDF only
+// router.put(
+//   "/update-tasker-with-pdf/:id",
+//   upload.fields([{ name: "file", maxCount: 1 }]),
+//   UserAccountController.updateTaskerWithPDF
+// );
+
+// // updating tasker with only profile image and user details
+// router.put(
+//   "/update-tasker-with-image-profile/:id",
+//   upload.fields([{ name: "image", maxCount: 1 }]),
+//   UserAccountController.updateTaskerWithProfileImage
+// );
+
+// router.post("/generate-ai-text", FeedbackController.generateAIText);
+
+// // updating client with profile image only
+// router.put(
+//   "/update-user-with-profile-image/:id",
+//   upload.fields([{ name: "profileImage", maxCount: 1 }]),
+//   UserAccountController.updateUserWithProfileImage
+// );
+
+// // updating client with ID image only
+// router.put(
+//   "/update-user-with-id-image/:id",
+//   upload.fields([{ name: "idImage", maxCount: 1 }]),
+//   UserAccountController.updateUserWithIdImage
+// );
+
+/**
+ * This is to simplify the update of tasker profile.
+ */
+router.put('/update-user/:id', 
   upload.fields([
-    { name: "file", maxCount: 1 },
-    { name: "image", maxCount: 1 },
+    {name: "tasker_image", maxCount: 9},
+    {name: "tasker_documents", maxCount: 5}
   ]),
-  UserAccountController.updateTaskerWithFileandImage
-);
-
-// updating tasker with PDF only
-router.put(
-  "/update-tasker-with-pdf/:id",
-  upload.fields([{ name: "file", maxCount: 1 }]),
-  UserAccountController.updateTaskerWithPDF
-);
-
-// updating tasker with only profile image and user details
-router.put(
-  "/update-tasker-with-image-profile/:id",
-  upload.fields([{ name: "image", maxCount: 1 }]),
-  UserAccountController.updateTaskerWithProfileImage
-);
-
-router.post("/generate-ai-text", FeedbackController.generateAIText);
-
-// updating client with profile image only
-router.put(
-  "/update-user-with-profile-image/:id",
-  upload.fields([{ name: "profileImage", maxCount: 1 }]),
-  UserAccountController.updateUserWithProfileImage
-);
-
-// updating client with ID image only
-router.put(
-  "/update-user-with-id-image/:id",
-  upload.fields([{ name: "idImage", maxCount: 1 }]),
-  UserAccountController.updateUserWithIdImage
-);
+  UserAccountController.updateUpdatedUser
+)
 
 router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
 

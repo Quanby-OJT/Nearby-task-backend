@@ -43,14 +43,16 @@ class TaskerModel {
       bio: Text;
       skills: string;
       availability: boolean;
+      group: boolean,
       wage_per_hour: number;
-      social_media_links: JSON; 
+      social_media_links: JSON;
+      profile_images?: JSON;
     },
     withForeignKeys: {
       specialization: string;
-      tesda_documents_link: string;
+      tesda_documents_link: JSON;
     },
-    user: {
+    user?: {
       user_id: number;
       first_name: Text;
       middle_name: Text;
@@ -66,28 +68,38 @@ class TaskerModel {
       .single();
     if (specializationError) throw new Error(specializationError.message);
   
-    if(withForeignKeys.tesda_documents_link === null) {
-    const { error: tesda_error } = await supabase
-      .from("tasker_documents")
-      .insert({ tesda_document_link: withForeignKeys.tesda_documents_link })
-      .select("id")
-      .single();
-    if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
-    }else{
-      const { error: tesda_error } = await supabase
-      .from("tasker_documents")
-      .update({ tesda_document_link: withForeignKeys.tesda_documents_link })
-      .eq("tasker_id", tasker.tasker_id)
-      if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
-    }
+    // if(withForeignKeys.tesda_documents_link === null) {
+    // const { error: tesda_error } = await supabase
+    //   .from("user_documents")
+    //   .insert({ tesda_document_link: withForeignKeys.tesda_documents_link })
+    //   .select("id")
+    //   .single();
+    // if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
+    // }else{
+    //   const { error: tesda_error } = await supabase
+    //   .from("tasker_documents")
+    //   .update({ tesda_document_link: withForeignKeys.tesda_documents_link })
+    //   .eq("tasker_id", tasker.tasker_id)
+    //   if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
+    // }
 
-    const { data: userData, error: userError } = await supabase
-      .from("user")
-      .update(user)
-      .eq("user_id", user.user_id);
-    if (userError) throw new Error(userError.message);
+    // const { data: userData, error: userError } = await supabase
+    //   .from("user")
+    //   .update(user)
+    //   .eq("user_id", user.user_id);
+    // if (userError) throw new Error(userError.message);
+
+    if(withForeignKeys.tesda_documents_link !== null){
+      const {error: documentError} = await supabase.from("tasker_documents").update({
+        document_type: "TESDA Document", //Temporary. Will Update if demand increases.
+        user_document_link: withForeignKeys.tesda_documents_link,
+        valid: false
+      }).eq("tasker_id", tasker.tasker_id).select("id").single()
+
+      if(documentError) throw new Error(documentError.message)
+    }
   
-    const { data: taskerData, error: taskerError } = await supabase
+    const { error: taskerError } = await supabase
       .from("tasker")
       .update({
         address: tasker.address,
@@ -97,12 +109,11 @@ class TaskerModel {
         wage_per_hour: tasker.wage_per_hour,
         social_media_links: tasker.social_media_links,
         specialization_id: specializations.spec_id,
+        profile_images: tasker.profile_images
       })
-      .eq("user_id", user.user_id);
-    console.log(taskerData, taskerError);
+      .eq("tasker_id", tasker.tasker_id);
+    console.log(taskerError);
     if (taskerError) throw new Error(taskerError.message + "\n\n" + taskerError.stack);
-  
-    return { userData, taskerData };
   }
 }
 

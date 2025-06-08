@@ -58,8 +58,9 @@ class ConversationController {
                 task_status::text,
                 unread_count,
                 post_task!task_id (
-                    task_id,
-                    task_title
+                    *,
+                    address (*),
+                    tasker_specialization(*)
                 ),
                 clients!client_id (
                     user!user_id (
@@ -68,7 +69,8 @@ class ConversationController {
                         middle_name,
                         last_name,
                         image_link
-                    )
+                    ),
+                    *
                 ),
                 tasker!tasker_id (
                     user!user_id (
@@ -77,7 +79,9 @@ class ConversationController {
                         middle_name,
                         last_name,
                         image_link
-                    )
+                    ),
+                    *,
+                    tasker_specialization(*)
                 )
             `)
             .eq(user_role_id, user_id)

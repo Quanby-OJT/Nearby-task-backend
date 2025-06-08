@@ -8,6 +8,9 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { group } from "console";
 import { authHeader } from "../config/configuration";
+import UploadFile from "../models/fileUploadModel";
+import TaskerModel from "../models/taskerModel";
+import ClientModel from "./clientController";
 
 class UserAccountController {
   static async registerUser(req: Request, res: Response): Promise<any> {
@@ -303,14 +306,7 @@ class UserAccountController {
         try {
           //console.log("Step 7: Calling UserAccount.showTasker");
           const taskerData = await UserAccount.showTasker(userID);
-          //console.log("Step 8: Successfully retrieved tasker data:", taskerData);
-
-          // Note: We no longer override bio and social_media_links from tasker table
-          // All verification data should come from user_verify table only
-          
-          //console.log("Step 10: Sending tasker response...");
           res.status(200).json({ user: userDataWithExtras, tasker: taskerData.tasker, taskerDocument: taskerData.taskerDocument });
-          //console.log("Step 11: Tasker response sent successfully");
         } catch (taskerError) {
           console.error("Error in tasker processing:", taskerError);
           console.error("Tasker error stack:", taskerError instanceof Error ? taskerError.stack : "Unknown error");
@@ -1342,6 +1338,75 @@ class UserAccountController {
         .json({
           error: error.message || "An error occurred while updating user",
         });
+    }
+  }
+
+  /**
+   * Simplyfing update user information.
+   */
+  static async updateUpdatedUser(req: Request, res: Response): Promise<void> {
+    const {bio, specialization, skills, availability, social_media_links, address, group, wage, pay_period, role, preferences} = req.body;
+    const id = parseInt(req.params.id)
+
+    const Images = (req.files as { [fieldname: string]: Express.Multer.File[] })["tasker_image"];
+    const Documents = (req.files as { [fieldname: string]: Express.Multer.File[] })["tasker_documents"];
+
+
+    console.log("Tasker Pictures: ", Images);
+    console.log("Tasker Documents: ", Documents);
+
+    const TaskerImages: string[] = [];
+    const TaskerDocuments: string[] = []
+
+    try{
+      const name = await UserAccount.showUser(id.toString())
+
+      const profileName = name.first_name + " " + name.middle_name + " " + name.last_name
+      if(role == "Tasker"){
+        // Handle image uploads if present
+        if (Images && Array.isArray(Images)) {
+          for (const image of Images) {
+            const fileName = `tasker/tasker_images/${profileName}-${Date.now()}`
+            const imageUrls = await UploadFile.uploadFile(fileName, image)
+              TaskerImages.push(imageUrls.publicUrl);
+            }
+          }
+        
+        // Handle document uploads if present  
+        if (Documents && Array.isArray(Documents)) {
+          for (const doc of Documents) {
+            const fileName = `tasker/documents/${profileName}-${Date.now()}`;
+            const imageUrls = await UploadFile.uploadFile(fileName, doc)
+            TaskerDocuments.push(imageUrls.publicUrl)
+          }
+        }
+
+        await TaskerModel.update({
+          tasker_id: id,
+          address: address,
+          bio,
+          skills,
+          availability,
+          group,
+          wage_per_hour: wage,
+          social_media_links,
+          profile_images: JSON.parse(JSON.stringify(TaskerImages))
+        }, {
+          specialization,
+          tesda_documents_link: JSON.parse(JSON.stringify(TaskerDocuments)) // Convert array to JSON object
+        }, undefined)
+
+        res.status(200).json({message: "Successfully Updated Profile."})
+      }else if(role == "Client"){
+        await ClientModel.updateClient(id, {
+          preferences,
+          client_address: address,
+        })
+      }
+    }catch(error){
+      console.error(error instanceof Error ? error.message : "Error in Updating Profile Information")
+      console.error(error instanceof Error ? error.stack : "Cannot Print Stack.")
+      res.status(500).json({error: "An Error Occured while updating your profile. Please Try Again."})
     }
   }
 

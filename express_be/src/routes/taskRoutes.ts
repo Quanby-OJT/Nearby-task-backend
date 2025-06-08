@@ -26,6 +26,7 @@ router.put("/update-tasker-profile/:id", TaskController.updateTaskerProfileNoIma
 // New routes for specialization Parts Ito
 router.get("/specializations", TaskController.getAllSpecializations);
 router.post("/specializations", TaskController.createSpecialization);
+router.get("/all-relevant-skills/:specialization", TaskController.getAllRelevantSkills);
 
 //Retrieve Transactions
 router.get("/transactions/:id/:role", TaskController.getAllTransactions);
