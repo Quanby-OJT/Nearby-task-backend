@@ -185,11 +185,11 @@ class ClientModel {
           ) 
         `
         )
-        .eq("user.acc_status", "Active")
+        .in("user.acc_status", ["Active", "Review"])
         .eq("user.verified", true)
         .eq("user.user_role", "Tasker")
-        .eq("user.acc_status", "Review");
 
+        console.log("Taskers data of the month:", data);
       console.log("Taskers data:", data, "Error:", error);
 
       if (error) {
@@ -351,21 +351,9 @@ class ClientModel {
     return data;
   }
 
-  // fetch data from user where user has role of tasker and acc_status is "Active"
-  // static async getActiveTaskers() {
-  //   const { data, error } = await supabase
-  //     .from("users")
-  //     .select("*")
-  //     .eq("users.role", "tasker")
-  //     .eq("users.acc_status", "active");
-  //   if (error) throw new Error(error.message);
-
-  //   return data;
-  // }
-
   static async createLike(req: Request, res: Response) {
     try {
-      console.log("Received insert data:", req.body);
+     
       const { user_id, task_post_id } = req.body;
 
       const client_id = user_id;
@@ -413,13 +401,12 @@ class ClientModel {
 
   static async getLikedTask(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.params.id; // Get userId from URL parameter
+      const userId = req.params.id; 
       console.log("pass to get the user ID: " + userId);
 
-      // Filter likes by user_id
       const { data, error } = await supabase
         .from("saved_tasker")
-        .select("*") // Join with tasks/jobs table if needed
+        .select("*") 
         .eq("client_id", userId);
 
       console.log("Liked: " + data, "Errors :" + error);

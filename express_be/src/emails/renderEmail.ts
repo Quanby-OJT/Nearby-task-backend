@@ -1,5 +1,5 @@
 import path from "path";
-import juice from "juice";
+import juice from "juice";  
 import ejs from "ejs";
 import fs from "fs";
 
@@ -12,12 +12,11 @@ class renderEmail {
             { name, otp }
             );
 
-            const html = await this.generateLayout(content)
+            
+            console.log(content)    
 
-            console.log(html)
-
-            const inlined = juice(html);
-            return html
+            const inlined = juice(content);
+            return inlined
         
         } catch (error) {
             console.error("Error rendering email template:", error);
