@@ -303,6 +303,59 @@ class Auth {
         return { success: false, message: error.message };
     }
   }
+
+  static async getLoginAttempts(email: string): Promise<number> {
+    const { data, error } = await supabase
+      .from("login_attempts")
+      .select("attempts, last_attempt")
+      .eq("email", email)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return 0;
+      }
+      throw new Error(error.message);
+    }
+
+    // Check if the last attempt was more than 5 minutes ago
+    if (data && data.last_attempt) {
+      const lastAttempt = new Date(data.last_attempt);
+      const now = new Date();
+      if ((now.getTime() - lastAttempt.getTime()) > 5 * 60 * 1000) {
+        // Reset attempts if more than 5 minutes have passed
+        await this.resetLoginAttempts(email);
+        return 0;
+      }
+      return data.attempts;
+    }
+    return 0;
+  }
+
+  static async incrementLoginAttempts(email: string): Promise<void> {
+    const currentAttempts = await this.getLoginAttempts(email);
+    const { error } = await supabase
+      .from("login_attempts")
+      .upsert({
+        email: email,
+        attempts: currentAttempts + 1,
+        last_attempt: new Date().toISOString()
+      });
+
+    if (error) throw new Error(error.message);
+  }
+
+  static async resetLoginAttempts(email: string): Promise<void> {
+    const { error } = await supabase
+      .from("login_attempts")
+      .upsert({
+        email: email,
+        attempts: 0,
+        last_attempt: new Date().toISOString()
+      });
+
+    if (error) throw new Error(error.message);
+  }
 }
 
 export { Auth };

@@ -60,7 +60,6 @@ class TaskModel {
     }
     console.log("Credits deducted successfully:", deductCredits);
 
-    // Step 3: Insert the task
     const { data, error } = await supabase.from("post_task").insert([
       {
         client_id: existingClient.client_id,
@@ -146,6 +145,13 @@ class TaskModel {
         verified,
         image_link
         )
+      ),
+      action_by_user:user!action_by (
+        user_id,
+        first_name,
+        middle_name,
+        last_name,
+        user_role
       )
     `)
       .eq("task_id", jobPostId)
@@ -170,7 +176,6 @@ class TaskModel {
   }
 
   async getAssignedTask(task_taken_id: number) {
-    // Get the main task data without tasker table references
     const { data, error } = await supabase.from("task_taken").
       select(`
         task_taken_id, 
@@ -185,7 +190,6 @@ class TaskModel {
 
     if (error) throw new Error(error.message);
 
-    // Get user basic info
     let userData = null;
     if (data?.tasker_id) {
       const { data: user, error: userError } = await supabase
@@ -201,7 +205,6 @@ class TaskModel {
       }
     }
 
-    // Get bio and social_media_links from user_verify table
     let verifyData = null;
     if (data?.tasker_id) {
       const { data: verify, error: verifyError } = await supabase
@@ -217,7 +220,6 @@ class TaskModel {
       }
     }
 
-    // Combine the data (simplified structure without tasker table data)
     const result = {
       ...data,
       tasker: {

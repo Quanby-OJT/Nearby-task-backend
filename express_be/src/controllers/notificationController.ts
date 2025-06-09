@@ -1547,7 +1547,7 @@ class NotificationController {
           reason_for_rejection_or_cancellation,
           undefined,
           undefined,
-          undefined,
+          updatedReviewAtISO as string,
           undefined,
           updatedReviewAtISO as string
         );
@@ -1631,7 +1631,7 @@ class NotificationController {
           undefined,
           undefined,
           undefined,
-          undefined,
+          updatedDisputeAtISO as string,
           undefined,
           updatedDisputeAtISO as string
         );
@@ -1694,13 +1694,12 @@ class NotificationController {
             undefined,
             undefined,
             undefined,
-            undefined,
+            updatedFinishAtISO as string,
             undefined,
             updatedFinishAtISO as string
           );
         } else {
           const task = await taskModel.getTaskAmount(taskTakenId);
-
 
           await TaskAssignment.updateStatus(
             taskTakenId,
@@ -1710,7 +1709,7 @@ class NotificationController {
             reason_for_rejection_or_cancellation,
             undefined,
             undefined,
-            undefined,
+            updatedFinishAtISO as string,
             undefined,
             updatedFinishAtISO as string
           );

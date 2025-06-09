@@ -170,6 +170,7 @@ router.get("/get-token-balance/:userId", TaskController.getTokenBalance);
 
 //Conversation(Client&Moderator)
 router.get("/getUserConversation", ConversationController.getUserConversation);
+router.post("/check-authorization/:id", ConversationController.checkAuthorization);
 router.post("/banUser/:id", ConversationController.banUser);
 router.post("/warnUser/:id", ConversationController.warnUser);
 router.post("/appealUser/:id",ConversationController.appealUser)
@@ -370,6 +371,28 @@ router.post(
     { name: "documents", maxCount: 1 }, // Certificates file
   ]),
   UserAccountController.submitUserVerification
+);
+
+// Submit client verification to the client table
+router.post(
+  "/submit-client-verification/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },
+    { name: "selfieImage", maxCount: 1 },
+    { name: "documents", maxCount: 1 },
+  ]),
+  UserAccountController.submitClientVerification
+);
+
+// Submit tasker verification to the tasker table
+router.post(
+  "/submit-tasker-verification-new/:id",
+  upload.fields([
+    { name: "idImage", maxCount: 1 },
+    { name: "selfieImage", maxCount: 1 },
+    { name: "documents", maxCount: 1 },
+  ]),
+  UserAccountController.submitTaskerVerification
 );
 
 // Get user verification status

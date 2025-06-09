@@ -383,6 +383,26 @@ class ReportModel {
 
     return data;
   }
+
+  async getReportById(reportId: number) {
+    const { data: report, error } = await supabase
+      .from('reports')
+      .select(`
+        *,
+        action_by:action_by_id (
+          user_id,
+          first_name,
+          middle_name,
+          last_name,
+          user_role
+        )
+      `)
+      .eq('report_id', reportId)
+      .single();
+
+    if (error) throw new Error(error.message);
+    return report;
+  }
 }
 
 const reportModel = new ReportModel();
