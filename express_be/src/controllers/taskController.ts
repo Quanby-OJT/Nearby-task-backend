@@ -9,8 +9,6 @@ import QTaskPayment from "../models/paymentModel";
 import { WebSocketServer } from "ws";
 import ClientModel from "./clientController";
 
-// const ws = new WebSocketServer({ port: 8080 });
-
 class TaskController {
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
@@ -51,7 +49,6 @@ class TaskController {
         return
       }
 
-      // Validate and parse price
       const parsedPrice = Number(proposed_price);
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
         res
@@ -60,14 +57,11 @@ class TaskController {
         return;
       }
 
-      // Parse urgent as boolean
       const isUrgent = urgent === "true" || urgent === true;
 
-      // Parse is_verified_document as boolean
       const isVerified =
         is_verified_document === "true" || is_verified_document === true;
 
-      // Parse related_specializations (expecting JSON string like '[5,7,3,2]')
       let parsedRelatedSpecializations: number[] | null = null;
       if (related_specializations) {
         try {
@@ -88,15 +82,13 @@ class TaskController {
         }
       }
 
-      // Handle photo upload to Supabase Storage
       let imageIds: number[] = [];
       if (photos && photos.length > 0) {
         for (const photo of photos) {
           const fileName = `task_images/image_${user_id}_${Date.now()}_${photo.originalname}`;
           console.log("Uploading Image File:", fileName);
 
-          // Upload to Supabase Storage
-          const { error: uploadError } = await supabase.storage
+            const { error: uploadError } = await supabase.storage
             .from("crud_bucket")
             .upload(fileName, photo.buffer, {
               contentType: photo.mimetype,
@@ -116,8 +108,7 @@ class TaskController {
             .from("crud_bucket")
             .getPublicUrl(fileName).data.publicUrl;
 
-          // Insert into post_task_images
-          const { data: imageData, error: imageInsertError } = await supabase
+            const { data: imageData, error: imageInsertError } = await supabase
             .from("post_task_images")
             .insert([
               {
@@ -216,7 +207,6 @@ class TaskController {
         return;
       }
 
-      // Validate that loggedInUserId exists in the user table
       const { data: userExists, error: userCheckError } = await supabase
         .from("user")
         .select("user_id")
@@ -232,7 +222,6 @@ class TaskController {
         return;
       }
 
-      // Insert into action_taken_by with user_id and reason
       const { data: actionData, error: actionError } = await supabase
         .from("action_taken_by")
         .insert({
@@ -253,9 +242,8 @@ class TaskController {
         return;
       }
 
-      console.log("Action taken by data inserted:", actionData); // Verify the inserted data
+      console.log("Action taken by data inserted:", actionData);
 
-      // Update post_task with loggedInUserId as action_by
       const { data, error } = await supabase
         .from("post_task")
         .update({ status: "Closed", action_by: parseInt(loggedInUserId) })
@@ -309,7 +297,6 @@ class TaskController {
         return;
       }
 
-      // Validate that loggedInUserId exists in the user table
       const { data: userExists, error: userCheckError } = await supabase
         .from("user")
         .select("user_id")
@@ -325,7 +312,6 @@ class TaskController {
         return;
       }
 
-      // Insert into action_taken_by with user_id and reason
       const { data: actionData, error: actionError } = await supabase
         .from("action_taken_by")
         .insert({
@@ -346,9 +332,8 @@ class TaskController {
         return;
       }
 
-      console.log("Action taken by data inserted:", actionData); 
+      console.log("Action taken by data inserted:", actionData);
 
-      // Update post_task with loggedInUserId as action_by
       const { data, error } = await supabase
         .from("post_task")
         .update({ status: "Available", action_by: parseInt(loggedInUserId) })
@@ -416,7 +401,8 @@ class TaskController {
             user_id,
             first_name,
             middle_name,
-            last_name
+            last_name,
+            user_role
           ),
           action_taken_by:action_taken_by!task_id (
             action_reason,
@@ -435,17 +421,14 @@ class TaskController {
         return;
       }
 
-      // Process tasks to get the latest action_reason
       const processedTasks = tasks.map(task => {
         if (task.action_taken_by && task.action_taken_by.length > 0) {
-          // Sort by created_at in descending order (newest first)
           const sortedActions = [...task.action_taken_by].sort((a, b) => {
             const dateA = new Date(a.created_at).getTime();
             const dateB = new Date(b.created_at).getTime();
-            return dateB - dateA; // Descending order
+            return dateB - dateA;
           });
 
-          // Get the most recent action
           const latestAction = sortedActions[0];
           task.action_reason = latestAction.action_reason;
           task.action_by = latestAction.user_id;
@@ -833,7 +816,6 @@ class TaskController {
         .single();
 
       if (error) {
-        // No record found
         res.status(200).json({ message: "False", task: null });
         return;
       }
@@ -927,10 +909,8 @@ class TaskController {
         return;
       }
       if (clientTask.status === "Available") {
-        // Only If task status is available, only then the amount is refunded to client, else nothing happened.
         await QTaskPayment.refundAvailableTaskAmountToClient(taskId);
       }
-      // Check if the task is already closed
       const result = await taskModel.deleteTask(taskId);
       res.status(200).json(result);
     } catch (error) {
@@ -981,7 +961,6 @@ class TaskController {
 
       console.log("Task ID:", taskId);
 
-      // Fetch task to get image_ids
       const { data: task, error: taskError } = await supabase
         .from('post_task')
         .select('image_ids')
@@ -1093,7 +1072,6 @@ class TaskController {
         return;
       }
 
-      // Validate that user_id exists in the user table
       const { data: userExists, error: userCheckError } = await supabase
         .from("user")
         .select("user_id")
@@ -1109,7 +1087,6 @@ class TaskController {
         return;
       }
 
-      // Insert into action_taken_by with user_id and reason
       const { data: actionData, error: actionError } = await supabase
         .from("action_taken_by")
         .insert({
@@ -1131,7 +1108,6 @@ class TaskController {
 
       console.log("Action taken by data inserted:", actionData);
 
-      // Insert specialization into tasker_specialization
       const { data, error } = await supabase
         .from("tasker_specialization")
         .insert({ specialization, action_by: parseInt(user_id) })
@@ -1213,7 +1189,6 @@ class TaskController {
       console.log("Task ID:", taskId);
       console.log("Task Data:", req.body);
 
-      // Validate required fields
       if (!task_title || !task_description || !proposed_price) {
         res.status(400).json({
           success: false,
@@ -1222,7 +1197,6 @@ class TaskController {
         return;
       }
 
-      // Parse numeric fields
       const parsedPrice = Number(proposed_price);
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
         res.status(400).json({ success: false, error: 'Invalid proposed price' });
@@ -1241,11 +1215,9 @@ class TaskController {
         return;
       }
 
-      // Parse boolean fields
       const isUrgent = urgent === 'true' || urgent === true;
       const isVerified = is_verified === 'true' || is_verified === true;
 
-      // Parse array fields
       let parsedRelatedSpecializations: number[] | null = null;
       if (related_specializations) {
         try {
@@ -1306,7 +1278,6 @@ class TaskController {
         }
       }
 
-      // Remove deleted images
       if (imagesToDelete.length > 0) {
         const { data: imagesToRemove, error: imageError } = await supabase
           .from('post_task_images')
@@ -1344,7 +1315,6 @@ class TaskController {
         }
       }
 
-      // Upload new images
       let newImageIds: number[] = [];
       if (photos && photos.length > 0) {
         for (const photo of photos) {
@@ -1391,7 +1361,6 @@ class TaskController {
         }
       }
 
-      // Update image IDs
       const updatedImageIds = [
         ...currentImageIds.filter((id) => !imagesToDelete.includes(id)),
         ...newImageIds,
@@ -1409,7 +1378,6 @@ class TaskController {
         return;
       }
 
-      // Update task
       const { data, error } = await supabase
         .from('post_task')
         .update({
@@ -1556,7 +1524,7 @@ class TaskController {
 
   static async getTokenBalance(req: Request, res: Response): Promise<void> {
     try {
-      const userId = parseInt(req.params.userId); // Assume authenticated client ID
+      const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
         res.status(400).json({ success: false, error: "Invalid client ID" });
         return;
@@ -1603,36 +1571,6 @@ class TaskController {
 
       res.status(200).json({ success: true, tokens: tokens.amount });
 
-      // switch (userRole.user_role) {
-      //   case "Tasker":
-      //     const { data: taskerTokens, error: taskerTokensError } =
-      //       await supabase
-      //         .from("tasker")
-      //         .select("amount")
-      //         .eq("user_id", userId)
-      //         .single();
-      //     if (taskerTokensError)
-      //       throw new Error(
-      //         "Error fetching tasker tokens: " + taskerTokensError.message
-      //       );
-      //     res.status(200).json({ success: true, tokens: taskerTokens.amount });
-      //     break;
-      //   case "Client":
-      //     const { data: clientTokens, error: clientTokensError } =
-      //       await supabase
-      //         .from("clients")
-      //         .select("amount")
-      //         .eq("user_id", userId)
-      //         .single();
-      //     if (clientTokensError)
-      //       throw new Error(
-      //         "Error fetching tasker tokens: " + clientTokensError.message
-      //       );
-      //     res.status(200).json({ success: true, tokens: clientTokens.amount });
-      //     break;
-      //   default:
-      //     break;
-      // }
     } catch (error) {
       console.error("Error fetching token balance:", error);
       res.status(500).json({ success: false, error: "Failed to fetch tokens" });
@@ -1738,10 +1676,8 @@ class TaskController {
         .from("documents")
         .getPublicUrl(documentPath).data.publicUrl;
 
-      // Upload profile image to user account
       await UserAccount.uploadImageLink(user_id, profilePicUrl);
 
-      // Save bio and social media links to user_verify table only
       if (bio || social_media_links) {
         const verificationData: any = {};
         if (bio) verificationData.bio = bio;
@@ -1757,14 +1693,12 @@ class TaskController {
 
         if (verifyError) {
           console.warn("Could not update user_verify table:", verifyError);
-          // Don't fail the entire operation, just log the warning
         }
       }
 
-      // Save document URL to user_documents table if document was uploaded
       if (tesdaDocUrl) {
         const documentData = {
-          tasker_id: user_id, // Note: keeping tasker_id column name for compatibility
+          tasker_id: user_id,
           user_document_link: tesdaDocUrl,
           updated_at: new Date().toISOString()
         };
@@ -1775,7 +1709,6 @@ class TaskController {
 
         if (docError) {
           console.warn("Could not update user_documents table:", docError);
-          // Don't fail the entire operation, just log the warning
         }
       }
 
@@ -1817,7 +1750,6 @@ class TaskController {
       console.log("Request body from user:", req.body);
       console.log("User ID:", userId);
 
-      // Update user table
       const { data: userData, error: userError } = await supabase
         .from("user")
         .update({
@@ -1838,7 +1770,6 @@ class TaskController {
         throw new Error("Error updating user account: " + userError.message);
       }
 
-      // Update user_verify table for bio and social media links (unified approach)
       if (bio || social_media_links) {
         const verificationData: any = {};
         if (bio) verificationData.bio = bio;
@@ -1854,7 +1785,6 @@ class TaskController {
 
         if (verifyError) {
           console.warn("Could not update user_verify table:", verifyError);
-          // Don't fail the entire operation, just log the warning
         }
       }
 
@@ -1883,7 +1813,6 @@ class TaskController {
     try {
       const { taskId, taskerId } = req.params;
 
-      // Add your database query here to check if the task is assigned
       const { data: assignment, error } = await supabase
         .from("task_taken")
         .select()
@@ -1944,7 +1873,6 @@ class TaskController {
   static async getTasksClient(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
 
-    // Validate userId
     if (!userId || isNaN(Number(userId))) {
       res.status(400).json({ error: "Invalid or missing userId" });
       return;
@@ -2029,7 +1957,6 @@ class TaskController {
   static async getTasks(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
 
-    // Validate userId
     if (!userId || isNaN(Number(userId))) {
       res.status(400).json({ error: "Invalid or missing userId" });
       return;

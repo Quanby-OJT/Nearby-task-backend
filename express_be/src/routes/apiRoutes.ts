@@ -170,6 +170,7 @@ router.get("/get-token-balance/:userId", TaskController.getTokenBalance);
 
 //Conversation(Client&Moderator)
 router.get("/getUserConversation", ConversationController.getUserConversation);
+router.post("/check-authorization/:id", ConversationController.checkAuthorization);
 router.post("/banUser/:id", ConversationController.banUser);
 router.post("/warnUser/:id", ConversationController.warnUser);
 router.post("/appealUser/:id",ConversationController.appealUser)
