@@ -1,22 +1,34 @@
+import { error } from "console";
 import { supabase } from "../config/configuration";
 
 class TaskerModel {
-  static async createTasker(
-    tasker: {
-      user_id: number;
-      bio: Text;
-      specialization_id: number;
-      skills: string; 
-      availability: boolean;
-      wage_per_hour: number;
-      tesda_documents_id: number;
-      social_media_links: JSON;
-      address: JSON;
-    }) {
-    const { data, error } = await supabase.from("tasker").insert([tasker]);
-    console.log(data, error);
-    if (error) throw new Error(error.message);
-    return data;
+  static async createTasker( user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: string, group: boolean, social_media_links: JSON, address: JSON, profile_images?: string[]) {
+    const { error: NewTaskerError } = await supabase.from("tasker").insert({
+      user_id,
+      specialization_id,
+      skills,
+      availability,
+      wage_per_hour,
+      pay_period,
+      group,
+      address,
+      profile_images
+    });
+    console.log(error);
+    if (NewTaskerError) throw new Error(NewTaskerError.message);
+
+    const { error: UpdateUserBioError } = await supabase.from("user_verify").insert({
+      bio,
+      social_media_links
+    })
+
+    if(UpdateUserBioError) throw new Error(UpdateUserBioError.message)
+  }
+
+  static async uploadTaskerFiles(user_id: number, user_document_link?: String[]){
+    const { data: existingDocument, error: existingDocumentError } = await supabase.from("user_documents").select("user_document_link").single()
+
+    if(existingDocumentError) throw new Error("Error in uploading documents: " + existingDocumentError.message)
   }
 
   /**
@@ -25,95 +37,67 @@ class TaskerModel {
    * @throws {Error}
    */
   static async getAuthenticatedTasker(user_id: number) {
-    const { data, error } = await supabase
+    const { data: userInfoData, error: userInfoError } = await supabase
+      .from("user")
+      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, status, user_role")
+      .eq("user_id", user_id)
+      .single();
+
+    if (userInfoError) {
+      throw new Error("Error retrieving user information: " + userInfoError.message);
+    }
+
+    const { data: tasker, error: taskerError } = await supabase
       .from("tasker")
-      .select("*, user(*)")
-      .eq("user_id", user_id);
-    if (error) throw new Error(error.message);
-    return data;
+      .select("*, tasker_specialization(specialization)")
+      .eq("user_id", user_id)
+      .single();
+
+    const { data: userInfo, error: userError } = await supabase
+      .from("user_verify")
+      .select("*")
+      .eq("user_id", user_id)
+      .single();
+
+    const { data: userDocument, error: userDocumentError } = await supabase
+      .from("user_documents")
+      .select("*")
+      .eq("tasker_id", tasker?.tasker_id)
+      .single();
+
+    const taskerData = tasker ? {
+      ...tasker,
+      bio: userInfo?.bio,
+      social_media_links: userInfo?.social_media_links,
+      tasker_document_link: userDocument?.user_document_link
+    } : undefined;
+
+    return { user: userInfoData, tasker: taskerData };
   }
 
   /**
    * Update Tasker Information
    */
-  static async update(
-    tasker: {
-      tasker_id: number;
-      address: JSON;
-      bio: Text;
-      skills: string;
-      availability: boolean;
-      group: boolean,
-      wage_per_hour: number;
-      social_media_links: JSON;
-      profile_images?: JSON;
-    },
-    withForeignKeys: {
-      specialization: string;
-      tesda_documents_link: JSON;
-    },
-    user?: {
-      user_id: number;
-      first_name: Text;
-      middle_name: Text;
-      last_name: Text;
-      email: Text;
-      password: Text;
-    }
-  ) {
-    const { data: specializations, error: specializationError } = await supabase
-      .from("tasker_specialization")
-      .select("spec_id")
-      .eq("specialization", withForeignKeys.specialization)
-      .single();
-    if (specializationError) throw new Error(specializationError.message);
-  
-    // if(withForeignKeys.tesda_documents_link === null) {
-    // const { error: tesda_error } = await supabase
-    //   .from("user_documents")
-    //   .insert({ tesda_document_link: withForeignKeys.tesda_documents_link })
-    //   .select("id")
-    //   .single();
-    // if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
-    // }else{
-    //   const { error: tesda_error } = await supabase
-    //   .from("tasker_documents")
-    //   .update({ tesda_document_link: withForeignKeys.tesda_documents_link })
-    //   .eq("tasker_id", tasker.tasker_id)
-    //   if (tesda_error) throw new Error("Error storing document reference: " + tesda_error.message);
-    // }
+  static async update(user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: String, group: boolean, social_media_links: JSON, address: JSON, profile_images?: String[]) {
+    const { error: UpdateTaskerError } = await supabase.from("tasker").update({
+      specialization_id,
+      skills,
+      availability,
+      wage_per_hour,
+      pay_period,
+      group,
+      address,
+      profile_images
+    }).eq("user_id", user_id);
+    console.log(error);
+    if (UpdateTaskerError) throw new Error(UpdateTaskerError.message);
 
-    // const { data: userData, error: userError } = await supabase
-    //   .from("user")
-    //   .update(user)
-    //   .eq("user_id", user.user_id);
-    // if (userError) throw new Error(userError.message);
+    const { error: UpdateUserBioError } = await supabase.from("user_verify").update({
+      bio,
+      social_media_links
+    }).eq("user_id", user_id);
 
-    if(withForeignKeys.tesda_documents_link !== null){
-      const {error: documentError} = await supabase.from("tasker_documents").update({
-        document_type: "TESDA Document", //Temporary. Will Update if demand increases.
-        user_document_link: withForeignKeys.tesda_documents_link,
-        valid: false
-      }).eq("tasker_id", tasker.tasker_id).select("id").single()
-
-      if(documentError) throw new Error(documentError.message)
-    }
-  
-    const { error: taskerError } = await supabase
-      .from("tasker")
-      .update({
-        address: tasker.address,
-        bio: tasker.bio,
-        skills: tasker.skills,
-        availability: tasker.availability,
-        wage_per_hour: tasker.wage_per_hour,
-        social_media_links: tasker.social_media_links,
-        specialization_id: specializations.spec_id,
-        profile_images: tasker.profile_images
-      })
-      .eq("tasker_id", tasker.tasker_id);
-    console.log(taskerError);
-    if (taskerError) throw new Error(taskerError.message + "\n\n" + taskerError.stack);
+    if(UpdateUserBioError) throw new Error(UpdateUserBioError.message)
   }
 }
 

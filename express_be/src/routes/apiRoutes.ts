@@ -261,19 +261,19 @@ router.get("/fetchTasksClient/:userId", TaskController.getTasksClient);
 router.get("/tasker/taskinformation/:taskId", TaskController.getTaskInformation);
 
 //User CRUD
-router.put(
-  "/user/client/:id",
-  upload.fields([{ name: "image", maxCount: 1 }]),
-  profileController.ClientController.updateClient
-);
-router.put(
-  "/user/tasker/:id",
-  upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "documents", maxCount: 10 }, // Adjust maxCount as needed
-  ]),
-  profileController.TaskerController.updateTasker
-);
+// router.put(
+//   "/user/client/:id",
+//   upload.fields([{ name: "image", maxCount: 1 }]),
+//   profileController.ClientController.updateClient
+// );
+// router.put(
+//   "/user/tasker/:id",
+//   upload.fields([
+//     { name: "image", maxCount: 1 },
+//     { name: "documents", maxCount: 10 }, // Adjust maxCount as needed
+//   ]),
+//   profileController.TaskerController.updateTasker
+// );
 
 router.put(
   "/update-tasker-login-with-file/:id",
@@ -335,15 +335,29 @@ router.put(
 // );
 
 /**
- * This is to simplify the update of tasker profile.
+ * Tasker Routes
  */
-router.put('/update-user/:id', 
+router.put('/update-tasker/:id', 
   upload.fields([
-    {name: "tasker_image", maxCount: 9},
-    {name: "tasker_documents", maxCount: 5}
+    {name: "tasker_images", maxCount: 9},
+    {name: "user_documents", maxCount: 5}
   ]),
-  UserAccountController.updateUpdatedUser
+  ProfileController.TaskerController.updateTasker
 )
+
+router.post('/create-tasker-profile', upload.fields([
+    {name: "tasker_images", maxCount: 9},
+    {name: "user_documents", maxCount: 5}
+  ]),
+  ProfileController.TaskerController.createTasker
+)
+
+router.get('/get-tasker-profile/:id', ProfileController.TaskerController.getTasker)
+
+//Client Controllers
+router.post('/create-client-profile', ProfileController.ClientController.createClient)
+router.put('/update-client-profile/:id', ProfileController.ClientController.updateClient)
+router.get('/get-client-info/:id', ProfileController.ClientController.getClient)
 
 router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
 

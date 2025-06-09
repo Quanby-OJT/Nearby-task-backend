@@ -154,7 +154,7 @@ class UserAccount {
     };
 
     const { data: taskerDocument, error: taskerDocumentError } = await supabase
-      .from("tasker_documents")
+      .from("user_documents")
       .select("user_document_link")
       .eq("tasker_id", user_id)
       .maybeSingle();

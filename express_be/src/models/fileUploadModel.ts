@@ -1,61 +1,33 @@
 import { supabase } from "../config/configuration"
 
 class UploadFile{
-    static async uploadFile(fileName: string, file: Express.Multer.File, ){
-
-        /**
-         * Upload Files.
-         */
-        const { error } = await supabase.storage.from("documents").upload(fileName, file.buffer, {
+    static async uploadFile(fileName: string, file: Express.Multer.File) {
+        try {
+            /**
+             * Upload Files.
+             */
+            const { data: uploadData, error: uploadError } = await supabase.storage.from("documents").upload(fileName, file.buffer, {
                 contentType: file.mimetype,
                 cacheControl: "3600",
                 upsert: true
-        })
-        if(error) throw new Error(error.message)
+            });
 
-        /**
-         * Retrieve files and return as String.
-         */
-        const {data} = await supabase.storage.from("documents").getPublicUrl(fileName)
+            console.log()
+            if (uploadError) throw new Error(`File upload failed: ${uploadError.message}`);
 
-        return data
+
+            /**
+             * Retrieve files and return as String.
+             */
+            const { data: publicUrlData } = await supabase.storage.from("documents").getPublicUrl(fileName);
+            if (!publicUrlData) throw new Error('Failed to get public URL');
+
+            return publicUrlData;
+        } catch (err: any) {
+            console.error('Upload file error:', err.message);
+            throw err;
+        }
     }
-
-        // if (imageEvidence && Array.isArray(imageEvidence)) {
-        //   for (const file of imageEvidence) {
-        //     try {
-        //       const fileName = `disputes/DISPUTE-${Date.now()}-${file.originalname}`;
-        //       console.log(`Uploading file: ${fileName}`);
-    
-        //       const { error } = await supabase.storage.from("crud_bucket").upload(fileName, file.buffer, {
-        //         contentType: file.mimetype,
-        //         cacheControl: "3600",
-        //         upsert: true,
-        //       });
-        //       if (error) throw new Error(`Failed to upload file: ${error.message}`);
-    
-        //       const { data: disputeProof } = await supabase.storage
-        //         .from("crud_bucket")
-        //         .getPublicUrl(fileName);
-    
-        //       console.log(`File uploaded successfully: ${disputeProof.publicUrl}`);
-        //       imageProof.push(disputeProof.publicUrl);
-        //     } catch (err: any) {
-        //       console.error(`Image skipped: ${file.originalname}`, err.message);
-        //       res.status(400).json({
-        //         success: false,
-        //         error: `Image upload failed for ${file.originalname}: ${err.message}`,
-        //       });
-        //       return;
-        //     }
-        //   }
-    
-        //   console.log("Image Proof URLs:", imageProof);
-        //   await TaskAssignment.createDispute(user_id, taskTakenId, reason_for_dispute, dispute_details, imageProof);
-        // } else {
-        //   console.log("No image evidence provided, proceeding with text dispute.");
-        //   await TaskAssignment.createDispute(user_id, taskTakenId, reason_for_dispute, dispute_details);
-        // }
 }
 
 export default UploadFile

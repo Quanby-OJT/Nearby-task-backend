@@ -1656,7 +1656,7 @@ class TaskController {
       const taskerId = parseInt(req.params.id);
       console.log("This is the tasker id: ", taskerId);
       const { data, error } = await supabase
-        .from("tasker_documents")
+        .from("user_documents")
         .select("*")
         .eq("tasker_id", taskerId)
         .single();

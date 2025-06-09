@@ -1,15 +1,12 @@
 import { supabase } from "../config/configuration";
 
 class ClientModel {
-  static async createNewClient(clientInfo: {
-    user_id: number;
-    preferences: Text;
-    client_address: Text;
-  }) {
-    const { data, error } = await supabase.from("clients").insert([clientInfo]);
+  static async createNewClient(user_id: number, bio: Text, social_media_links: JSON) {
+    const { error } = await supabase.from("user_veridy").insert({
+      bio: bio,
+      social_media_links: social_media_links
+    });
     if (error) throw new Error(error.message);
-
-    return data;
   }
 
   static async getAllClients() {
@@ -19,16 +16,40 @@ class ClientModel {
     return data;
   }
 
-  static async updateClient(
-    clientInfo: { user_id: number; preferences: Text; client_address: Text }
-  ) {
+  static async getClientInfo(user_id: number) {
+    // Get user information (required)
+    const { data: userInfoData, error: userInfoError } = await supabase
+      .from("user")
+      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, status, user_role")
+      .eq("user_id", user_id)
+      .single();
+
+    if (userInfoError && userInfoError.code !== "PGRST116") {
+      throw new Error("Error retrieving user information: " + userInfoError.message);
+    }
+
+    // Get client profile (optional)
+    const { data: userProfileData, error: userProfileError } = await supabase
+      .from("user_verify")
+      .select("*")
+      .eq("user_id", user_id)
+      .single();
+
+    // Return both user info and client profile (if exists)
+    return {
+      user: userInfoData,
+      client: userProfileError?.code === "PGRST116" ? null : userProfileData
+    };
+  }
+
+  static async updateClient(user_id: number, bio: Text, social_media_links: JSON) {
     const { data, error } = await supabase
-      .from("clients")
+      .from("user_verify")
       .update({
-        preferences: clientInfo.preferences,
-        client_address: clientInfo.client_address
+        bio: bio,
+        social_media_links: social_media_links
       })
-      .eq("user_id", clientInfo.user_id);
+      .eq("user_id", user_id);
     if (error) throw new Error(error.message);
     return data;
   }
