@@ -3,6 +3,7 @@ import { supabase } from "../config/configuration"
 class UploadFile{
     static async uploadFile(fileName: string, file: Express.Multer.File) {
         try {
+            console.log(file)
             /**
              * Upload Files.
              */
@@ -12,7 +13,7 @@ class UploadFile{
                 upsert: true
             });
 
-            console.log()
+            console.log("Uploaded Items: ", uploadData, "Upload Error: ", uploadError)
             if (uploadError) throw new Error(`File upload failed: ${uploadError.message}`);
 
 

@@ -49,7 +49,7 @@ class ClientModel {
         bio: bio,
         social_media_links: social_media_links
       })
-      .eq("user_id", clientInfo.user_id);
+      .eq("user_id", user_id);
     if (error) throw new Error(error.message);
     return data;
   }

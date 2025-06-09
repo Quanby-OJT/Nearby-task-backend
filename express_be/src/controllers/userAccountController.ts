@@ -3622,7 +3622,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       };
 
       // Submit to tasker table
-      const result = await TaskerModel.submitTaskerVerification(verificationData);
+      // const result = await TaskerModel.submitTaskerVerification(verificationData);
 
       // Now save files to respective tables (same as client verification)
       let savedFiles = {
@@ -3786,11 +3786,11 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         success: overallSuccess,
         message,
         data: {
-          taskerData: result,
+          // taskerData: result,
           files: { idImageUrl, selfieImageUrl, documentsUrl },
           filesSavedToTables: savedFiles,
           tablesSaved: {
-            tasker: !!result,
+            //tasker: !!result,
             user_id: savedFiles.idImage,
             user_face_identity: savedFiles.selfieImage,
             user_documents: savedFiles.documents

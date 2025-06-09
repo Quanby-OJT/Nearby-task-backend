@@ -180,7 +180,7 @@ class TaskerController {
       const { data: specializations, error: specialization_error } = await supabase
         .from("tasker_specialization")
         .select("spec_id")
-        .eq("specialization", specialization.specialization)
+        .eq("specialization", specialization)
         .single();
 
       if (specialization_error) throw new Error("Specialization Error: " + specialization_error.message);
