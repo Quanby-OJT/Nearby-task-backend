@@ -17,11 +17,13 @@ declare module "express-session" {
 
 class AuthenticationController {
   static async loginAuthentication(req: Request, res: Response): Promise<void> {
+    console.log("Login Authentication Controller");
     try {
       const { email, password } = req.body;
-
+      console.log("Email: " + email + " Password: " + password);
       // Check login attempts
       const attempts = await Auth.getLoginAttempts(email);
+      console.log("Attempts: " + attempts);
       if (attempts >= 3) {
         res.status(429).json({ 
           error: "Too many failed login attempts. Please try again after 5 minutes.",
@@ -31,7 +33,7 @@ class AuthenticationController {
       }
 
       const verifyLogin = await Auth.authenticateLogin(email);
-
+      console.log("Verify Login: " + verifyLogin);
       if (!verifyLogin) {
         await Auth.incrementLoginAttempts(email);
         res.status(404).json({ 
@@ -212,6 +214,7 @@ class AuthenticationController {
       });
     }
   }
+
 
   static async forgotPassword(req: Request, res: Response): Promise<void> {
     const { email } = req.body;
