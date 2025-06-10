@@ -171,7 +171,7 @@ class TaskerController {
       const taskerData = JSON.parse(req.body.tasker);
       const {
         bio, specialization, skills, availability, social_media_links, 
-        address, group, wage: wage_per_hour, pay_period
+        address, group, wage: wage_per_hour, pay_period, profile_image, tasker_documents
       } = taskerData;
       const user_id = req.params.id;
   
@@ -191,26 +191,59 @@ class TaskerController {
       console.log(Documents, Pictures)
 
       const name = await UserAccount.showUser(user_id)
-      const fullName = name.first_name + " " + name.middle_name + " " + name.last_name
+      const fullName = name.first_name + "_" + (name?.middle_name ?? "") + "_" + name.last_name
       const imageUrls: string[] = []
       const documentUrls: string[] = []
 
-      // Upload multiple pictures
-      if(Pictures && Array.isArray(Pictures)){
-        for(const image of Pictures){
-          const profileImagePath = `user/images/${fullName}_${Date.now()}_`;
-          const imageUrl = await UploadFile.uploadFile(profileImagePath, image)
-          imageUrls.push(imageUrl.publicUrl)
+      // Handle existing profile images update/removal
+      if (profile_image && Array.isArray(profile_image)) {
+        // Remove images not in the new profile_image array
+        const existingTasker = await TaskerModel.getAuthenticatedTasker(parseInt(user_id));
+        const existingImages = existingTasker.tasker.profile_picture || [];
+        
+        for (const oldUrl of existingImages) {
+          if (!profile_image.includes(oldUrl)) {
+        const filePath = oldUrl.split('user/images/').pop();
+        if (filePath) {
+          await supabase.storage.from('documents').remove([`user/images/${filePath}`]);
+        }
+          }
+        }
+        imageUrls.push(...profile_image);
+      }
+
+      // Upload new pictures if any
+      if (Pictures && Array.isArray(Pictures)) {
+        for (const image of Pictures) {
+          const profileImagePath = `user/images/${fullName}_${image.originalname}`;
+          const imageUrl = await UploadFile.uploadFile(profileImagePath, image);
+          imageUrls.push(imageUrl.publicUrl);
         }
       }
 
+      // Handle existing documents update/removal
+      if (tasker_documents && Array.isArray(tasker_documents)) {
+        // Remove documents not in the new tasker_documents array
+        const existingTasker = await TaskerModel.getAuthenticatedTasker(parseInt(user_id));
+        const existingDocs = existingTasker.tasker.documents || [];
+        
+        for (const oldUrl of existingDocs) {
+          if (!tasker_documents.includes(oldUrl)) {
+        const filePath = oldUrl.split('user/documents/').pop();
+        if (filePath) {
+          await supabase.storage.from('documents').remove([`user/documents/${filePath}`]);
+        }
+          }
+        }
+        documentUrls.push(...tasker_documents);
+      }
 
-      // Upload multiple documents
-      if(Documents && Array.isArray(Documents)){
-        for(const document of Documents){
-          const documentPath = `user/documents/${fullName}_${Date.now()}`;
-          const documentUrl = await UploadFile.uploadFile(documentPath, document)
-          documentUrls.push(documentUrl.publicUrl)
+      // Upload new documents if any
+      if (Documents && Array.isArray(Documents)) {
+        for (const document of Documents) {
+          const documentPath = `user/documents/${fullName}_${document.originalname}`;
+          const documentUrl = await UploadFile.uploadFile(documentPath, document);
+          documentUrls.push(documentUrl.publicUrl);
         }
       }
 

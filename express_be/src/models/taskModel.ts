@@ -1,3 +1,4 @@
+import { error } from "console";
 import { supabase } from "../config/configuration";
 
 class TaskModel {
@@ -361,11 +362,18 @@ class TaskModel {
       throw new Error("Invalid role. Must be either 'tasker' or 'client'.");
     }
 
+    console.log("Retrieving transaction id from user id of: ", taskerClientId)
+
     let columnName
 
     role == "Tasker" ? columnName = "tasker_id" : columnName = "client_id";
 
-    const { data, error } = await supabase
+    const {data: taskTaken, error: taskTakenError} = await supabase.from("task_taken").select("task_taken_id").eq(columnName, taskerClientId).single()
+
+    if (taskTakenError?.code === "PGRST116") return [];
+    if (taskTakenError) throw new Error("Error in retrieving task taken id: " + taskTakenError?.message);
+
+    const { data: transactionData, error: transactionError } = await supabase
       .from("transaction_history")
       .select(`
         *,
@@ -396,18 +404,18 @@ class TaskModel {
           )
         )
       `)
-      .eq(`task_taken.${columnName}`, taskerClientId)
+      .eq(`task_taken_id`, taskTaken.task_taken_id)
       .order("created_at", { ascending: false });
 
 
-    // console.log("Transactions data:", data);
+    //console.log("Transactions data:", data);
 
-    if (error) {
-      console.error("Error fetching transactions:", error);
-      throw new Error(error.message);
+    if (transactionError) {
+      console.error();
+      throw new Error("Error fetching transactions:" + error);
     }
 
-    return data;
+    return transactionData;
   }
 }
 

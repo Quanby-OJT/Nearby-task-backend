@@ -5,13 +5,29 @@ class UploadFile{
         try {
             console.log(file)
             /**
+             * Check for existing file and delete if found
+             */
+            const { data: existingFile, error: listError } = await supabase.storage
+                .from("documents")
+                .list('', { search: fileName });
+
+            if (existingFile && existingFile.length > 0) {
+                const { error: deleteError } = await supabase.storage
+                    .from("documents")
+                    .remove([fileName]);
+                if (deleteError) throw new Error(`File deletion failed: ${deleteError.message}`);
+            }
+
+            /**
              * Upload Files.
              */
-            const { data: uploadData, error: uploadError } = await supabase.storage.from("documents").upload(fileName, file.buffer, {
-                contentType: file.mimetype,
-                cacheControl: "3600",
-                upsert: true
-            });
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from("documents")
+                .upload(fileName, file.buffer, {
+                    contentType: file.mimetype,
+                    cacheControl: "3600",
+                    upsert: true
+                });
 
             console.log("Uploaded Items: ", uploadData, "Upload Error: ", uploadError)
             if (uploadError) throw new Error(`File upload failed: ${uploadError.message}`);
