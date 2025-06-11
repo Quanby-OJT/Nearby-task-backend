@@ -1,68 +1,59 @@
 import { supabase } from "../config/configuration";
 
 class ClientModel {
-  static async createNewClient(clientInfo: {
-    user_id: number;
-    preferences?: string;
-    client_address?: string;
-    social_media_links?: object;
-    rating?: number;
-    amount?: number;
-  }) {
-    const { data, error } = await supabase.from("clients").insert([{
-      user_id: clientInfo.user_id,
-      preferences: clientInfo.preferences || '',
-      client_address: clientInfo.client_address || '',
-      social_media_links: clientInfo.social_media_links || {},
-      rating: clientInfo.rating || 0,
-      amount: clientInfo.amount || 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }]);
+  static async createNewClient(user_id: number, bio: Text, social_media_links: JSON) {
+    const { error } = await supabase.from("user_verify").insert({
+      bio: bio,
+      social_media_links: social_media_links
+    });
     if (error) throw new Error(error.message);
-    return data;
-  }
-
-  static async updateClient(clientInfo: {
-    user_id: number;
-    preferences?: string;
-    client_address?: string;
-    social_media_links?: object;
-    rating?: number;
-    amount?: number;
-  }) {
-    const { data, error } = await supabase
-      .from("clients")
-      .update({
-        preferences: clientInfo.preferences,
-        client_address: clientInfo.client_address,
-        social_media_links: clientInfo.social_media_links,
-        rating: clientInfo.rating,
-        amount: clientInfo.amount,
-        updated_at: new Date().toISOString()
-      })
-      .eq("user_id", clientInfo.user_id);
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
-  static async getClientByUserId(user_id: number) {
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("user_id", user_id)
-      .single();
-    if (error) throw new Error(error.message);
-    return data;
   }
 
   static async getAllClients() {
     const { data, error } = await supabase.from("clients").select("*");
     if (error) throw new Error(error.message);
+
     return data;
   }
 
-  static async archiveClient(clientId: number) {
+  static async getClientInfo(user_id: number) {
+    // Get user information (required)
+    const { data: userInfoData, error: userInfoError } = await supabase
+      .from("user")
+      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, status, user_role")
+      .eq("user_id", user_id)
+      .single();
+
+    if (userInfoError && userInfoError.code !== "PGRST116") {
+      throw new Error("Error retrieving user information: " + userInfoError.message);
+    }
+
+    // Get client profile (optional)
+    const { data: userProfileData, error: userProfileError } = await supabase
+      .from("user_verify")
+      .select("*")
+      .eq("user_id", user_id)
+      .single();
+
+    // Return both user info and client profile (if exists)
+    return {
+      user: userInfoData,
+      client: userProfileError?.code === "PGRST116" ? null : userProfileData
+    };
+  }
+
+  static async updateClient(user_id: number, bio: Text, social_media_links: JSON) {
+    const { error } = await supabase
+      .from("user_verify")
+      .update({
+        bio: bio,
+        social_media_links: social_media_links
+      })
+      .eq("user_id", user_id);
+    if (error) throw new Error(error.message);
+  }
+
+  static async archiveCLient(clientId: number) {
     const { data, error } = await supabase
       .from("clients")
       .update({ acc_status: "blocked" })

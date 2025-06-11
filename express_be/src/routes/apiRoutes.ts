@@ -262,19 +262,19 @@ router.get("/fetchTasksClient/:userId", TaskController.getTasksClient);
 router.get("/tasker/taskinformation/:taskId", TaskController.getTaskInformation);
 
 //User CRUD
-router.put(
-  "/user/client/:id",
-  upload.fields([{ name: "image", maxCount: 1 }]),
-  profileController.ClientController.updateClient
-);
-router.put(
-  "/user/tasker/:id",
-  upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "documents", maxCount: 10 }, // Adjust maxCount as needed
-  ]),
-  profileController.TaskerController.updateTasker
-);
+// router.put(
+//   "/user/client/:id",
+//   upload.fields([{ name: "image", maxCount: 1 }]),
+//   profileController.ClientController.updateClient
+// );
+// router.put(
+//   "/user/tasker/:id",
+//   upload.fields([
+//     { name: "image", maxCount: 1 },
+//     { name: "documents", maxCount: 10 }, // Adjust maxCount as needed
+//   ]),
+//   profileController.TaskerController.updateTasker
+// );
 
 router.put(
   "/update-tasker-login-with-file/:id",
@@ -295,45 +295,71 @@ router.put(
   UserAccountController.updateUserWithImages
 );
 
-// updating tasker with both profile and PDF images
-router.put(
-  "/update-tasker-with-file-profile/:id",
+// // updating tasker with both profile and PDF images
+// router.put(
+//   "/update-tasker-with-file-profile/:id",
+//   upload.fields([
+//     { name: "file", maxCount: 1 },
+//     { name: "image", maxCount: 1 },
+//   ]),
+//   UserAccountController.updateTaskerWithFileandImage
+// );
+
+// // updating tasker with PDF only
+// router.put(
+//   "/update-tasker-with-pdf/:id",
+//   upload.fields([{ name: "file", maxCount: 1 }]),
+//   UserAccountController.updateTaskerWithPDF
+// );
+
+// // updating tasker with only profile image and user details
+// router.put(
+//   "/update-tasker-with-image-profile/:id",
+//   upload.fields([{ name: "image", maxCount: 1 }]),
+//   UserAccountController.updateTaskerWithProfileImage
+// );
+
+// router.post("/generate-ai-text", FeedbackController.generateAIText);
+
+// // updating client with profile image only
+// router.put(
+//   "/update-user-with-profile-image/:id",
+//   upload.fields([{ name: "profileImage", maxCount: 1 }]),
+//   UserAccountController.updateUserWithProfileImage
+// );
+
+// // updating client with ID image only
+// router.put(
+//   "/update-user-with-id-image/:id",
+//   upload.fields([{ name: "idImage", maxCount: 1 }]),
+//   UserAccountController.updateUserWithIdImage
+// );
+
+/**
+ * Tasker Routes
+ */
+router.put('/update-tasker/:id', 
   upload.fields([
-    { name: "file", maxCount: 1 },
-    { name: "image", maxCount: 1 },
+    {name: "tasker_images", maxCount: 9},
+    {name: "user_documents", maxCount: 5}
   ]),
-  UserAccountController.updateTaskerWithFileandImage
-);
+  ProfileController.TaskerController.updateTasker
+)
 
-// updating tasker with PDF only
-router.put(
-  "/update-tasker-with-pdf/:id",
-  upload.fields([{ name: "file", maxCount: 1 }]),
-  UserAccountController.updateTaskerWithPDF
-);
+router.post('/create-tasker-profile', upload.fields([
+    {name: "tasker_images", maxCount: 9},
+    {name: "user_documents", maxCount: 5}
+  ]),
+  ProfileController.TaskerController.createTasker
+)
 
-// updating tasker with only profile image and user details
-router.put(
-  "/update-tasker-with-image-profile/:id",
-  upload.fields([{ name: "image", maxCount: 1 }]),
-  UserAccountController.updateTaskerWithProfileImage
-);
+router.get('/get-tasker-profile/:id', ProfileController.TaskerController.getTasker)
+router.get('/get-tasker-images/:id', ProfileController.TaskerController.getTaskerImages)
 
-router.post("/generate-ai-text", FeedbackController.generateAIText);
-
-// updating client with profile image only
-router.put(
-  "/update-user-with-profile-image/:id",
-  upload.fields([{ name: "profileImage", maxCount: 1 }]),
-  UserAccountController.updateUserWithProfileImage
-);
-
-// updating client with ID image only
-router.put(
-  "/update-user-with-id-image/:id",
-  upload.fields([{ name: "idImage", maxCount: 1 }]),
-  UserAccountController.updateUserWithIdImage
-);
+//Client Controllers
+router.post('/create-client-profile', ProfileController.ClientController.createClient)
+router.put('/update-client-profile/:id', ProfileController.ClientController.updateClient)
+router.get('/get-client-info/:id', ProfileController.ClientController.getClient)
 
 router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
 

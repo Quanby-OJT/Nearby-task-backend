@@ -1579,13 +1579,13 @@ class TaskController {
 
   static async getAllTransactions(req: Request, res: Response): Promise<void> {
     try {
-      const {id, role} = req.params;
+      const { id, role } = req.params;
       const transactions = await taskModel.getTransactions(parseInt(id), role)
 
       res.status(200).json({ transactions: transactions });
     } catch (error) {
       console.error("Error in getAllTransactions:", error);
-      res.status(500).json({success: false, error: "An error occured while fetching transactions. Please Try Again."});
+      res.status(500).json({ success: false, error: "An error occured while fetching transactions. Please Try Again." });
     }
   }
 
@@ -1594,7 +1594,7 @@ class TaskController {
       const taskerId = parseInt(req.params.id);
       console.log("This is the tasker id: ", taskerId);
       const { data, error } = await supabase
-        .from("tasker_documents")
+        .from("user_documents")
         .select("*")
         .eq("tasker_id", taskerId)
         .single();
@@ -2085,6 +2085,46 @@ class TaskController {
     } catch (error) {
       console.error("Error fetching task information:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  static async getAllRelevantSkills(req: Request, res: Response): Promise<void> {
+    try {
+      const { specialization } = req.params;
+
+      // Step 1: Get specialization ID
+      const { data: specializationData, error: specializationError } = await supabase
+        .from("tasker_specialization")
+        .select("spec_id")
+        .eq("specialization", specialization)
+        .single();
+
+      if (specializationError || !specializationData) {
+        res.status(400).json({
+          success: false,
+          error: "Specialization not found",
+        });
+        return;
+      }
+
+      const specializationId = specializationData.spec_id;
+
+      // Step 2: Get relevant skills using the specialization ID
+      const { data, error } = await supabase
+        .from("relevant_skills")
+        .select("id, relevant_skill")
+        .eq("specialization_id", specializationId);
+
+      if (error) throw new Error(error.message)
+
+      res.status(200).json({
+        success: true,
+        data: data || [],
+      });
+
+    } catch (error) {
+      console.error("Error fetching specializations:", error);
+      res.status(500).json({success: false, error: "Internal server error"})
     }
   }
 }

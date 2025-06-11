@@ -105,7 +105,7 @@ class UserAccount {
         const { data, error } = await supabase
         .from("user_documents")
         .select("*")
-        .eq("tasker_id", user_id)
+        .eq("user_id", user_id)
         .maybeSingle();
 
         if (error) throw new Error(error.message);
@@ -133,10 +133,11 @@ class UserAccount {
   static async showTasker(user_id: string) {
     // Get verification data from user_verify table only
     const { data: tasker, error: taskerError } = await supabase
-      .from("user_verify")
-      .select(
-        "bio, social_media_links"
-      )
+      .from("tasker")
+      .select(`
+        *,
+        tasker_specialization(*)
+      `)
       .eq("user_id", user_id)
       .maybeSingle();
     console.log(tasker, taskerError);

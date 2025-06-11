@@ -112,7 +112,7 @@ class AuthorityAccount {
 
     const { data: userDocument, error: userDocumentError } = await supabase
       .from("user_documents")
-      .select("doc_name, user_document_link")
+      .select("*")
       .eq("tasker_id", user_id);
     console.log(taskerData, userDocument, userDocumentError);
 
@@ -125,20 +125,42 @@ class AuthorityAccount {
   }
 
   static async getUserDocs(user_id: string) {
-    const { data, error } = await supabase
-      .from("user")
-      .select(`
-        user_role,
-        user_documents!user_documents_tasker_id_fkey (doc_name, user_document_link, document_type),
-        user_id!user_id_user_id_fkey (id_image),
-        user_face_identity!user_face_identity_user_id_fkey (face_image)
-      `)
-      .eq("user_id", user_id)
-      .single();
+    /**
+     * Error in retrieving data, walang foreign id sa user table. To be changed in retrieving from 3 tables at once.
+     */
+    // const { data, error } = await supabase
+    //   .from("user")
+    //   .select(`
+    //     user_role,
+    //     user_documents!user_documents_tasker_id_fkey (doc_name, user_document_link, document_type),
+    //     user_id!user_id_user_id_fkey (id_image),
+    //     user_face_identity!user_face_identity_user_id_fkey (face_image)
+    //   `)
+    //   .eq("user_id", user_id)
+    //   .single();
 
-    if (error) throw new Error(error.message);
+    const {data: userDocData, error: userDocError} = await supabase.from("user_documents").select("user_document_link, document_type").eq("user_id", user_id).single()
+    if (userDocError) {
+      console.error("User documents error:", userDocError);
+      if (userDocError.code === "PGRST116") return null;
+      throw new Error("Error in retrieving documents: " + userDocError.message);
+    }
 
-    return data;
+    const {data: userIdentificationData, error: userIdentificationError} = await supabase.from("user_id").select("id_image").eq("user_id", user_id).single()
+    if (userIdentificationError) {
+      console.error("User identification error:", userIdentificationError);
+      if (userIdentificationError.code === "PGRST116") return null;
+      throw new Error("Error in retrieving user Identification Document: " + userIdentificationError.message);
+    }
+
+    const {data: userFaceData, error: userFaceError} = await supabase.from("user_face_identity").select("face_image").eq("user_id", user_id).single()
+    if (userFaceError) {
+      console.error("User face identity error:", userFaceError);
+      if (userFaceError.code === "PGRST116") return null;
+      throw new Error("Error in retrieving User Selfie: " + userFaceError.message);
+    }
+
+    return {user: {user_documents: userDocData, user_id: userIdentificationData, user_face_identity: userFaceData}};
   }
 
   static async updateTaskerDocumentsValid(user_id: string, valid: boolean) {
