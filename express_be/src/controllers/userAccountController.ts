@@ -3529,14 +3529,6 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
 
       // Get request data
       const {
-        bio,
-        social_media_links,
-        socialMediaJson,
-        specialization_id,
-        skills,
-        wage_per_hour,
-        pay_period,
-        availability,
         firstName,
         middleName,
         lastName,
@@ -3608,23 +3600,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         }
       }
 
-      // Prepare tasker verification data
-      const TaskerModel = (await import('../models/taskerModel')).default;
-      const verificationData = {
-        user_id: userId,
-        bio: bio || '',
-        social_media_links: JSON.parse(social_media_links || socialMediaJson || '{}'),
-        specialization_id: specialization_id ? Number(specialization_id) : undefined,
-        skills: skills || '',
-        wage_per_hour: wage_per_hour ? Number(wage_per_hour) : 0,
-        pay_period: pay_period || 'Hourly',
-        availability: availability !== false,
-      };
-
-      // Submit to tasker table
-      // const result = await TaskerModel.submitTaskerVerification(verificationData);
-
-      // Now save files to respective tables (same as client verification)
+    
       let savedFiles = {
         idImage: false,
         selfieImage: false,
