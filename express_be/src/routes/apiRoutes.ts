@@ -354,6 +354,7 @@ router.post('/create-tasker-profile', upload.fields([
 )
 
 router.get('/get-tasker-profile/:id', ProfileController.TaskerController.getTasker)
+router.get('/get-tasker-images/:id', ProfileController.TaskerController.getTaskerImages)
 
 //Client Controllers
 router.post('/create-client-profile', ProfileController.ClientController.createClient)

@@ -2,7 +2,7 @@ import { error } from "console";
 import { supabase } from "../config/configuration";
 
 class TaskerModel {
-  static async createTasker( user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: string, group: boolean, social_media_links: JSON, address: JSON, profile_images?: string[]) {
+  static async createTasker( user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: string, group: boolean, social_media_links: JSON, address: JSON, profile_images?: number[]) {
     const { error: NewTaskerError } = await supabase.from("tasker").insert({
       user_id,
       specialization_id,
@@ -78,7 +78,7 @@ class TaskerModel {
   /**
    * Update Tasker Information
    */
-  static async update(user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: String, group: boolean, social_media_links: JSON, address: JSON, profile_images?: String[]) {
+  static async update(user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: String, group: boolean, social_media_links: JSON, address: JSON, profile_images?: number[]) {
     const { error: UpdateTaskerError } = await supabase.from("tasker").update({
       specialization_id,
       skills,

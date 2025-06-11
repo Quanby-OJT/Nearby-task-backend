@@ -105,7 +105,7 @@ class UserAccount {
         const { data, error } = await supabase
         .from("user_documents")
         .select("*")
-        .eq("tasker_id", user_id)
+        .eq("user_id", user_id)
         .maybeSingle();
 
         if (error) throw new Error(error.message);

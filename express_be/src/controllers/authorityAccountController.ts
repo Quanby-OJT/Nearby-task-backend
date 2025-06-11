@@ -475,9 +475,8 @@ class AuthorityAccountController {
       console.log("User Document (including face_image):", userDocs); 
       res.status(200).json({ user: userDocs });
     } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      console.error("Error in retrieving documents: ", error instanceof Error ? error.message : "Known Document Error")
+      res.status(500).json({error: "An Error Occured while retrieving tasker documents. Please Try Again"});
     }
   }
 

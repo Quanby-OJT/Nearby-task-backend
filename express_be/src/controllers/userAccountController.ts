@@ -8,7 +8,7 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { group } from "console";
 import { authHeader } from "../config/configuration";
-import UploadFile from "../models/fileUploadModel";
+import ManageFiles from "../models/fileUploadModel";
 import TaskerModel from "../models/taskerModel";
 import ClientModel from "./clientController";
 
@@ -272,7 +272,7 @@ class UserAccountController {
       const { data: documentData, error: documentError } = await supabase
         .from("user_documents")
         .select("user_document_link, valid")
-        .eq("tasker_id", userID)
+        .eq("user_id", userID)
         .maybeSingle();
       
       if (!documentError && documentData) {
@@ -540,8 +540,8 @@ class UserAccountController {
 
       const { data: existingDocument } = await supabase
         .from("user_documents")
-        .select("tasker_id")
-        .eq("tasker_id", userId)
+        .select("user_id")
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (existingDocument) {
@@ -552,7 +552,7 @@ class UserAccountController {
             valid: false,
             updated_at: new Date(),
           })
-          .eq("tasker_id", userId);
+          .eq("user_id", userId);
 
         if (pdfUpdateError) {
           console.error(
@@ -565,7 +565,7 @@ class UserAccountController {
         const { error: insertError } = await supabase
           .from("user_documents")
           .insert({
-            tasker_id: userId,
+            user_id: userId,
             user_document_link: pdfUrl,
             valid: false,
             created_at: new Date(),
@@ -740,8 +740,8 @@ class UserAccountController {
 
       const { data: existingDocument } = await supabase
         .from("user_documents")
-        .select("tasker_id")
-        .eq("tasker_id", userId)
+        .select("user_id")
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (existingDocument) {
@@ -752,7 +752,7 @@ class UserAccountController {
             valid: false,
             updated_at: new Date(),
           })
-          .eq("tasker_id", userId);
+          .eq("user_id", userId);
 
         if (pdfUpdateError) {
           console.error(
@@ -765,7 +765,7 @@ class UserAccountController {
         const { error: insertError } = await supabase
           .from("user_documents")
           .insert({
-            tasker_id: userId,
+            user_id: userId,
             user_document_link: pdfUrl,
             valid: false,
             created_at: new Date(),
@@ -2226,7 +2226,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
             
             const { data: tableTest, error: tableTestError } = await supabase
               .from('user_documents')
-              .select('tasker_id, user_document_link')
+              .select('user_id, user_document_link')
               .limit(1);
               
             if (tableTestError && tableTestError.code === '42P01') {
@@ -2237,7 +2237,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
               failedTables.push('user_documents (incorrect structure)');
             } else {
               const documentData: any = {
-                tasker_id: userId, // Note: this table uses tasker_id instead of user_id
+                user_id: userId, // Note: this table uses user_id instead of user_id
                 user_document_link: documentsUrl,
                 valid: false, // Set to false initially, admin will validate
               };
@@ -2247,8 +2247,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
               // Check if record already exists
               const { data: existingDocRecord, error: checkDocError } = await supabase
                 .from('user_documents')
-                .select('tasker_id')
-                .eq('tasker_id', userId)
+                .select('user_id')
+                .eq('user_id', userId)
                 .maybeSingle();
               
               let documentInsertResult, documentError;
@@ -2262,7 +2262,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
                     user_document_link: documentsUrl,
                     valid: false 
                   })
-                  .eq('tasker_id', userId)
+                  .eq('user_id', userId)
                   .select();
                 documentInsertResult = updateResult.data;
                 documentError = updateResult.error;
@@ -2290,7 +2290,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
                 if (documentError.code === '23503') {
                   console.error("Foreign key constraint violation - user may not exist in user table");
                 } else if (documentError.code === '23505') {
-                  console.error("Unique constraint violation - tasker_id may already exist in user_documents table");
+                  console.error("Unique constraint violation - user_id may already exist in user_documents table");
                 } else if (documentError.code === '42501') {
                   console.error("Permission denied - check RLS policies and API key permissions");
                 }
@@ -2308,7 +2308,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
             
             const { data: tableTest, error: tableTestError } = await supabase
               .from('user_documents')
-              .select('tasker_id, user_document_link')
+              .select('user_id, user_document_link')
               .limit(1);
               
             if (tableTestError && tableTestError.code === '42P01') {
@@ -2319,7 +2319,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
               failedTables.push('user_documents (incorrect structure)');
             } else {
               const documentData: any = {
-                tasker_id: userId, // Note: using tasker_id column for both taskers and clients
+                user_id: userId, // Note: using user_id column for both taskers and clients
                 user_document_link: documentsUrl,
                 valid: false, // Set to false initially, admin will validate
               };
@@ -2329,8 +2329,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
               // Check if record already exists
               const { data: existingDocRecord, error: checkDocError } = await supabase
                 .from('user_documents')
-                .select('tasker_id')
-                .eq('tasker_id', userId)
+                .select('user_id')
+                .eq('user_id', userId)
                 .maybeSingle();
               
               let documentInsertResult, documentError;
@@ -2344,7 +2344,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
                     user_document_link: documentsUrl,
                     valid: false 
                   })
-                  .eq('tasker_id', userId)
+                  .eq('user_id', userId)
                   .select();
                 documentInsertResult = updateResult.data;
                 documentError = updateResult.error;
@@ -2372,7 +2372,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
                 if (documentError.code === '23503') {
                   console.error("Foreign key constraint violation - user may not exist in user table");
                 } else if (documentError.code === '23505') {
-                  console.error("Unique constraint violation - tasker_id may already exist in user_documents table");
+                  console.error("Unique constraint violation - user_id may already exist in user_documents table");
                 } else if (documentError.code === '42501') {
                   console.error("Permission denied - check RLS policies and API key permissions");
                 }
@@ -2490,7 +2490,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         case 'documents':
           tableName = 'user_documents';
           columnName = 'user_document_link';
-          idColumnName = 'tasker_id';
+          idColumnName = 'user_id';
           break;
         default:
           throw new Error(`Unknown image type: ${type}`);
@@ -2586,7 +2586,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       const { data: documentData, error: documentError } = await supabase
         .from("user_documents")
         .select("*")
-        .eq("tasker_id", userId) // Note: this table uses tasker_id for both taskers and clients
+        .eq("user_id", userId) // Note: this table uses user_id for both taskers and clients
         .maybeSingle();
         
       if (!documentError && documentData) {
@@ -3168,7 +3168,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       try {
         const { data: docTableData, error: docTableError } = await supabase
           .from('user_documents')
-          .select('tasker_id, user_document_link, valid, created_at, updated_at')
+          .select('user_id, user_document_link, valid, created_at, updated_at')
           .limit(1);
           
         tableTests.push({
@@ -3177,7 +3177,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
           accessible: !docTableError,
           correctStructure: !docTableError || docTableError.code !== '42703',
           purpose: 'Stores tasker verification documents (PDFs, etc.)',
-          columns: 'tasker_id (FK), user_document_link (URL), valid (boolean), created_at, updated_at',
+          columns: 'user_id (FK), user_document_link (URL), valid (boolean), created_at, updated_at',
           error: docTableError ? {
             code: docTableError.code,
             message: docTableError.message
@@ -3221,7 +3221,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
           "2. Check that your API key has read/write permissions for these tables",
           "3. Verify RLS (Row Level Security) policies allow your operations",
           "4. Make sure foreign key constraints are properly set up",
-          "5. Check that column names match exactly: user_id, id_image, face_image, tasker_id, user_document_link"
+          "5. Check that column names match exactly: user_id, id_image, face_image, user_id, user_document_link"
         ]
       });
       
@@ -3442,8 +3442,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         try {
           const { data: existingDocRecord, error: checkDocError } = await supabase
             .from('user_documents')
-            .select('tasker_id')
-            .eq('tasker_id', userId)
+            .select('user_id')
+            .eq('user_id', userId)
             .maybeSingle();
 
           if (existingDocRecord) {
@@ -3454,7 +3454,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
                 user_document_link: documentsUrl,
                 valid: false 
               })
-              .eq('tasker_id', userId);
+              .eq('user_id', userId);
             
             if (updateDocError) {
               console.error("❌ Error updating documents:", updateDocError);
@@ -3468,7 +3468,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
             const { error: insertDocError } = await supabase
               .from('user_documents')
               .insert({ 
-                tasker_id: userId, // Note: using tasker_id column for both taskers and clients
+                user_id: userId, // Note: using user_id column for both taskers and clients
                 user_document_link: documentsUrl,
                 valid: false 
               });
@@ -3732,8 +3732,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         try {
           const { data: existingDocRecord, error: checkDocError } = await supabase
             .from('user_documents')
-            .select('tasker_id')
-            .eq('tasker_id', userId)
+            .select('user_id')
+            .eq('user_id', userId)
             .maybeSingle();
 
           if (existingDocRecord) {
@@ -3744,7 +3744,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
                 user_document_link: documentsUrl,
                 valid: false 
               })
-              .eq('tasker_id', userId);
+              .eq('user_id', userId);
             
             if (updateDocError) {
               console.error("❌ Error updating documents:", updateDocError);
@@ -3758,7 +3758,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
             const { error: insertDocError } = await supabase
               .from('user_documents')
               .insert({ 
-                tasker_id: userId, // Note: using tasker_id column for taskers
+                user_id: userId, // Note: using user_id column for taskers
                 user_document_link: documentsUrl,
                 valid: false 
               });
