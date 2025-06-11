@@ -6,11 +6,10 @@ class SettingController {
     const { latitude, longitude, city, province } = req.body;
     const { user_id } = req.params;
 
-    console.log(user_id);
-    console.log(latitude);
-    console.log(longitude);
-    console.log(city);
-    console.log(province);
+    if (!user_id) {
+      res.status(400).json({ error: "User ID is required" });
+      return;
+    }
 
     if (!latitude || !longitude) {
         res.status(400).json({ error: "latitude and longitude are required" });
