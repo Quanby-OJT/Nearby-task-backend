@@ -43,7 +43,7 @@ class ClientModel {
   }
 
   static async updateClient(user_id: number, bio: Text, social_media_links: JSON) {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("user_verify")
       .update({
         bio: bio,
@@ -51,7 +51,6 @@ class ClientModel {
       })
       .eq("user_id", user_id);
     if (error) throw new Error(error.message);
-    return data;
   }
 
   static async archiveCLient(clientId: number) {

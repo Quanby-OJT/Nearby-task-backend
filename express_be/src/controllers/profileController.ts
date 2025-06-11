@@ -414,12 +414,14 @@ class ClientController {
 
   static async updateClient(req: Request, res: Response): Promise<void> {
     try {
-      const { preferences, social_media_links } = req.body;
+      const { bio, social_media_links } = req.body;
       const user_id = req.params.id
+
+      console.log("Client Update Information: ", req.body, user_id)
 
       await ClientModel.updateClient(
         parseInt(user_id),
-        preferences,
+        bio,
         social_media_links,
       );
 
