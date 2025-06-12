@@ -23,6 +23,7 @@ class SettingController {
         .from("address")
         .select("*")
         .eq("user_id", user_id)
+        .eq('default', true)
         .single();
 
         if (fetchError && fetchError.code !== 'PGRST116') { 
