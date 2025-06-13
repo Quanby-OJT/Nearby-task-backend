@@ -80,6 +80,31 @@ class ManageFiles{
         return userDocuments
     }
 
+    
+    static async createTaskerDocument(user_id: number, fileUrls: string){
+        interface DocumentUrls {
+            id: number;
+        }
+        type DocumentUrlsResponse = {
+            data: DocumentUrls[] | null;
+            error: Error | null;
+        }
+        const {error: createDocumentError} = await supabase.from("user_documents").insert({
+            user_id: user_id,
+            user_document_link: fileUrls,
+            document_type: "TESDA Document"
+        })
+
+        if (createDocumentError) throw new Error(createDocumentError.message)
+        // const {data: userDocuments, error: userDocumentsError} = await supabase.from(supabaseTable)
+        //     .select('id')
+        //     .eq('user_id', user_id) as DocumentUrlsResponse
+
+        // if (userDocumentsError) throw new Error(userDocumentsError.message);
+
+        // return userDocuments
+    }
+
     static async getDocumentForUser(user_id: number, supabaseTable: string){
         interface DocumentInfo {
             data: {

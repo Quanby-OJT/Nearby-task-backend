@@ -93,7 +93,7 @@ class UserAccount {
 
     if (userexists.user_role == "Client") {
       const { data, error } = await supabase
-      .from("client_documents")
+      .from("user_id")
       .select("*")
       .eq("user_id", user_id)
       .maybeSingle();
@@ -103,7 +103,7 @@ class UserAccount {
     return data;
     } else if (userexists.user_role == "Tasker") {
         const { data, error } = await supabase
-        .from("user_documents")
+        .from("user_id")
         .select("*")
         .eq("user_id", user_id)
         .maybeSingle();

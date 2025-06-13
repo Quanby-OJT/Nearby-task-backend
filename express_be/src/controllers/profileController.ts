@@ -124,7 +124,7 @@ class TaskerController {
       const taskerData = JSON.parse(req.body.tasker);
       const {
         bio, specialization, skills, availability, social_media_links,
-        address, group, wage: wage_per_hour, pay_period, profile_images_id, tasker_documents
+        address, group, wage_per_hour, pay_period, profile_images_id, tasker_documents
       } = taskerData;
       const user_id = req.params.id;
 
@@ -163,7 +163,7 @@ class TaskerController {
         }
       }
 
-      if (imageUrlIds.length == 0 && imageUrls.length == 0) {
+      if (imageUrlIds.length == 0 && imageUrls.length == 0 || tasker_documents == null) {
         //To create new Pictures.
         if (Pictures && Array.isArray(Pictures)) {
           for (const image of Pictures) {
@@ -174,7 +174,15 @@ class TaskerController {
           }
         }
 
-        await TaskerModel.update(parseInt(user_id), bio, specializations.spec_id, skills, availability, wage_per_hour, pay_period, group, social_media_links, address, imageUrlIds)
+        if(Documents && Array.isArray(Documents)){
+          for (const doc of Documents) {
+            const docPath = `user/documents/${fullName}_${doc.originalname}`
+            const docUrl = await ManageFiles.uploadFile(docPath, doc)
+            const docUrlId = await ManageFiles.createTaskerDocument(parseInt(user_id), docUrl.publicUrl) ?? 0
+            // if (docUrlId) for (const docId of docUrlId) imageUrlIds.push(docId.id)
+          }
+        }
+        await TaskerModel.update(parseInt(user_id), bio, specializations.spec_id, skills, availability, parseFloat(wage_per_hour), pay_period, group, social_media_links, address, imageUrlIds)
 
         res.status(200).json({ message: "User Information Updated Successfully" });
         return
@@ -209,6 +217,7 @@ class TaskerController {
           }
         }
 
+        console.log("Wage before inserting: ", wage_per_hour)
         await TaskerModel.update(parseInt(user_id), bio, specializations.spec_id, skills, availability, wage_per_hour, pay_period, group, social_media_links, address, imageUrlIds)
 
         res.status(200).json({ message: "User Information Updated Successfully" });

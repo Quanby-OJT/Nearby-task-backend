@@ -79,11 +79,12 @@ class TaskerModel {
    * Update Tasker Information
    */
   static async update(user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: String, group: boolean, social_media_links: JSON, address: JSON, profile_images?: number[]) {
+    console.log("Wage: ", wage_per_hour)
     const { error: UpdateTaskerError } = await supabase.from("tasker").update({
       specialization_id,
       skills,
       availability,
-      wage_per_hour,
+      wage_per_hour: wage_per_hour,
       pay_period,
       group,
       address,

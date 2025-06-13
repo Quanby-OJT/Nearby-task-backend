@@ -210,7 +210,7 @@ class UserAccountController {
       console.log("Retrieving User Document for..." + userID);
       const userDocs = await UserAccount.getUserDocs(userID);
       console.log("User Document: " + userDocs);
-      res.status(200).json({ user: userDocs });
+      res.status(200).json({ success: true, user: userDocs });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error",
