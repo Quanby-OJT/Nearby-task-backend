@@ -2520,200 +2520,352 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
     }
   }
 
+  // static async getUserVerificationStatus(req: Request, res: Response): Promise<any> {
+  //   try {
+  //     const userId = Number(req.params.id);
+
+  //     // Fetch user information to determine user type
+  //     const { data: userData, error: userError } = await supabase
+  //       .from("user")
+  //       .select("user_role, acc_status, first_name, middle_name, last_name, email, contact, gender, birthdate")
+  //       .eq("user_id", userId)
+  //       .single();
+      
+  //     if (userError) {
+  //       console.error("Error fetching user data:", userError);
+  //       return res.status(500).json({ error: userError.message });
+  //     }
+
+  //     // Fetch verification record from user_verify table (contains bio and social_media_links)
+  //     const { data: verification, error: verificationError } = await supabase
+  //       .from("user_verify")
+  //       .select("*")
+  //       .eq("user_id", userId)
+  //       .maybeSingle();
+
+  //     if (verificationError) {
+  //       console.error("Error fetching verification status:", verificationError);
+  //       return res.status(500).json({ error: verificationError.message });
+  //     }
+
+  //     // Get additional documents based on user type
+  //     let additionalData: any = {};
+      
+  //     // Fetch ID image data from user_id table
+  //     console.log("Fetching ID image data from user_id table...");
+  //     const { data: idData, error: idError } = await supabase
+  //       .from("user_id")
+  //       .select("*")
+  //       .eq("user_id", userId)
+  //       .maybeSingle();
+        
+  //     if (!idError && idData) {
+  //       additionalData = { ...additionalData, idImage: idData };
+  //       console.log("✅ ID image data found:", idData.id_image);
+  //     } else {
+  //       console.log("ℹ️ No ID image data found for user:", userId);
+  //     }
+      
+  //     // Fetch face/selfie image data from user_face_identity table
+  //     console.log("Fetching face image data from user_face_identity table...");
+  //     const { data: faceData, error: faceError } = await supabase
+  //       .from("user_face_identity")
+  //       .select("*")
+  //       .eq("user_id", userId)
+  //       .maybeSingle();
+        
+  //     if (!faceError && faceData) {
+  //       additionalData = { ...additionalData, faceImage: faceData };
+  //       console.log("✅ Face image data found:", faceData.face_image);
+  //     } else {
+  //       console.log("ℹ️ No face image data found for user:", userId);
+  //     }
+      
+  //     // Fetch documents from user_documents table (for both taskers and clients)
+  //     console.log("Fetching documents from user_documents table...");
+  //     const { data: documentData, error: documentError } = await supabase
+  //       .from("user_documents")
+  //       .select("*")
+  //       .eq("user_id", userId) // Note: this table uses user_id for both taskers and clients
+  //       .maybeSingle();
+        
+  //     if (!documentError && documentData) {
+  //       additionalData = { ...additionalData, userDocuments: documentData };
+  //       console.log("✅ Document data found:", documentData.user_document_link);
+  //     } else {
+  //       console.log("ℹ️ No document data found for user:", userId);
+  //     }
+      
+  //     if (userData.user_role.toLowerCase() === 'client') {
+  //       // Fetch client-specific documents if they exist in client_documents table
+  //       console.log("Fetching client documents from client_documents table...");
+  //       const { data: clientDocs, error: clientDocsError } = await supabase
+  //         .from("client_documents")
+  //         .select("*")
+  //         .eq("user_id", userId);
+          
+  //       if (!clientDocsError && clientDocs && clientDocs.length > 0) {
+  //         additionalData = { ...additionalData, clientDocuments: clientDocs };
+  //         console.log("✅ Client documents found:", clientDocs.length, "documents");
+  //       } else {
+  //         console.log("ℹ️ No client documents found in client_documents table");
+  //       }
+  //     } else if (userData.user_role.toLowerCase() === 'tasker') {
+  //       // Note: We no longer read bio and social_media_links from tasker table
+  //       // All verification data should come from user_verify table only
+  //       console.log("Tasker verification data comes from user_verify table");
+  //     }
+
+  //     // Prepare the verification data with image URLs
+  //     let verificationData = verification;
+  //     if (verification) {
+  //       console.log("=== ADDING IMAGE URLS TO VERIFICATION DATA ===");
+        
+  //       // Add the user's account status as the verification status
+  //       verificationData = {
+  //         ...verificationData,
+  //         status: userData.acc_status, // Use acc_status from user table as verification status
+  //         // Add basic user information that VerificationModel expects
+  //         first_name: userData.first_name || '',
+  //         middle_name: userData.middle_name || '',
+  //         last_name: userData.last_name || '',
+  //         email: userData.email || '',
+  //         phone: userData.contact || '',
+  //         gender: userData.gender || '',
+  //         birthdate: userData.birthdate || ''
+  //       };
+  //       console.log("✅ Added verification status from user acc_status:", userData.acc_status);
+        
+  //       // Add ID image URL to verification data if available
+  //       if (idData && idData.id_image) {
+  //         verificationData = {
+  //           ...verificationData,
+  //           idImageUrl: idData.id_image
+  //         };
+  //         console.log("✅ Added ID image URL to verification data");
+  //       }
+        
+  //       // Add selfie image URL to verification data if available
+  //       if (faceData && faceData.face_image) {
+  //         verificationData = {
+  //           ...verificationData,
+  //           selfieImageUrl: faceData.face_image
+  //         };
+  //         console.log("✅ Added selfie image URL to verification data");
+  //       }
+        
+  //       // Add document URL to verification data if available (for both taskers and clients)
+  //       if (documentData && documentData.user_document_link) {
+  //         verificationData = {
+  //           ...verificationData,
+  //           documentUrl: documentData.user_document_link,
+  //           documentValid: documentData.valid || false
+  //         };
+  //         console.log("✅ Added document URL to verification data");
+  //       }
+        
+  //       // Also add client documents URL if available
+  //       if (userData.user_role.toLowerCase() === 'client' && 
+  //           additionalData.clientDocuments && 
+  //           additionalData.clientDocuments.length > 0) {
+  //         // Add the first client document URL (if multiple exist)
+  //         const firstClientDoc = additionalData.clientDocuments[0];
+  //         if (firstClientDoc.document_url) {
+  //           verificationData = {
+  //             ...verificationData,
+  //             clientDocumentUrl: firstClientDoc.document_url,
+  //             clientDocumentType: firstClientDoc.document_type || 'unknown'
+  //           };
+  //           console.log("✅ Added client document URL to verification data");
+  //         }
+  //       }
+        
+  //       console.log("=== FINAL VERIFICATION DATA ===");
+  //       console.log("Verification status:", verificationData.status);
+  //       console.log("User acc_status:", userData.acc_status);
+  //       console.log("Has ID image:", !!verificationData.idImageUrl);
+  //       console.log("Has selfie image:", !!verificationData.selfieImageUrl);
+  //       console.log("Has document:", !!verificationData.documentUrl);
+  //       console.log("Has client document:", !!verificationData.clientDocumentUrl);
+  //       console.log("Full verification data:", verificationData);
+  //     }
+
+  //     if (!verification) {
+  //       return res.status(200).json({ 
+  //         exists: false,
+  //         user: userData,
+  //         ...additionalData,
+  //         message: "No verification record found" 
+  //       });
+  //     }
+
+  //     return res.status(200).json({
+  //       success: true,
+  //       exists: true,
+  //       verification: verificationData,
+  //       user: userData,
+  //       ...additionalData,
+  //       message: "Verification record found"
+  //     });
+  //   } catch (error) {
+  //     console.error("Unexpected error in getUserVerificationStatus:", error);
+  //     return res
+  //       .status(500)
+  //       .json({
+  //         error: error instanceof Error ? error.message : "Unknown error",
+  //       });
+  //   }
+  // }
+
   static async getUserVerificationStatus(req: Request, res: Response): Promise<any> {
     try {
       const userId = Number(req.params.id);
-
-      // Fetch user information to determine user type
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+  
+      // Fetch user information
       const { data: userData, error: userError } = await supabase
         .from("user")
-        .select("user_role, acc_status, first_name, middle_name, last_name, email, contact, gender, birthdate")
+        .select("user_id, user_role, acc_status, first_name, middle_name, last_name, email, contact, gender, birthdate")
         .eq("user_id", userId)
         .single();
-      
-      if (userError) {
-        console.error("Error fetching user data:", userError);
-        return res.status(500).json({ error: userError.message });
+  
+      if (userError || !userData) {
+        console.error("Error fetching user data:", userError?.message || "User not found");
+        return res.status(404).json({ error: userError?.message || "User not found" });
       }
-
-      // Fetch verification record from user_verify table (contains bio and social_media_links)
-      const { data: verification, error: verificationError } = await supabase
-        .from("user_verify")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (verificationError) {
-        console.error("Error fetching verification status:", verificationError);
-        return res.status(500).json({ error: verificationError.message });
-      }
-
-      // Get additional documents based on user type
+  
+      // Initialize additional data
       let additionalData: any = {};
-      
-      // Fetch ID image data from user_id table
+  
+      // Fetch ID image data
       console.log("Fetching ID image data from user_id table...");
       const { data: idData, error: idError } = await supabase
         .from("user_id")
-        .select("*")
+        .select("id, id_image, created_at, user_id, id_type, valid")
         .eq("user_id", userId)
         .maybeSingle();
-        
-      if (!idError && idData) {
-        additionalData = { ...additionalData, idImage: idData };
+  
+      if (idError) {
+        console.error("Error fetching ID image data:", idError.message);
+        return res.status(500).json({ error: idError.message });
+      }
+      if (idData) {
+        additionalData.idImage = idData;
         console.log("✅ ID image data found:", idData.id_image);
       } else {
         console.log("ℹ️ No ID image data found for user:", userId);
       }
-      
-      // Fetch face/selfie image data from user_face_identity table
+  
+      // Fetch face/selfie image data
       console.log("Fetching face image data from user_face_identity table...");
       const { data: faceData, error: faceError } = await supabase
         .from("user_face_identity")
-        .select("*")
+        .select("id, face_image, created_at, user_id")
         .eq("user_id", userId)
         .maybeSingle();
-        
-      if (!faceError && faceData) {
-        additionalData = { ...additionalData, faceImage: faceData };
+  
+      if (faceError) {
+        console.error("Error fetching face image data:", faceError.message);
+        return res.status(500).json({ error: faceError.message });
+      }
+      if (faceData) {
+        additionalData.faceImage = faceData;
         console.log("✅ Face image data found:", faceData.face_image);
       } else {
         console.log("ℹ️ No face image data found for user:", userId);
       }
-      
-      // Fetch documents from user_documents table (for both taskers and clients)
+  
+      // Fetch documents
       console.log("Fetching documents from user_documents table...");
       const { data: documentData, error: documentError } = await supabase
         .from("user_documents")
-        .select("*")
-        .eq("user_id", userId) // Note: this table uses user_id for both taskers and clients
+        .select("id, user_document_link, created_at, updated_at")
+        .eq("user_id", userId)
         .maybeSingle();
-        
-      if (!documentError && documentData) {
-        additionalData = { ...additionalData, userDocuments: documentData };
+  
+      if (documentError) {
+        console.error("Error fetching document data:", documentError.message);
+        return res.status(500).json({ error: documentError.message });
+      }
+      if (documentData) {
+        additionalData.userDocuments = documentData;
         console.log("✅ Document data found:", documentData.user_document_link);
       } else {
         console.log("ℹ️ No document data found for user:", userId);
       }
-      
-      if (userData.user_role.toLowerCase() === 'client') {
-        // Fetch client-specific documents if they exist in client_documents table
+  
+      // Fetch client-specific documents if user is a client
+      if (userData.user_role.toLowerCase() === "client") {
         console.log("Fetching client documents from client_documents table...");
         const { data: clientDocs, error: clientDocsError } = await supabase
           .from("client_documents")
-          .select("*")
+          .select("id, document_url, document_type, created_at")
           .eq("user_id", userId);
-          
-        if (!clientDocsError && clientDocs && clientDocs.length > 0) {
-          additionalData = { ...additionalData, clientDocuments: clientDocs };
+  
+        if (clientDocsError) {
+          console.error("Error fetching client documents:", clientDocsError.message);
+          return res.status(500).json({ error: clientDocsError.message });
+        }
+        if (clientDocs && clientDocs.length > 0) {
+          additionalData.clientDocuments = clientDocs;
           console.log("✅ Client documents found:", clientDocs.length, "documents");
         } else {
-          console.log("ℹ️ No client documents found in client_documents table");
+          console.log("ℹ️ No client documents found for user:", userId);
         }
-      } else if (userData.user_role.toLowerCase() === 'tasker') {
-        // Note: We no longer read bio and social_media_links from tasker table
-        // All verification data should come from user_verify table only
-        console.log("Tasker verification data comes from user_verify table");
       }
-
-      // Prepare the verification data with image URLs
-      let verificationData = verification;
-      if (verification) {
-        console.log("=== ADDING IMAGE URLS TO VERIFICATION DATA ===");
-        
-        // Add the user's account status as the verification status
-        verificationData = {
-          ...verificationData,
-          status: userData.acc_status, // Use acc_status from user table as verification status
-          // Add basic user information that VerificationModel expects
-          first_name: userData.first_name || '',
-          middle_name: userData.middle_name || '',
-          last_name: userData.last_name || '',
-          email: userData.email || '',
-          phone: userData.contact || '',
-          gender: userData.gender || '',
-          birthdate: userData.birthdate || ''
-        };
-        console.log("✅ Added verification status from user acc_status:", userData.acc_status);
-        
-        // Add ID image URL to verification data if available
-        if (idData && idData.id_image) {
-          verificationData = {
-            ...verificationData,
-            idImageUrl: idData.id_image
-          };
-          console.log("✅ Added ID image URL to verification data");
-        }
-        
-        // Add selfie image URL to verification data if available
-        if (faceData && faceData.face_image) {
-          verificationData = {
-            ...verificationData,
-            selfieImageUrl: faceData.face_image
-          };
-          console.log("✅ Added selfie image URL to verification data");
-        }
-        
-        // Add document URL to verification data if available (for both taskers and clients)
-        if (documentData && documentData.user_document_link) {
-          verificationData = {
-            ...verificationData,
-            documentUrl: documentData.user_document_link,
-            documentValid: documentData.valid || false
-          };
-          console.log("✅ Added document URL to verification data");
-        }
-        
-        // Also add client documents URL if available
-        if (userData.user_role.toLowerCase() === 'client' && 
-            additionalData.clientDocuments && 
-            additionalData.clientDocuments.length > 0) {
-          // Add the first client document URL (if multiple exist)
-          const firstClientDoc = additionalData.clientDocuments[0];
-          if (firstClientDoc.document_url) {
-            verificationData = {
-              ...verificationData,
-              clientDocumentUrl: firstClientDoc.document_url,
-              clientDocumentType: firstClientDoc.document_type || 'unknown'
-            };
-            console.log("✅ Added client document URL to verification data");
-          }
-        }
-        
-        console.log("=== FINAL VERIFICATION DATA ===");
-        console.log("Verification status:", verificationData.status);
-        console.log("User acc_status:", userData.acc_status);
-        console.log("Has ID image:", !!verificationData.idImageUrl);
-        console.log("Has selfie image:", !!verificationData.selfieImageUrl);
-        console.log("Has document:", !!verificationData.documentUrl);
-        console.log("Has client document:", !!verificationData.clientDocumentUrl);
-        console.log("Full verification data:", verificationData);
-      }
-
-      if (!verification) {
-        return res.status(200).json({ 
-          exists: false,
-          user: userData,
-          ...additionalData,
-          message: "No verification record found" 
-        });
-      }
-
+  
+      // Determine if verification is complete (ID and selfie images exist)
+      const hasIdImage = !!idData?.id_image;
+      const hasSelfieImage = !!faceData?.face_image;
+      const verificationExists = hasIdImage && hasSelfieImage;
+  
+      // Prepare verification data
+      const verificationData = {
+        user_id: userData.user_id,
+        first_name: userData.first_name || "",
+        middle_name: userData.middle_name || "",
+        last_name: userData.last_name || "",
+        email: userData.email || "",
+        contact: userData.contact || "",
+        gender: userData.gender || "",
+        birthdate: userData.birthdate || "",
+        acc_status: userData.acc_status || "Pending",
+        idImageUrl: idData?.id_image || null,
+        selfieImageUrl: faceData?.face_image || null,
+        documentUrl: documentData?.user_document_link || null,
+        clientDocumentUrl: additionalData.clientDocuments?.[0]?.document_url || null,
+        clientDocumentType: additionalData.clientDocuments?.[0]?.document_type || null,
+        documentValid: idData?.valid || false,
+      };
+  
+      // Log verification details
+      console.log("=== VERIFICATION STATUS ===");
+      console.log("User ID:", userId);
+      console.log("Role:", userData.user_role);
+      console.log("Account Status:", userData.acc_status);
+      console.log("Has ID Image:", hasIdImage);
+      console.log("Has Selfie Image:", hasSelfieImage);
+      console.log("Verification Exists:", verificationExists);
+      console.log("Verification Data:", verificationData);
+  
       return res.status(200).json({
         success: true,
-        exists: true,
-        verification: verificationData,
+        exists: verificationExists,
         user: userData,
+        verification: verificationExists ? verificationData : null,
         ...additionalData,
-        message: "Verification record found"
+        message: verificationExists
+          ? "Verification record found and complete"
+          : "Verification incomplete or not found",
       });
     } catch (error) {
       console.error("Unexpected error in getUserVerificationStatus:", error);
-      return res
-        .status(500)
-        .json({
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
+      return res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   }
 
@@ -3243,14 +3395,9 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       const userId = Number(req.params.id);
       console.log("=== CLIENT VERIFICATION SUBMISSION ===");
       console.log("User ID:", userId);
-
+  
       // Get request data
       const {
-        bio,
-        social_media_links,
-        socialMediaJson,
-        preferences,
-        client_address,
         firstName,
         middleName,
         lastName,
@@ -3258,9 +3405,12 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         phone,
         gender,
         birthdate,
+        social_media_links,
+        preferences,
+        client_address
       } = req.body;
-
-      // Update user table first
+  
+      // Update user table
       const updateUser: any = {};
       if (firstName) updateUser.first_name = firstName;
       if (middleName) updateUser.middle_name = middleName;
@@ -3270,245 +3420,133 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       if (phone) updateUser.contact = phone;
       if (birthdate) updateUser.birthdate = birthdate;
       updateUser.acc_status = "Review";
-
+  
       if (Object.keys(updateUser).length > 0) {
         const { error: updateUserError } = await supabase
           .from("user")
           .update(updateUser)
           .eq("user_id", userId);
-
+  
         if (updateUserError) {
           return res.status(500).json({ error: updateUserError.message });
         }
       }
-
+  
+      // Handle client verification data
+      const verificationData = {
+        user_id: userId,
+        social_media_links: social_media_links ? JSON.parse(social_media_links) : {},
+        preferences: preferences || '',
+        client_address: client_address || ''
+      };
+  
+      const { error: clientError } = await supabase
+        .from("clients")
+        .upsert(verificationData);
+  
+      if (clientError) {
+        return res.status(500).json({ error: clientError.message });
+      }
+  
       // Handle file uploads
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       let idImageUrl: string | null = null;
       let selfieImageUrl: string | null = null;
       let documentsUrl: string | null = null;
-
-      // Upload files if provided
-      if (files && files.idImage && files.idImage.length > 0) {
-        const idImageFile = files.idImage[0];
-        const fileName = `clients/id_${userId}_${Date.now()}_${idImageFile.originalname}`;
-        const { error } = await supabase.storage
+      let uploadErrors: string[] = [];
+  
+      // Upload files
+      const uploadFile = async (file: Express.Multer.File, prefix: string) => {
+        const fileName = `clients/${prefix}_${userId}_${Date.now()}_${file.originalname}`;
+        const { error, data } = await supabase.storage
           .from("crud_bucket")
-          .upload(fileName, idImageFile.buffer, { cacheControl: "3600", upsert: true });
-        if (!error) {
-          idImageUrl = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
+          .upload(fileName, file.buffer, { cacheControl: "3600", upsert: true });
+        
+        if (error) {
+          uploadErrors.push(`Failed to upload ${prefix}: ${error.message}`);
+          return null;
         }
-      }
-
-      if (files && files.selfieImage && files.selfieImage.length > 0) {
-        const selfieImageFile = files.selfieImage[0];
-        const fileName = `clients/selfie_${userId}_${Date.now()}_${selfieImageFile.originalname}`;
-        const { error } = await supabase.storage
-          .from("crud_bucket")
-          .upload(fileName, selfieImageFile.buffer, { cacheControl: "3600", upsert: true });
-        if (!error) {
-          selfieImageUrl = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
-        }
-      }
-
-      if (files && files.documents && files.documents.length > 0) {
-        const documentFile = files.documents[0];
-        const fileName = `clients/documents_${userId}_${Date.now()}_${documentFile.originalname}`;
-        const { error } = await supabase.storage
-          .from("crud_bucket")
-          .upload(fileName, documentFile.buffer, { cacheControl: "3600", upsert: true });
-        if (!error) {
-          documentsUrl = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
-        }
-      }
-
-      // Prepare client verification data
-      const ClientModel = (await import('../models/clientModel')).default;
-      const verificationData = {
-        user_id: userId,
-        social_media_links: JSON.parse(social_media_links || socialMediaJson || '{}'),
-        preferences: preferences || '',
-        client_address: client_address || '',
+        return supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
       };
-
-      // Submit to client table
-      const result = await ClientModel.submitClientVerification(verificationData);
-
-      // Now save files to respective tables
-      let savedFiles = {
-        idImage: false,
-        selfieImage: false,
-        documents: false
-      };
+  
+      if (files?.idImage?.[0]) {
+        idImageUrl = await uploadFile(files.idImage[0], "id");
+      }
+      if (files?.selfieImage?.[0]) {
+        selfieImageUrl = await uploadFile(files.selfieImage[0], "selfie");
+      }
+      if (files?.documents?.[0]) {
+        documentsUrl = await uploadFile(files.documents[0], "documents");
+      }
+  
+      if (uploadErrors.length > 0) {
+        console.error("File upload errors:", uploadErrors);
+      }
+  
+      // Save files to tables
+      let savedFiles = { idImage: false, selfieImage: false, documents: false };
       let failedTables: string[] = [];
-
-      // Save ID image to user_id table if provided
-      if (idImageUrl) {
-        console.log("=== SAVING ID IMAGE TO user_id TABLE ===");
+  
+      const saveToTable = async (table: string, field: string, url: string | null) => {
+        if (!url) return;
+  
         try {
-          const { data: existingIdRecord, error: checkIdError } = await supabase
-            .from('user_id')
+          const { data: existingRecord } = await supabase
+            .from(table)
             .select('user_id')
             .eq('user_id', userId)
             .maybeSingle();
-
-          if (existingIdRecord) {
-            // Update existing record
-            const { error: updateIdError } = await supabase
-              .from('user_id')
-              .update({id_image: idImageUrl })
-              .eq('user_id', userId);
-            
-            if (updateIdError) {
-              console.error("❌ Error updating ID image:", updateIdError);
-              failedTables.push('user_id');
-            } else {
-              console.log("✅ Successfully updated ID image in user_id table");
-              savedFiles.idImage = true;
-            }
+  
+          const payload = table === 'user_documents' 
+            ? { user_id: userId, [field]: url, valid: false }
+            : { user_id: userId, [field]: url };
+  
+          const { error } = existingRecord
+            ? await supabase.from(table).update(payload).eq('user_id', userId)
+            : await supabase.from(table).insert(payload);
+  
+          if (error) {
+            console.error(`Error saving to ${table}:`, error);
+            failedTables.push(table);
           } else {
-            // Insert new record
-            const { error: insertIdError } = await supabase
-              .from('user_id')
-              .insert({ 
-                user_id: userId, 
-                id_image: idImageUrl 
-              });
-            
-            if (insertIdError) {
-              console.error("❌ Error inserting ID image:", insertIdError);
-              failedTables.push('user_id');
-            } else {
-              console.log("✅ Successfully inserted ID image into user_id table");
-              savedFiles.idImage = true;
-            }
+            savedFiles[table === 'user_id' ? 'idImage' : 
+                      table === 'user_face_identity' ? 'selfieImage' : 
+                      'documents'] = true;
           }
         } catch (error) {
-          console.error("❌ Exception while saving ID image:", error);
-          failedTables.push('user_id');
+          console.error(`Exception saving to ${table}:`, error);
+          failedTables.push(table);
         }
-      }
-
-      // Save selfie image to user_face_identity table if provided
-      if (selfieImageUrl) {
-        console.log("=== SAVING SELFIE IMAGE TO user_face_identity TABLE ===");
-        try {
-          const { data: existingFaceRecord, error: checkFaceError } = await supabase
-            .from('user_face_identity')
-            .select('user_id')
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (existingFaceRecord) {
-            // Update existing record
-            const { error: updateFaceError } = await supabase
-              .from('user_face_identity')
-              .update({ face_image: selfieImageUrl })
-              .eq('user_id', userId);
-            
-            if (updateFaceError) {
-              console.error("❌ Error updating selfie image:", updateFaceError);
-              failedTables.push('user_face_identity');
-            } else {
-              console.log("✅ Successfully updated selfie image in user_face_identity table");
-              savedFiles.selfieImage = true;
-            }
-          } else {
-            // Insert new record
-            const { error: insertFaceError } = await supabase
-              .from('user_face_identity')
-              .insert({ 
-                user_id: userId, 
-                face_image: selfieImageUrl 
-              });
-            
-            if (insertFaceError) {
-              console.error("❌ Error inserting selfie image:", insertFaceError);
-              failedTables.push('user_face_identity');
-            } else {
-              console.log("✅ Successfully inserted selfie image into user_face_identity table");
-              savedFiles.selfieImage = true;
-            }
-          }
-        } catch (error) {
-          console.error("❌ Exception while saving selfie image:", error);
-          failedTables.push('user_face_identity');
-        }
-      }
-
-      // Save documents to user_documents table if provided
-      if (documentsUrl) {
-        console.log("=== SAVING DOCUMENTS TO user_documents TABLE ===");
-        try {
-          const { data: existingDocRecord, error: checkDocError } = await supabase
-            .from('user_documents')
-            .select('user_id')
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (existingDocRecord) {
-            // Update existing record
-            const { error: updateDocError } = await supabase
-              .from('user_documents')
-              .update({ 
-                user_document_link: documentsUrl,
-                valid: false 
-              })
-              .eq('user_id', userId);
-            
-            if (updateDocError) {
-              console.error("❌ Error updating documents:", updateDocError);
-              failedTables.push('user_documents');
-            } else {
-              console.log("✅ Successfully updated documents in user_documents table");
-              savedFiles.documents = true;
-            }
-          } else {
-            // Insert new record
-            const { error: insertDocError } = await supabase
-              .from('user_documents')
-              .insert({ 
-                user_id: userId, // Note: using user_id column for both taskers and clients
-                user_document_link: documentsUrl,
-                valid: false 
-              });
-            
-            if (insertDocError) {
-              console.error("❌ Error inserting documents:", insertDocError);
-              failedTables.push('user_documents');
-            } else {
-              console.log("✅ Successfully inserted documents into user_documents table");
-              savedFiles.documents = true;
-            }
-          }
-        } catch (error) {
-          console.error("❌ Exception while saving documents:", error);
-          failedTables.push('user_documents');
-        }
-      }
-
-      const overallSuccess = failedTables.length === 0;
+      };
+  
+      await Promise.all([
+        saveToTable('user_id', 'id_image', idImageUrl),
+        saveToTable('user_face_identity', 'face_image', selfieImageUrl),
+        saveToTable('user_documents', 'user_document_link', documentsUrl)
+      ]);
+  
+      const overallSuccess = failedTables.length === 0 && uploadErrors.length === 0;
       const message = overallSuccess 
-        ? "Client verification submitted successfully with all files saved!"
-        : `Client verification submitted but some files failed to save to tables: ${failedTables.join(', ')}`;
-
+        ? "Client verification submitted successfully!"
+        : `Client verification submitted with issues: ${[...failedTables, ...uploadErrors].join(', ')}`;
+  
       return res.status(overallSuccess ? 200 : 207).json({
         success: overallSuccess,
         message,
         data: {
-          clientData: result,
           files: { idImageUrl, selfieImageUrl, documentsUrl },
           filesSavedToTables: savedFiles,
           tablesSaved: {
-            clients: !!result,
+            clients: !clientError,
             user_id: savedFiles.idImage,
             user_face_identity: savedFiles.selfieImage,
             user_documents: savedFiles.documents
           }
         },
-        failedTables: failedTables.length > 0 ? failedTables : undefined
+        failedTables: failedTables.length > 0 ? failedTables : undefined,
+        uploadErrors: uploadErrors.length > 0 ? uploadErrors : undefined
       });
-
+  
     } catch (error) {
       console.error("Error in submitClientVerification:", error);
       return res.status(500).json({
@@ -3537,6 +3575,8 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         gender,
         birthdate,
       } = req.body;
+
+    console.log("This are the information passed", req.body);
 
       // Update user table first
       const updateUser: any = {};
@@ -3607,6 +3647,10 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         documents: false
       };
       let failedTables: string[] = [];
+
+      console.log("Id URL",idImageUrl);
+      console.log("Selfie URL",selfieImageUrl);
+      console.log("Document URL",documentsUrl);
 
       // Save ID image to user_id table if provided
       if (idImageUrl) {
