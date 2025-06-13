@@ -664,8 +664,6 @@ class TaskController {
         return;
       }
 
-      console.log("Task data:", taskResult.data);
-      console.log("Task taken data:", taskTakenResult.data);
 
       res.status(200).json({
         success: true,
