@@ -482,19 +482,20 @@ class AuthorityAccountController {
 
   static async viewDocument(req: Request, res: Response): Promise<any> {
     try {
-      const fileName = req.params.fileName;
-      if (!fileName) {
-        return res.status(400).json({ error: "File name is required" });
+      const { bucketName, filePath } = req.params;
+      if (!bucketName || !filePath) {
+        return res.status(400).json({ error: "Bucket name and file path are required" });
       }
 
-      const bucketName = "crud_bucket";
+      console.log(`Fetching file from bucket: ${bucketName}, path: ${filePath}`);
 
       // Fetch the file from Supabase Storage
       const { data, error } = await supabase.storage
         .from(bucketName)
-        .download(fileName);
+        .download(filePath);
 
       if (error) {
+        console.error('Supabase storage error:', error);
         if (error.message.includes("404")) {
           return res.status(404).json({ error: "File not found in Supabase Storage" });
         }
@@ -503,8 +504,22 @@ class AuthorityAccountController {
 
       const buffer = Buffer.from(await data.arrayBuffer());
 
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", "inline; filename=\"document.pdf\"");
+      // Set appropriate content type based on file extension
+      const extension = filePath.split('.').pop()?.toLowerCase();
+      let contentType = 'application/pdf';
+      
+      if (['jpg', 'jpeg'].includes(extension || '')) {
+        contentType = 'image/jpeg';
+      } else if (extension === 'png') {
+        contentType = 'image/png';
+      } else if (extension === 'svg') {
+        contentType = 'image/svg+xml';
+      } else if (extension === 'gif') {
+        contentType = 'image/gif';
+      }
+
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", `inline; filename="${filePath.split('/').pop()}"`);
       res.setHeader("Content-Length", buffer.length);
 
       res.send(buffer);

@@ -261,21 +261,6 @@ router.get("/fetchTasks/:userId", TaskController.getTasks);
 router.get("/fetchTasksClient/:userId", TaskController.getTasksClient);
 router.get("/tasker/taskinformation/:taskId", TaskController.getTaskInformation);
 
-//User CRUD
-// router.put(
-//   "/user/client/:id",
-//   upload.fields([{ name: "image", maxCount: 1 }]),
-//   profileController.ClientController.updateClient
-// );
-// router.put(
-//   "/user/tasker/:id",
-//   upload.fields([
-//     { name: "image", maxCount: 1 },
-//     { name: "documents", maxCount: 10 }, // Adjust maxCount as needed
-//   ]),
-//   profileController.TaskerController.updateTasker
-// );
-
 router.put(
   "/update-tasker-login-with-file/:id",
   upload.fields([

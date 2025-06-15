@@ -3405,9 +3405,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         phone,
         gender,
         birthdate,
-        social_media_links,
-        preferences,
-        client_address
+
       } = req.body;
   
       // Update user table
@@ -3430,22 +3428,6 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         if (updateUserError) {
           return res.status(500).json({ error: updateUserError.message });
         }
-      }
-  
-      // Handle client verification data
-      const verificationData = {
-        user_id: userId,
-        social_media_links: social_media_links ? JSON.parse(social_media_links) : {},
-        preferences: preferences || '',
-        client_address: client_address || ''
-      };
-  
-      const { error: clientError } = await supabase
-        .from("clients")
-        .upsert(verificationData);
-  
-      if (clientError) {
-        return res.status(500).json({ error: clientError.message });
       }
   
       // Handle file uploads
@@ -3537,7 +3519,6 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
           files: { idImageUrl, selfieImageUrl, documentsUrl },
           filesSavedToTables: savedFiles,
           tablesSaved: {
-            clients: !clientError,
             user_id: savedFiles.idImage,
             user_face_identity: savedFiles.selfieImage,
             user_documents: savedFiles.documents
@@ -3810,7 +3791,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
           files: { idImageUrl, selfieImageUrl, documentsUrl },
           filesSavedToTables: savedFiles,
           tablesSaved: {
-            //tasker: !!result,
+          
             user_id: savedFiles.idImage,
             user_face_identity: savedFiles.selfieImage,
             user_documents: savedFiles.documents
