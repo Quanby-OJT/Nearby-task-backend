@@ -91,9 +91,9 @@ class UserAccount {
       throw new Error("User not found");
     }
 
-    if (userexists.user_role == "Client") {
-      const { data, error } = await supabase
-      .from("client_documents")
+    // Both clients and taskers now use the user_documents table
+    const { data, error } = await supabase
+      .from("user_documents")
       .select("*")
       .eq("user_id", user_id)
       .maybeSingle();
@@ -101,17 +101,6 @@ class UserAccount {
     if (error) throw new Error(error.message);
 
     return data;
-    } else if (userexists.user_role == "Tasker") {
-        const { data, error } = await supabase
-        .from("user_documents")
-        .select("*")
-        .eq("user_id", user_id)
-        .maybeSingle();
-
-        if (error) throw new Error(error.message);
-
-        return data;
-    }
   }
 
   static async showClient(user_id: string) {
