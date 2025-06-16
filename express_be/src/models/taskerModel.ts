@@ -39,7 +39,7 @@ class TaskerModel {
   static async getAuthenticatedTasker(user_id: number) {
     const { data: userInfoData, error: userInfoError } = await supabase
       .from("user")
-      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, status, user_role")
+      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, status, user_role, image_link")
       .eq("user_id", user_id)
       .single();
 
@@ -78,7 +78,7 @@ class TaskerModel {
   /**
    * Update Tasker Information
    */
-  static async update(user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: String, group: boolean, social_media_links: JSON, address: JSON, profile_images?: number[]) {
+  static async update(user_id: number, bio: Text, specialization_id: number, skills: string,  availability: boolean, wage_per_hour: number, pay_period: String, group: boolean, social_media_links: JSON, address: JSON, profile_images?: number[], image_link?: string) {
     console.log("Wage: ", wage_per_hour)
     const { error: UpdateTaskerError } = await supabase.from("tasker").update({
       specialization_id,
@@ -93,9 +93,14 @@ class TaskerModel {
     console.log(error);
     if (UpdateTaskerError) throw new Error(UpdateTaskerError.message);
 
+    //Temporary, will be relocated to user table
     const { error: UpdateUserBioError } = await supabase.from("user_verify").update({
       bio,
       social_media_links
+    }).eq("user_id", user_id);
+
+    const { error: UpdateUserProfileImageError } = await supabase.from("user").update({
+      image_link
     }).eq("user_id", user_id);
 
     if(UpdateUserBioError) throw new Error(UpdateUserBioError.message)

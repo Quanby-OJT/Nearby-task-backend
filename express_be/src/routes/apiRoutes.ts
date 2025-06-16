@@ -326,7 +326,8 @@ router.put(
 router.put('/update-tasker/:id', 
   upload.fields([
     {name: "tasker_images", maxCount: 9},
-    {name: "user_documents", maxCount: 5}
+    {name: "user_documents", maxCount: 5},
+    {name: "profile_image", maxCount: 1}
   ]),
   ProfileController.TaskerController.updateTasker
 )
@@ -343,7 +344,11 @@ router.get('/get-tasker-images/:id', ProfileController.TaskerController.getTaske
 
 //Client Controllers
 router.post('/create-client-profile', ProfileController.ClientController.createClient)
-router.put('/update-client-profile/:id', ProfileController.ClientController.updateClient)
+router.put(
+  '/update-client-profile/:id', 
+  upload.single("profile_image"),
+  ProfileController.ClientController.updateClient
+)
 router.get('/get-client-info/:id', ProfileController.ClientController.getClient)
 
 router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);

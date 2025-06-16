@@ -140,6 +140,7 @@ class TaskerController {
 
       const Documents = (req.files as { [fieldname: string]: Express.Multer.File[] })["user_documents"];
       const Pictures = (req.files as { [fieldname: string]: Express.Multer.File[] })["tasker_images"];
+      const ProfileImage = (req.files as { [fieldname: string]: Express.Multer.File[] })["profile_image"];
 
       console.log(Documents, Pictures)
 
@@ -149,79 +150,88 @@ class TaskerController {
       let imageUrlIds: number[] = []
       const documentUrls: string[] = []
       const documentUrlIds: number[] = []
+      let profileUpload
 
       //Merge 
       const existingDocs = await ManageFiles.getDocumentForUser(parseInt(user_id), "tasker_images") ?? []
       imageUrls = existingDocs.map(doc => ({ id: doc.id, image_link: doc.image_link }))
 
-      for(const imgIds of profile_images_id) {
+      for (const imgIds of profile_images_id) {
         const existingImages = await ManageFiles.getDocument(imgIds, "tasker_images")
 
-        if(existingImages){
+        if (existingImages) {
           imageUrlIds.push(existingImages.id)
           imageUrls.push({ id: existingImages.id, image_link: existingImages.image_link })
         }
       }
 
-      if (imageUrlIds.length == 0 && imageUrls.length == 0 || tasker_documents == null) {
-        //To create new Pictures.
-        if (Pictures && Array.isArray(Pictures)) {
-          for (const image of Pictures) {
-            const imgPath = `user/tasker_images/${fullName}_${image.originalname}`
-            const imgUrl = await ManageFiles.uploadFile(imgPath, image)
-            const imgUrlId = await ManageFiles.createDocument(parseInt(user_id), imgUrl.publicUrl, "tasker_images") ?? 0
-            if (imgUrlId) for (const imageId of imgUrlId) imageUrlIds.push(imageId.id)
+      console.log("User Images after extracting...", imageUrls, imageUrlIds)
+
+      // Upload Pictures if any
+      if (Pictures && Array.isArray(Pictures)) {
+        for (const image of Pictures) {
+          const imgPath = `user/tasker_images/${fullName}_${image.originalname}`;
+          const imgUrl = await ManageFiles.uploadFile(imgPath, image);
+          const imgUrlId = await ManageFiles.createDocument(parseInt(user_id), imgUrl.publicUrl, "tasker_images") ?? 0;
+          if (imgUrlId) {
+            for (const imageId of imgUrlId) imageUrlIds.push(imageId.id);
           }
         }
-
-        if(Documents && Array.isArray(Documents)){
-          for (const doc of Documents) {
-            const docPath = `user/documents/${fullName}_${doc.originalname}`
-            const docUrl = await ManageFiles.uploadFile(docPath, doc)
-            const docUrlId = await ManageFiles.createTaskerDocument(parseInt(user_id), docUrl.publicUrl) ?? 0
-            // if (docUrlId) for (const docId of docUrlId) imageUrlIds.push(docId.id)
-          }
-        }
-        await TaskerModel.update(parseInt(user_id), bio, specializations.spec_id, skills, availability, parseFloat(wage_per_hour), pay_period, group, social_media_links, address, imageUrlIds)
-
-        res.status(200).json({ message: "User Information Updated Successfully" });
-        return
-      } else {
-        const profileImageIdsSet = new Set(imageUrlIds.map((id: number) => Number(id)));
-        console.log("Updating User Ids: ", profileImageIdsSet)
-
-        // Determine which images to delete (not in the incoming profile_images_id)
-        const imagesToDelete = imageUrls?.length
-          ? imageUrls
-              .filter(img => !profileImageIdsSet.has(img.id))
-              .map(img => ({
-                  image_link: `user/tasker_images/${img.image_link.split("/").slice(-1)[0]}`,
-                  id: img.id
-              }))
-          : []; // Extract filename from URL and include full path
-
-        console.log("Images to be deleted: ", imagesToDelete)
-
-        // Delete those from Supabase storage
-        if (imagesToDelete.length > 0) {
-          for(const imageToDelete of imagesToDelete) await ManageFiles.deleteFileUrl(imageToDelete.id, 'tasker_images')
-          await ManageFiles.deleteFile(imagesToDelete.map(img => img.image_link));
-        }
-
-        if (Pictures && Array.isArray(Pictures)) {
-          for (const image of Pictures) {
-            const imgPath = `user/tasker_images/${fullName}_${image.originalname}`
-            const imgUrl = await ManageFiles.uploadFile(imgPath, image)
-            const imgUrlId = await ManageFiles.createDocument(parseInt(user_id), imgUrl.publicUrl, "tasker_images") ?? 0
-            if (imgUrlId) for (const imageId of imgUrlId) imageUrlIds.push(imageId.id)
-          }
-        }
-
-        console.log("Wage before inserting: ", wage_per_hour)
-        await TaskerModel.update(parseInt(user_id), bio, specializations.spec_id, skills, availability, wage_per_hour, pay_period, group, social_media_links, address, imageUrlIds)
-
-        res.status(200).json({ message: "User Information Updated Successfully" });
       }
+
+      // Ensure single profile image upload
+      if (ProfileImage) {
+        const profilePath = `user/profile/${fullName}_${ProfileImage[0].originalname}`;
+        profileUpload = await ManageFiles.uploadFile(profilePath, ProfileImage[0]);
+      }
+
+      // Upload Documents if any
+      if (Documents && Array.isArray(Documents)) {
+        for (const doc of Documents) {
+          const docPath = `user/documents/${fullName}_${doc.originalname}`;
+          const docUrl = await ManageFiles.uploadFile(docPath, doc);
+          await ManageFiles.createTaskerDocument(parseInt(user_id), docUrl.publicUrl);
+        }
+      }
+
+      // Determine which images to delete (based on the current imageUrlIds)
+      const profileImageIdsSet = new Set(imageUrlIds.map((id: number) => Number(id)));
+      const imagesToDelete = imageUrls?.length
+        ? imageUrls
+          .filter(img => !profileImageIdsSet.has(img.id))
+          .map(img => ({
+            image_link: `user/tasker_images/${img.image_link.split("/").slice(-1)[0]}`,
+            id: img.id
+          }))
+        : [];
+
+      if (imagesToDelete.length > 0) {
+        for (const imageToDelete of imagesToDelete) {
+          await ManageFiles.deleteFileUrl(imageToDelete.id, 'tasker_images');
+        }
+        await ManageFiles.deleteFile(imagesToDelete.map(img => img.image_link));
+        console.log("All Files not included from the id from tasker were deleted.");
+      }
+
+      // Update Tasker Profile
+      console.log("Wage before inserting: ", wage_per_hour);
+      await TaskerModel.update(
+        parseInt(user_id),
+        bio,
+        specializations.spec_id,
+        skills,
+        availability,
+        parseFloat(wage_per_hour),
+        pay_period,
+        group,
+        social_media_links,
+        address,
+        imageUrlIds,
+        profileUpload?.publicUrl ?? ""
+      );
+
+      res.status(200).json({ message: "User Information Updated Successfully" });
+
     } catch (error) {
       console.error("Error in updateTasker:", error instanceof Error ? error.message : "Internal Server Error");
       console.error("Error in updateTasker:", error instanceof Error ? error.stack : "Internal Server Error");
@@ -426,13 +436,30 @@ class ClientController {
       const { bio, social_media_links } = req.body;
       const user_id = req.params.id
 
-      console.log("Client Update Information: ", req.body, user_id)
+      console.log("Client Update Information: ", req.body, req.file)
+      const profileImage = req.file
 
-      await ClientModel.updateClient(
-        parseInt(user_id),
-        bio,
-        social_media_links,
-      );
+      const name = await UserAccount.showUser(user_id)
+      const fullName = name.first_name + (name?.middle_name ? "_" + name.middle_name + "_" : "_") + name.last_name
+
+      if(profileImage){
+        const imageDirectory = `user/profile/${fullName}_${profileImage.originalname}`
+        const profileImageUrl = await ManageFiles.uploadFile(imageDirectory, profileImage)
+        await ClientModel.updateClient(
+          parseInt(user_id),
+          bio,
+          social_media_links,
+          profileImageUrl.publicUrl
+        );
+      }else{
+        await ClientModel.updateClient(
+          parseInt(user_id),
+          bio,
+          social_media_links,
+        )
+      }
+
+
 
       res.status(200).json({ message: "Client profile updated successfully." });
     } catch (error) {
