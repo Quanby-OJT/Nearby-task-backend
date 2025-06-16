@@ -3555,9 +3555,11 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         phone,
         gender,
         birthdate,
+        profileImageUrl, // Profile image URL from general info page
       } = req.body;
 
     console.log("This are the information passed", req.body);
+    console.log("Profile image URL from general info:", profileImageUrl);
 
       // Update user table first
       const updateUser: any = {};
@@ -3578,6 +3580,44 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
 
         if (updateUserError) {
           return res.status(500).json({ error: updateUserError.message });
+        }
+      }
+
+      // Create or update tasker record with tasker-specific information
+      const taskerData: any = {};
+
+      if (Object.keys(taskerData).length > 0) {
+        // Check if tasker record exists
+        const { data: existingTasker, error: checkTaskerError } = await supabase
+          .from('tasker')
+          .select('user_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (existingTasker) {
+          // Update existing tasker record
+          const { error: updateTaskerError } = await supabase
+            .from('tasker')
+            .update(taskerData)
+            .eq('user_id', userId);
+          
+          if (updateTaskerError) {
+            console.error("❌ Error updating tasker record:", updateTaskerError);
+          } else {
+            console.log("✅ Successfully updated tasker record");
+          }
+        } else {
+          // Create new tasker record
+          taskerData.user_id = userId;
+          const { error: insertTaskerError } = await supabase
+            .from('tasker')
+            .insert(taskerData);
+          
+          if (insertTaskerError) {
+            console.error("❌ Error creating tasker record:", insertTaskerError);
+          } else {
+            console.log("✅ Successfully created tasker record");
+          }
         }
       }
 
@@ -3611,21 +3651,38 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       }
 
       if (files && files.documents && files.documents.length > 0) {
+        console.log("=== UPLOADING DOCUMENT FILE ===");
         const documentFile = files.documents[0];
+        console.log("Document file info:", {
+          originalname: documentFile.originalname,
+          mimetype: documentFile.mimetype,
+          size: documentFile.size
+        });
+        
         const fileName = `taskers/documents_${userId}_${Date.now()}_${documentFile.originalname}`;
+        console.log("Uploading document to:", fileName);
+        
         const { error } = await supabase.storage
           .from("crud_bucket")
           .upload(fileName, documentFile.buffer, { cacheControl: "3600", upsert: true });
+          
         if (!error) {
           documentsUrl = supabase.storage.from("crud_bucket").getPublicUrl(fileName).data.publicUrl;
+          console.log("✅ Document uploaded successfully:", documentsUrl);
+        } else {
+          console.error("❌ Error uploading document:", error);
         }
+      } else {
+        console.log("ℹ️ No document file provided in request");
+        console.log("Files object:", files);
       }
 
     
       let savedFiles = {
         idImage: false,
         selfieImage: false,
-        documents: false
+        documents: false,
+        profileImage: false
       };
       let failedTables: string[] = [];
 
@@ -3730,6 +3787,7 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
       // Save documents to user_documents table if provided
       if (documentsUrl) {
         console.log("=== SAVING DOCUMENTS TO user_documents TABLE ===");
+        console.log("Documents URL to save:", documentsUrl);
         try {
           const { data: existingDocRecord, error: checkDocError } = await supabase
             .from('user_documents')
@@ -3737,8 +3795,11 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
             .eq('user_id', userId)
             .maybeSingle();
 
+          console.log("Existing document record check:", { existingDocRecord, checkDocError });
+
           if (existingDocRecord) {
             // Update existing record
+            console.log("Updating existing document record for user:", userId);
             const { error: updateDocError } = await supabase
               .from('user_documents')
               .update({ 
@@ -3756,13 +3817,17 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
             }
           } else {
             // Insert new record
+            console.log("Inserting new document record for user:", userId);
+            const documentRecord = { 
+              user_id: userId, // Note: using user_id column for taskers
+              user_document_link: documentsUrl,
+              valid: false 
+            };
+            console.log("Document record to insert:", documentRecord);
+            
             const { error: insertDocError } = await supabase
               .from('user_documents')
-              .insert({ 
-                user_id: userId, // Note: using user_id column for taskers
-                user_document_link: documentsUrl,
-                valid: false 
-              });
+              .insert(documentRecord);
             
             if (insertDocError) {
               console.error("❌ Error inserting documents:", insertDocError);
@@ -3776,6 +3841,33 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
           console.error("❌ Exception while saving documents:", error);
           failedTables.push('user_documents');
         }
+      } else {
+        console.log("ℹ️ No documents URL to save - document file was not uploaded or upload failed");
+      }
+
+      // Save profile image URL to tasker_images table if provided
+      if (profileImageUrl && profileImageUrl.trim() !== '') {
+        console.log("=== SAVING PROFILE IMAGE URL TO tasker_images TABLE ===");
+        try {
+          const { error: insertProfileImageError } = await supabase
+            .from('tasker_images')
+            .insert({ 
+              user_id: userId,
+              image_link: profileImageUrl,
+              created_at: new Date().toISOString()
+            });
+          
+          if (insertProfileImageError) {
+            console.error("❌ Error inserting profile image URL:", insertProfileImageError);
+            failedTables.push('tasker_images');
+          } else {
+            console.log("✅ Successfully inserted profile image URL into tasker_images table");
+            savedFiles.profileImage = true;
+          }
+        } catch (error) {
+          console.error("❌ Exception while saving profile image URL:", error);
+          failedTables.push('tasker_images');
+        }
       }
 
       const overallSuccess = failedTables.length === 0;
@@ -3788,13 +3880,13 @@ ALTER TABLE user_verify DISABLE ROW LEVEL SECURITY;
         message,
         data: {
           // taskerData: result,
-          files: { idImageUrl, selfieImageUrl, documentsUrl },
+          files: { idImageUrl, selfieImageUrl, documentsUrl, profileImageUrl },
           filesSavedToTables: savedFiles,
           tablesSaved: {
-          
             user_id: savedFiles.idImage,
             user_face_identity: savedFiles.selfieImage,
-            user_documents: savedFiles.documents
+            user_documents: savedFiles.documents,
+            tasker_images: savedFiles.profileImage
           }
         },
         failedTables: failedTables.length > 0 ? failedTables : undefined
