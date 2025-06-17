@@ -1,6 +1,6 @@
 import express, { Application } from "express";
 import cors from "cors";
-import { port, session_key } from "./config/configuration";
+import { port, session_key, url } from "./config/configuration";
 import server from "./routes/apiRoutes";
 import disputeRoute from "./routes/disputeRoutes";
 import userAccountRoute from "./routes/userAccountRoutes";
@@ -96,7 +96,7 @@ io.on("connection", (socket) => {
 });
 
 const PORT = port || 5000;
-httpsServer.listen(PORT, () => {
+httpsServer.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Click this to direct: ${process.env.URL}`);
 });

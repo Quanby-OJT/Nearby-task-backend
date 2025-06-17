@@ -1,6 +1,9 @@
 import { supabase } from "../config/configuration";
 
 class ClientModel {
+  /**
+   * NOTE FROM THE PREVIOUS DEVELOPER: the "bio" and "spcial_media_links" attribute will be relocated to "user" table.
+   */
   static async createNewClient(user_id: number, bio: Text, social_media_links: JSON) {
     const { error } = await supabase.from("user_verify").insert({
       bio: bio,
@@ -20,7 +23,7 @@ class ClientModel {
     // Get user information (required)
     const { data: userInfoData, error: userInfoError } = await supabase
       .from("user")
-      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, status, user_role, verified ")
+      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, acc_status, user_role, verified, image_link ")
       .eq("user_id", user_id)
       .single();
 
@@ -42,7 +45,7 @@ class ClientModel {
     };
   }
 
-  static async updateClient(user_id: number, bio: Text, social_media_links: JSON) {
+  static async updateClient(user_id: number, bio: Text, social_media_links: JSON, image_link?: string) {
     const { error } = await supabase
       .from("user_verify")
       .update({
@@ -50,6 +53,12 @@ class ClientModel {
         social_media_links: social_media_links
       })
       .eq("user_id", user_id);
+
+      if(image_link) {
+        const {error: updateUserProfileError} = await supabase.from("user").update({image_link}).eq("user_id", user_id)
+        if(updateUserProfileError) throw new Error("Error while updating your profile Image: " + updateUserProfileError.message)
+      }
+    
     if (error) throw new Error(error.message);
   }
 

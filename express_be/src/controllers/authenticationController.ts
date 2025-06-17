@@ -244,25 +244,25 @@ class AuthenticationController {
       const verificationLink = `myapp://verify?token=${verificationToken}&email=${email}`;
       console.log(verificationLink);
 
-      const html = `
-      <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
-        <h2 class="text-xl font-bold text-gray-800">Your Reset Password Link</h2>
-        <p class="text-gray-700 mt-4">Do you request to reset your password? If not, please ignore this message. If so, please click this link here: </p>
-        <div class="mt-4 text-center">
-          <span class="text-3xl font-bold text-blue-600">${verificationLink}</span>
-        </div>
-        <p class="text-red-500 mt-4">Note: This verification link will expire 30 minutes from now.</p>
-        <p class="text-gray-500 mt-6 text-sm">Should you have any concerns, please don't hesitate to contact us.</p>
-        <p class="text-gray-500 mt-6 text-sm">Cheers.</p>
-        <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
-      </div>`;
+      // const html = `
+      // <div class="bg-gray-100 p-6 rounded-lg shadow-lg">
+      //   <h2 class="text-xl font-bold text-gray-800">Your Reset Password Link</h2>
+      //   <p class="text-gray-700 mt-4">Do you request to reset your password? If not, please ignore this message. If so, please click this link here: </p>
+      //   <div class="mt-4 text-center">
+      //     <span class="text-3xl font-bold text-blue-600">${verificationLink}</span>
+      //   </div>
+      //   <p class="text-red-500 mt-4">Note: This verification link will expire 30 minutes from now.</p>
+      //   <p class="text-gray-500 mt-6 text-sm">Should you have any concerns, please don't hesitate to contact us.</p>
+      //   <p class="text-gray-500 mt-6 text-sm">Cheers.</p>
+      //   <p class="text-gray-500 mt-6 text-sm">IMONALICK Team.</p>
+      // </div>`;
 
-      await mailer.sendMail({
-        from: "noreply@nearbytask.com",
-        to: verifyEmail.email,
-        subject: "Rest IMONALICK Password",
-        html: html,
-      });
+      // await mailer.sendMail({
+      //   from: "noreply@nearbytask.com",
+      //   to: verifyEmail.email,
+      //   subject: "Reset IMONALICK Password",
+      //   html: html,
+      // });
 
       await ActivityLogging.logActivity(
         verifyEmail.user_id,
@@ -272,7 +272,7 @@ class AuthenticationController {
       res.status(200).json({ message: "Password reset link has been sent to your email. Please check your inbox." });
 
     } catch (error) {
-      console.error(error instanceof Error ? error.message : "Internal Server Error")
+      console.error(error instanceof Error ? "Error in Forgot Password: " + error.message : "Internal Server Error")
       res.status(500).json({ error: "An error occured while verifying your email. Please Try Again. If the problem persists. Contact us." })
     }
   }
@@ -284,18 +284,21 @@ class AuthenticationController {
     const hashedPassword = await bcrypt.hash(password, 10)
 
     try {
-      const { data: user } = await supabase
+      const { data: user, error: userError } = await supabase
         .from("user")
-        .select("hashed_password")
+        .select("hashed_password, user_id")
         .eq("email", email)
         .single();
 
-      if (user) {
-        const isSamePassword = await bcrypt.compare(password, user.hashed_password);
-        if (isSamePassword) {
-          res.status(400).json("New password cannot be the same as the current password");
-          return
-        }
+      if(userError?.code != "PGRST116"){
+        if(userError) throw new Error("Error in retrieving password: " + userError.message)
+      }else if(!user) throw new Error("User Does not exist in the system. This may be attempted hacking.")
+
+
+      const isSamePassword = await bcrypt.compare(password, user.hashed_password);
+      if (isSamePassword) {
+        res.status(400).json("New password cannot be the same as the current password");
+        return
       }
 
       const { error } = await supabase
@@ -303,21 +306,21 @@ class AuthenticationController {
         .update({ hashed_password: hashedPassword })
         .eq("email", email);
 
-      if (error) throw new Error(error.message)
+      if (error) throw new Error("Error in udpating password: " + error.message)
 
       const { error: errorDelete } = await supabase.from("user").update({ verification_token: null }).eq("email", email).eq("verification_token", verification_token)
 
-      if (errorDelete) throw new Error(errorDelete.message)
+      if (errorDelete) throw new Error("Error in resetting tokem: " + errorDelete.message)
 
       await ActivityLogging.logActivity(
-        email,
+        user.user_id,
         "Reset Password",
         `User with email ${email} has successfully reset their password.`
       );
       console.log(`User with email ${email} has successfully reset their password.`);
       res.status(200).json({ message: "Password has been reset successfully. Please login to your account." })
     } catch (error) {
-      console.error(error instanceof Error ? error.message : "Internal Server Error")
+      console.error(error instanceof Error ? "Error while resetting password: " + error.message : "Internal Server Error")
       res.status(500).json({ error: "An error occured while resetting your password. Please Try Again. If the problem persists. Contact us." })
     }
   }
