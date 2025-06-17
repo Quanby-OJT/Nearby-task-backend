@@ -23,7 +23,7 @@ class ClientModel {
     // Get user information (required)
     const { data: userInfoData, error: userInfoError } = await supabase
       .from("user")
-      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, status, user_role, verified, image_link ")
+      .select("first_name, middle_name, last_name, birthdate, email, contact, gender, acc_status, user_role, verified, image_link ")
       .eq("user_id", user_id)
       .single();
 
