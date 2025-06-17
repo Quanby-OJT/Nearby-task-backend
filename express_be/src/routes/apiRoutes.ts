@@ -342,6 +342,13 @@ router.post('/create-tasker-profile', upload.fields([
 router.get('/get-tasker-profile/:id', ProfileController.TaskerController.getTasker)
 router.get('/get-tasker-images/:id', ProfileController.TaskerController.getTaskerImages)
 
+// Upload tasker profile image to tasker_images table
+router.post('/upload-tasker-profile-image/:id', upload.fields([
+    {name: "tasker_images", maxCount: 1}
+  ]),
+  ProfileController.TaskerController.uploadTaskerProfileImage
+)
+
 //Client Controllers
 router.post('/create-client-profile', ProfileController.ClientController.createClient)
 router.put(

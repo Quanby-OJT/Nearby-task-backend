@@ -112,6 +112,64 @@ class TaskerController {
     }
   }
 
+  static async uploadTaskerProfileImage(req: Request, res: Response): Promise<void> {
+    try {
+      const user_id = parseInt(req.params.id);
+      const Pictures = req.files as { [fieldname: string]: Express.Multer.File[] };
+      
+      console.log("Uploading profile image for user:", user_id);
+      console.log("Files received:", Pictures);
+
+      if (!Pictures || !Pictures['tasker_images'] || Pictures['tasker_images'].length === 0) {
+        res.status(400).json({ error: "No profile image provided" });
+        return;
+      }
+
+      const profileImage = Pictures['tasker_images'][0];
+      const imageUrlIds: number[] = [];
+
+      // Get user info for file naming
+      const { data: userData, error: userError } = await supabase
+        .from("user")
+        .select("first_name, last_name")
+        .eq("user_id", user_id)
+        .single();
+
+      if (userError || !userData) {
+        console.error("Error fetching user data:", userError);
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      const fullName = `${userData.first_name}_${userData.last_name}`;
+
+      // Upload the profile image
+      const imgPath = `user/tasker_images/${fullName}_profile_${Date.now()}_${profileImage.originalname}`;
+      const imgUrl = await ManageFiles.uploadFile(imgPath, profileImage);
+      const imgUrlId = await ManageFiles.createDocument(user_id, imgUrl.publicUrl, "tasker_images");
+      
+      if (imgUrlId) {
+        for (const imageId of imgUrlId) {
+          imageUrlIds.push(imageId.id);
+        }
+      }
+
+      console.log("Profile image uploaded successfully:", imgUrl.publicUrl);
+      console.log("Image URL IDs:", imageUrlIds);
+
+      res.status(201).json({ 
+        message: "Profile image uploaded successfully",
+        data: {
+          imageUrl: imgUrl.publicUrl,
+          imageIds: imageUrlIds
+        }
+      });
+    } catch (error) {
+      console.error("Error in uploadTaskerProfileImage:", error instanceof Error ? error.message : "Unknown Error");
+      res.status(500).json({ error: "An error occurred while uploading profile image. Please try again." });
+    }
+  }
+
   /**
    * Update Tasker Information
    * @param req
