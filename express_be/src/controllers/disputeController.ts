@@ -30,7 +30,7 @@ class DisputeController {
         res.status(200).json({message: "This task is not disputed or does not exist."})
         return
       }
-      res.status(200).json(dispute_details)
+      res.status(200).json({message: "Retrieved Disputes", dispute_details})
     }catch(error){
       console.error("Error in getting disputes..." , error instanceof Error ? error.message : "Error Unknown")
       res.status(500).json({error: "An Error Occured while displaying your dispute information. Please Try Again."})

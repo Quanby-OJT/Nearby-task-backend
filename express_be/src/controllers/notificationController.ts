@@ -1416,54 +1416,55 @@ class NotificationController {
       visit_tasker = true;
     }
 
-    switch (value) {
-      case "Accept":
-        const updatedAt = DateTime.now().setZone("Asia/Manila");
-        const updatedAtISO = updatedAt.toISO();
+    try {
+      switch (value) {
+        case "Accept":
+          const updatedAt = DateTime.now().setZone("Asia/Manila");
+          const updatedAtISO = updatedAt.toISO();
 
-        console.log("This is sample: ", updatedAt);
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Confirmed",
-          visit_client,
-          visit_tasker,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          updatedAtISO as string
-        );
+          console.log("This is sample: ", updatedAt);
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Confirmed",
+            visit_client,
+            visit_tasker,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            updatedAtISO as string
+          );
 
-        const acceptedTask = await TaskAssignment.getTask(taskTakenId);
+          const acceptedTask = await TaskAssignment.getTask(taskTakenId);
 
-        await TaskAssignment.updateTaskStatus(acceptedTask.task_id, "Already Taken", false);
-        
-        break;
-      case "Reworking":
-        const rework = 1; 
-        const updatedAtRework = DateTime.now().setZone("Asia/Manila");
-        const updatedReworkAtISO = updatedAtRework.toISO();
-        await TaskAssignment.updateStatus(
+          await TaskAssignment.updateTaskStatus(acceptedTask.task_id, "Already Taken", false);
+
+          break;
+        case "Reworking":
+          const rework = 1;
+          const updatedAtRework = DateTime.now().setZone("Asia/Manila");
+          const updatedReworkAtISO = updatedAtRework.toISO();
+          await TaskAssignment.updateStatus(
             taskTakenId,
             "Reworking",
             visit_client,
-            visit_tasker, 
+            visit_tasker,
             undefined,
             false,
             false,
             undefined,
             rework,
             updatedReworkAtISO as string
-        );
+          );
 
-        
-        break;
+
+          break;
 
         case "Expired":
-        const updatedAtExpired = DateTime.now().setZone("Asia/Manila");
-        const updatedExpiredAtISO = updatedAtExpired.toISO();
-        await TaskAssignment.updateStatus(
+          const updatedAtExpired = DateTime.now().setZone("Asia/Manila");
+          const updatedExpiredAtISO = updatedAtExpired.toISO();
+          await TaskAssignment.updateStatus(
             taskTakenId,
             "Expired",
             visit_client,
@@ -1474,102 +1475,41 @@ class NotificationController {
             undefined,
             undefined,
             updatedExpiredAtISO as string
-        );
+          );
 
-        const dataExpired= await TaskAssignment.getTask(taskTakenId);
+          const dataExpired = await TaskAssignment.getTask(taskTakenId);
 
-        await TaskAssignment.updateTaskStatus(dataExpired.task_id, "Available", true);
+          await TaskAssignment.updateTaskStatus(dataExpired.task_id, "Available", true);
 
-        
-        break;
-      case "Start":
-        const updatedAtStart = DateTime.now().setZone("Asia/Manila");
-        const updatedStartAtISO = updatedAtStart.toISO();
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Ongoing",
-          visit_client,
-          visit_tasker,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          updatedStartAtISO as string
-        );
 
-        const data= await TaskAssignment.getTask(taskTakenId);
-
-        await TaskAssignment.updateTaskStatus(data.task_id, "In Progress", false);
-
-        break;
-      case "Reject":
-        const updatedAtReject = DateTime.now().setZone("Asia/Manila");
-        const updatedRejectAtISO = updatedAtReject.toISO();
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Rejected",
-          visit_client,
-          visit_tasker,
-          reason_for_rejection_or_cancellation,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          updatedRejectAtISO as string
-        );
-        break;
-      case "Declined":
-        const updatedAtDecline = DateTime.now().setZone("Asia/Manila");
-        const updatedDeclineAtISO = updatedAtDecline.toISO();
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Declined",
-          visit_client,
-          visit_tasker,
-          reason_for_rejection_or_cancellation,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          updatedDeclineAtISO as string
-        );
-
-        break;
-      case "Review":
-        const updatedAtReview = DateTime.now().setZone("Asia/Manila");
-        const updatedReviewAtISO = updatedAtReview.toISO();
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Review",
-          visit_client,
-          visit_tasker,
-          reason_for_rejection_or_cancellation,
-          undefined,
-          undefined,
-          updatedReviewAtISO as string,
-          undefined,
-          updatedReviewAtISO as string
-        );
-        break;
-      case "Cancel":
-        const updatedAtCancel = DateTime.now().setZone("Asia/Manila");
-        const updatedCancelAtISO = updatedAtCancel.toISO();
-        if(!reason_for_rejection_or_cancellation) {
-          res.status(400).json({
-            success: false,
-            error: "Reason for cancellation is required.",
-          });
-          return;
-        }
-
-        const cancelledTask = await TaskAssignment.getTask(taskTakenId);
-
-        // console.log("Cancelled Task:", cancelledTask);
-        if(cancelledTask.task_status == "Confirmed") {
-            await TaskAssignment.updateStatus(
+          break;
+        case "Start":
+          const updatedAtStart = DateTime.now().setZone("Asia/Manila");
+          const updatedStartAtISO = updatedAtStart.toISO();
+          await TaskAssignment.updateStatus(
             taskTakenId,
-            "Cancelled",
+            "Ongoing",
+            visit_client,
+            visit_tasker,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            updatedStartAtISO as string
+          );
+
+          const data = await TaskAssignment.getTask(taskTakenId);
+
+          await TaskAssignment.updateTaskStatus(data.task_id, "In Progress", false);
+
+          break;
+        case "Reject":
+          const updatedAtReject = DateTime.now().setZone("Asia/Manila");
+          const updatedRejectAtISO = updatedAtReject.toISO();
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Rejected",
             visit_client,
             visit_tasker,
             reason_for_rejection_or_cancellation,
@@ -1577,65 +1517,126 @@ class NotificationController {
             undefined,
             undefined,
             undefined,
-            updatedCancelAtISO as string
+            updatedRejectAtISO as string
+          );
+          break;
+        case "Declined":
+          const updatedAtDecline = DateTime.now().setZone("Asia/Manila");
+          const updatedDeclineAtISO = updatedAtDecline.toISO();
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Declined",
+            visit_client,
+            visit_tasker,
+            reason_for_rejection_or_cancellation,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            updatedDeclineAtISO as string
           );
 
-          const taskAmount = await taskModel.getTaskAmount(taskTakenId);
-
-          console.log("Task Amount:", taskAmount);
-
-          if(!taskAmount) {
-            res.status(404).json({
+          break;
+        case "Review":
+          const updatedAtReview = DateTime.now().setZone("Asia/Manila");
+          const updatedReviewAtISO = updatedAtReview.toISO();
+          await TaskAssignment.updateStatus(
+            taskTakenId,
+            "Review",
+            visit_client,
+            visit_tasker,
+            reason_for_rejection_or_cancellation,
+            undefined,
+            undefined,
+            updatedReviewAtISO as string,
+            undefined,
+            updatedReviewAtISO as string
+          );
+          break;
+        case "Cancel":
+          const updatedAtCancel = DateTime.now().setZone("Asia/Manila");
+          const updatedCancelAtISO = updatedAtCancel.toISO();
+          if (!reason_for_rejection_or_cancellation) {
+            res.status(400).json({
               success: false,
-              error: "Task not found.",
+              error: "Reason for cancellation is required.",
             });
             return;
           }
-        
-          await QTaskPayment.refundCreditstoClient(taskAmount.task_id, taskTakenId)
-          const data= await TaskAssignment.getTask(taskTakenId);
 
-          await TaskAssignment.updateTaskStatus(data.task_id, "Available", true);
-        }
-        else {
-          const updatedAtCancel = DateTime.now().setZone("Asia/Manila");
-          const updatedCancelAtISO = updatedAtCancel.toISO();
+          const cancelledTask = await TaskAssignment.getTask(taskTakenId);
+
+          // console.log("Cancelled Task:", cancelledTask);
+          if (cancelledTask.task_status == "Confirmed") {
+            await TaskAssignment.updateStatus(
+              taskTakenId,
+              "Cancelled",
+              visit_client,
+              visit_tasker,
+              reason_for_rejection_or_cancellation,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              updatedCancelAtISO as string
+            );
+
+            const taskAmount = await taskModel.getTaskAmount(taskTakenId);
+
+            console.log("Task Amount:", taskAmount);
+
+            if (!taskAmount) {
+              res.status(404).json({
+                success: false,
+                error: "Task not found.",
+              });
+              return;
+            }
+
+            await QTaskPayment.refundCreditstoClient(taskAmount.task_id, taskTakenId)
+            const data = await TaskAssignment.getTask(taskTakenId);
+
+            await TaskAssignment.updateTaskStatus(data.task_id, "Available", true);
+          }
+          else {
+            const updatedAtCancel = DateTime.now().setZone("Asia/Manila");
+            const updatedCancelAtISO = updatedAtCancel.toISO();
+            await TaskAssignment.updateStatus(
+              taskTakenId,
+              "Cancelled",
+              visit_client,
+              visit_tasker,
+              reason_for_rejection_or_cancellation,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              updatedCancelAtISO as string
+            );
+
+            const data = await TaskAssignment.getTask(taskTakenId);
+
+            await TaskAssignment.updateTaskStatus(data.task_id, "Available", true);
+          }
+
+
+          break;
+        case "Disputed":
+          const updatedAtDispute = DateTime.now().setZone("Asia/Manila");
+          const updatedDisputeAtISO = updatedAtDispute.toISO();
           await TaskAssignment.updateStatus(
             taskTakenId,
-            "Cancelled",
+            "Disputed",
             visit_client,
             visit_tasker,
-            reason_for_rejection_or_cancellation,
             undefined,
             undefined,
             undefined,
+            updatedDisputeAtISO as string,
             undefined,
-            updatedCancelAtISO as string
+            updatedDisputeAtISO as string
           );
-
-          const data= await TaskAssignment.getTask(taskTakenId);
-
-          await TaskAssignment.updateTaskStatus(data.task_id, "Available", true);
-        }
-
-        
-        break;
-      case "Disputed":
-        const updatedAtDispute = DateTime.now().setZone("Asia/Manila");
-        const updatedDisputeAtISO = updatedAtDispute.toISO();
-        await TaskAssignment.updateStatus(
-          taskTakenId,
-          "Disputed",
-          visit_client,
-          visit_tasker,
-          undefined,
-          undefined,
-          undefined,
-          updatedDisputeAtISO as string,
-          undefined,
-          updatedDisputeAtISO as string
-        );
-      const imageEvidence = (req.files as { [fieldname: string]: Express.Multer.File[] })["imageEvidence"];
+          const imageEvidence = (req.files as { [fieldname: string]: Express.Multer.File[] })["imageEvidence"];
 
 
           console.log("Image Evidence:", imageEvidence);
@@ -1678,77 +1679,81 @@ class NotificationController {
             await TaskAssignment.createDispute(user_id, taskTakenId, reason_for_dispute, dispute_details);
           }
 
-        const taskData = await TaskAssignment.getTask(taskTakenId);
-        await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
-        break
-      case "Finish":
-        const updatedAtFinish = DateTime.now().setZone("Asia/Manila");
-        const updatedFinishAtISO = updatedAtFinish.toISO(); 
-        if (role == "Tasker") {
-         
-          await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Review",
-            visit_client,
-            visit_tasker,
-            undefined,
-            undefined,
-            undefined,
-            updatedFinishAtISO as string,
-            undefined,
-            updatedFinishAtISO as string
-          );
-        } else {
-          const task = await taskModel.getTaskAmount(taskTakenId);
+          const taskData = await TaskAssignment.getTask(taskTakenId);
+          await TaskAssignment.updateTaskStatus(taskData.task_id, "On Hold", false);
+          break
+        case "Finish":
+          const updatedAtFinish = DateTime.now().setZone("Asia/Manila");
+          const updatedFinishAtISO = updatedAtFinish.toISO();
+          if (role == "Tasker") {
 
-          await TaskAssignment.updateStatus(
-            taskTakenId,
-            "Completed",
-            visit_client,
-            visit_tasker,
-            reason_for_rejection_or_cancellation,
-            undefined,
-            undefined,
-            updatedFinishAtISO as string,
-            undefined,
-            updatedFinishAtISO as string
-          );
+            await TaskAssignment.updateStatus(
+              taskTakenId,
+              "Review",
+              visit_client,
+              visit_tasker,
+              undefined,
+              undefined,
+              undefined,
+              updatedFinishAtISO as string,
+              undefined,
+              updatedFinishAtISO as string
+            );
+          } else {
+            const task = await taskModel.getTaskAmount(taskTakenId);
 
-          const { error: updateAmountError } = await supabase.rpc(
-            "increment_tasker_amount",
-            {
-              addl_credits: task?.post_task.proposed_price,
-              id: task?.tasker.tasker_id,
+            await TaskAssignment.updateStatus(
+              taskTakenId,
+              "Completed",
+              visit_client,
+              visit_tasker,
+              reason_for_rejection_or_cancellation,
+              undefined,
+              undefined,
+              updatedFinishAtISO as string,
+              undefined,
+              updatedFinishAtISO as string
+            );
+
+            const { error: updateAmountError } = await supabase.rpc(
+              "increment_tasker_amount",
+              {
+                addl_credits: task?.post_task.proposed_price,
+                id: task?.tasker.tasker_id,
+              }
+            );
+
+            if (updateAmountError) {
+              console.error(updateAmountError.message);
+              res.status(500).json({
+                success: false,
+                error: "An Error Occurred while updating tasker amount.",
+              });
+              return;
             }
-          );
 
-          if (updateAmountError) {
-            console.error(updateAmountError.message);
-            res.status(500).json({
-              success: false,
-              error: "An Error Occurred while updating tasker amount.",
-            });
-            return;
+            const data = await TaskAssignment.getTask(taskTakenId);
+
+            await TaskAssignment.updateTaskStatus(data.task_id, "Closed", true);
+            break;
           }
+        default:
+          res.status(400).json({
+            success: false,
+            error:
+              "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'",
+          });
+          return;
+      }
 
-          const data= await TaskAssignment.getTask(taskTakenId);
-
-          await TaskAssignment.updateTaskStatus(data.task_id, "Closed", true);
-          break;
-        }
-      default:
-        res.status(400).json({
-          success: false,
-          error:
-            "Invalid value. Use 'Accept', 'Start', 'Disputed', or 'Finish'",
-        });
-        return;
+      res.status(200).json({
+        success: true,
+        message: "Successfully Updated the Task Status.",
+      });
+    } catch (error: any) {
+      console.error(error.message)
+      res.status(500).json({ success: false, error: "An Error Occured while updating your task status. Please Try Again." })
     }
-
-    res.status(200).json({
-      success: true,
-      message: "Successfully Updated the Task Status.",
-    });
   }
 
 
