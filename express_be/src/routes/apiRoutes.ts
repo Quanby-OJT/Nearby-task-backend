@@ -357,6 +357,14 @@ router.put(
   ProfileController.ClientController.updateClient
 )
 router.get('/get-client-info/:id', ProfileController.ClientController.getClient)
+router.get('/get-client-images/:id', ProfileController.ClientController.getClientImages)
+
+// Upload client profile image to client_images table
+router.post('/upload-client-profile-image/:id', upload.fields([
+    {name: "client_images", maxCount: 1}
+  ]),
+  ProfileController.ClientController.uploadClientProfileImage
+)
 
 router.get("/getUserDocuments/:id", UserAccountController.getUserDocs);
 
