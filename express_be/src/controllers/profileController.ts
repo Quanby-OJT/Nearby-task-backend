@@ -473,6 +473,100 @@ class ClientController {
     }
   }
 
+  static async uploadClientProfileImage(req: Request, res: Response): Promise<void> {
+    try {
+      const user_id = parseInt(req.params.id);
+      const Pictures = req.files as { [fieldname: string]: Express.Multer.File[] };
+      
+      console.log("Uploading client profile image for user:", user_id);
+      console.log("Files received:", Pictures);
+
+      if (!Pictures || !Pictures['client_images'] || Pictures['client_images'].length === 0) {
+        res.status(400).json({ error: "No profile image provided" });
+        return;
+      }
+
+      const profileImage = Pictures['client_images'][0];
+      const imageUrlIds: number[] = [];
+
+      // Get user info for file naming
+      const { data: userData, error: userError } = await supabase
+        .from("user")
+        .select("first_name, last_name")
+        .eq("user_id", user_id)
+        .single();
+
+      if (userError || !userData) {
+        console.error("Error fetching user data:", userError);
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      const fullName = `${userData.first_name}_${userData.last_name}`;
+
+      // Upload the profile image
+      const imgPath = `user/client_images/${fullName}_profile_${Date.now()}_${profileImage.originalname}`;
+      const imgUrl = await ManageFiles.uploadFile(imgPath, profileImage);
+      const imgUrlId = await ManageFiles.createDocument(user_id, imgUrl.publicUrl, "client_images");
+      
+      if (imgUrlId) {
+        for (const imageId of imgUrlId) {
+          imageUrlIds.push(imageId.id);
+        }
+      }
+
+      console.log("Client profile image uploaded successfully:", imgUrl.publicUrl);
+      console.log("Image URL IDs:", imageUrlIds);
+
+      res.status(201).json({ 
+        message: "Client profile image uploaded successfully",
+        data: {
+          imageUrl: imgUrl.publicUrl,
+          imageIds: imageUrlIds
+        }
+      });
+    } catch (error) {
+      console.error("Error in uploadClientProfileImage:", error instanceof Error ? error.message : "Unknown Error");
+      res.status(500).json({ error: "An error occurred while uploading client profile image. Please try again." });
+    }
+  }
+
+  static async getClientImages(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = parseInt(req.params.id);
+      console.log("Fetching client images for user:", userId);
+
+      const clientImages = await ManageFiles.getDocumentForUser(userId, "client_images");
+      
+      console.log("Retrieved client images:", clientImages);
+
+      if (clientImages && clientImages.length > 0) {
+        const formattedImages = clientImages.map(img => ({
+          id: img.id,
+          image_link: img.image_link,
+          created_at: img.created_at,
+          updated_at: img.updated_at
+        }));
+
+        res.status(200).json({
+          success: true,
+          images: formattedImages
+        });
+      } else {
+        res.status(200).json({
+          success: true,
+          images: []
+        });
+      }
+    } catch (error) {
+      console.error("Error in getClientImages:", error);
+      res.status(500).json({
+        success: false,
+        error: "An error occurred while fetching client images"
+      });
+    }
+  }
+
   static async getClient(req: Request, res: Response): Promise<any> {
     try {
       const user_id = req.params.id
