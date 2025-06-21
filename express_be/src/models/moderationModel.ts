@@ -130,7 +130,7 @@ class ClientTaskerModeration {
   }
 
   static async getDispute(task_taken_id: number) {
-    const { data, error } = await supabase.from("dispute_logs").select("reason_for_dispute, dispute_details, moderator_action, addl_dispute_notes, task_taken(task_taken_id, post_task(task_title), task_status), raised_by:raised_by_user_id( first_name, middle_name, last_name, user_role), resolved_by:moderator_id( first_name, middle_name, last_name)").eq("task_taken_id", task_taken_id).single()
+    const { data, error } = await supabase.from("dispute_logs").select("reason_for_dispute, dispute_details, image_proof, moderator_action, addl_dispute_notes, task_taken(task_taken_id, post_task(task_title), task_status), raised_by:raised_by_user_id( first_name, middle_name, last_name, user_role), resolved_by:moderator_id( first_name, middle_name, last_name)").eq("task_taken_id", task_taken_id).single()
 
     console.log("Dispute Data:" + data, "Dispute Errors: " + error)
 
