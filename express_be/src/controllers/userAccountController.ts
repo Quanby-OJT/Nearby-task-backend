@@ -89,6 +89,48 @@ class UserAccountController {
             },
           ]);
 
+      // Transitioning from created user table to built-in user management.
+
+      //TODO: Transition from public.user table to auth.user table.
+      // const full_name = first_name + " " + middle_name != undefined ? middle_name : "" + " " + last_name
+
+      // const {data: authData, error: authError} = await supabase.auth.signUp({
+      //   email: email,
+      //   password: password
+      // })
+      
+      // if(authError || !authData.user) throw new Error(authError?.message)
+      
+      // let {data: userData, error: userError} = await supabase.from("user").insert({
+      //   user_role: user_role,
+      //   user_id: authData.user.id,
+      //   first_name: first_name,
+      //   middle_name: middle_name,
+      //   last_name: last_name,
+      //   birthdate: null,
+      //   reported: false,
+      //   status: false,
+      //   acc_status: acc_status,
+      //   gender: null,
+      //   verified: false,
+      //   action_by: null,
+      //   added_by: null,
+      //   acm_token: null
+      // })
+
+      // res.status(201).json({
+      //   message: password
+      //     ? "Registration successful! You can now login to your account."
+      //     : "User added successfully.",
+      //   user: {
+      //     id: newUser.user_id,
+      //     email: newUser.email,
+      //     first_name: newUser.first_name,
+      //     last_name: newUser.last_name,
+      //   },
+      // });
+      
+
         console.log("New user ID: " + newUser.user_id);
 
         if (errorInsert) {
