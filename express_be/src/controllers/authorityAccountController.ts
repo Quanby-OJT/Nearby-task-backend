@@ -440,7 +440,6 @@ class AuthorityAccountController {
   }
 
   static async getUserData(req: Request, res: Response): Promise<any> {
-    console.log("Request: ", req.body);
     try {
       const userID = req.params.id;
       console.log("Retrieving User Data for..." + userID);
