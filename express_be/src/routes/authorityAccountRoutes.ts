@@ -19,7 +19,7 @@ router.get("/getAuthorityUserData/:id", AuthorityAccountController.getUserData);
 
 router.get("/getAuthorityUserDocuments/:id", AuthorityAccountController.getUserDocs);
 
-router.get("/viewDocument/:bucketName/:filePath", AuthorityAccountController.viewDocument);
+router.get("/viewDocument/:bucketName/*", AuthorityAccountController.viewDocument);
 
 router.post("/update-password", AuthorityAccountController.updatePassword);
 

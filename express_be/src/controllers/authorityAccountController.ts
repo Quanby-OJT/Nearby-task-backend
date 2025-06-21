@@ -440,29 +440,39 @@ class AuthorityAccountController {
   }
 
   static async getUserData(req: Request, res: Response): Promise<any> {
-    console.log("Request: ", req.body);
     try {
       const userID = req.params.id;
       console.log("Retrieving User Data for..." + userID);
 
       const userData = await AuthorityAccount.showUser(userID);
+      console.log("User Data retrieved:", userData);
+
+      if (!userData) {
+        console.error("No user data found for ID:", userID);
+        return res.status(404).json({ error: "User not found" });
+      }
+
       if (userData.user_role === "Client") {
         const clientData = await AuthorityAccount.showClient(userID);
+        console.log("Client Data: ", clientData);
         res.status(200).json({ user: userData, client: clientData });
-        console.log("Client Data: " + clientData);
       } else if (userData.user_role === "Tasker") {
         const taskerData = await AuthorityAccount.showTasker(userID);
-        console.log("Tasker Data: " + taskerData);
+        console.log("Tasker Data: ", taskerData);
         res.status(200).json({ userme: true, user: userData, taskerData: taskerData });
       } else {
         res.status(200).json({ user: userData });
         console.log("User Data (Other Role): ", userData);
       }
     } catch (error) {
-      console.error(error instanceof Error ? error.message : "Unknown error");
-      console.error(error instanceof Error ? error.stack : "Unknown error");
+      console.error("Detailed error in getUserData:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : "No stack trace",
+        userID: req.params.id
+      });
       res.status(500).json({
         error: "An Error Occurred while Retrieving Your Information. Please try again.",
+        details: error instanceof Error ? error.message : "Unknown error"
       });
     }
   }
@@ -482,12 +492,12 @@ class AuthorityAccountController {
 
   static async viewDocument(req: Request, res: Response): Promise<any> {
     try {
-      const { bucketName, filePath } = req.params;
+      // Get bucketName and filePath from the new route
+      const bucketName = req.params.bucketName;
+      const filePath = req.params[0]; // this is a wildcard
       if (!bucketName || !filePath) {
         return res.status(400).json({ error: "Bucket name and file path are required" });
       }
-
-      console.log(`Fetching file from bucket: ${bucketName}, path: ${filePath}`);
 
       // Fetch the file from Supabase Storage
       const { data, error } = await supabase.storage

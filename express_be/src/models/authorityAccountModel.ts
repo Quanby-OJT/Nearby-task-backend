@@ -125,40 +125,41 @@ class AuthorityAccount {
   }
 
   static async getUserDocs(user_id: string) {
+    // Log the user_id being passed from the frontend
+    console.log("getUserDocs called with user_id:", user_id);
     /**
      * Error in retrieving data, walang foreign id sa user table. To be changed in retrieving from 3 tables at once.
      */
-    // const { data, error } = await supabase
-    //   .from("user")
-    //   .select(`
-    //     user_role,
-    //     user_documents!user_documents_tasker_id_fkey (doc_name, user_document_link, document_type),
-    //     user_id!user_id_user_id_fkey (id_image),
-    //     user_face_identity!user_face_identity_user_id_fkey (face_image)
-    //   `)
-    //   .eq("user_id", user_id)
-    //   .single();
-
-    const {data: userDocData, error: userDocError} = await supabase.from("user_documents").select("user_document_link, document_type").eq("user_id", user_id).single()
+    // Fetch all documents for the user (no .single())
+    const {data: userDocData, error: userDocError} = await supabase.from("user_documents").select("user_document_link, document_type").eq("user_id", user_id);
     if (userDocError) {
       console.error("User documents error:", userDocError);
       if (userDocError.code === "PGRST116") return null;
       throw new Error("Error in retrieving documents: " + userDocError.message);
     }
 
-    const {data: userIdentificationData, error: userIdentificationError} = await supabase.from("user_id").select("id_image").eq("user_id", user_id).single()
+    // Fetch single identification document (assuming one per user)
+    const {data: userIdentificationData, error: userIdentificationError} = await supabase.from("user_id").select("id_image").eq("user_id", user_id).single();
     if (userIdentificationError) {
       console.error("User identification error:", userIdentificationError);
       if (userIdentificationError.code === "PGRST116") return null;
       throw new Error("Error in retrieving user Identification Document: " + userIdentificationError.message);
     }
 
-    const {data: userFaceData, error: userFaceError} = await supabase.from("user_face_identity").select("face_image").eq("user_id", user_id).single()
+    // Fetch single face identity (assuming one per user)
+    const {data: userFaceData, error: userFaceError} = await supabase.from("user_face_identity").select("face_image").eq("user_id", user_id).single();
     if (userFaceError) {
       console.error("User face identity error:", userFaceError);
       if (userFaceError.code === "PGRST116") return null;
       throw new Error("Error in retrieving User Selfie: " + userFaceError.message);
     }
+
+    // Log the returned data
+    console.log("getUserDocs returning:", {
+      user_documents: userDocData,
+      user_id: userIdentificationData,
+      user_face_identity: userFaceData
+    });
 
     return {user: {user_documents: userDocData, user_id: userIdentificationData, user_face_identity: userFaceData}};
   }
